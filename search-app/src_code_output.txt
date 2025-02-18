@@ -1,0 +1,2200 @@
+.sourceButtonContainer {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  @media (min-width: 640px) {
+    .sourceButtonContainer {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .sourceButtonContainer {
+      grid-template-columns: repeat(5, 1fr);
+    }
+  }
+  
+  .sourceButton {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid #e5e7eb;
+    background-color: white;
+    color: #4b5563;
+  }
+  
+  .sourceButton:hover {
+    border-color: #0076B6;
+    background-color: #f9fafb;
+  }
+  
+  .sourceButtonActive {
+    border-color: #0076B6;
+    background-color: #0076B6;
+    color: white;
+  }
+  
+  .sourceButtonActive:hover {
+    background-color: #0076B6;
+  }
+  
+  .sourceButtonIcon {
+    transition: color 0.2s;
+  }/* Tailwind Directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Root Variables for Theme Colors */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --primary-blue: #0076B6;
+  --secondary-blue: #003087;
+  --light-slate: #F8FAFC;
+  --dark-slate: #1E293B;
+}
+
+/* Dark Mode Theme Settings */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/* Base Styles */
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #E2E8F0;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #CBD5E1;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #E2E8F0 transparent;
+}
+
+/* Custom Utility Classes */
+@layer components {
+  .input-focus {
+    @apply focus:ring-2 focus:ring-[#0076B6] focus:border-transparent focus:outline-none;
+  }
+  
+  .button-primary {
+    @apply bg-[#0076B6] text-white px-4 py-2 rounded-lg 
+           hover:opacity-90 transition-opacity disabled:opacity-50 
+           disabled:cursor-not-allowed;
+  }
+  
+  .card-shadow {
+    @apply shadow-lg hover:shadow-xl transition-shadow duration-200;
+  }
+
+  /* Source Button Styles */
+  .source-button-container {
+    @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3;
+  }
+
+  .source-button {
+    @apply px-4 py-3 
+           rounded-lg
+           text-xs
+           transition-all duration-200
+           flex items-center justify-center
+           gap-2
+           border border-gray-200
+           bg-white text-gray-600
+           hover:border-[#0076B6]
+           hover:bg-gray-50;
+  }
+  
+  .source-button-active {
+    @apply border-[#0076B6]
+           bg-[#0076B6]
+           text-white
+           hover:bg-[#0076B6]
+           hover:border-[#0076B6];
+  }
+
+  .source-button-icon {
+    @apply transition-colors duration-200;
+  }
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 03:08:24
+// Current User's Login: NUbivek
+
+import { createContext, useContext, useState } from 'react';
+import { MODELS, ModelUtils } from '@/config/models.config';
+
+const ModelContext = createContext();
+
+export function ModelProvider({ children }) {
+  const [selectedModel, setSelectedModel] = useState(MODELS.default);
+
+  const value = {
+    selectedModel,
+    setSelectedModel,
+    models: MODELS.active,
+    getModelConfig: () => ModelUtils.getModelConfig(selectedModel),
+    getCurrentModel: () => ModelUtils.getModelById(selectedModel),
+    formatPrompt: (prompt) => ModelUtils.formatPrompt(selectedModel, prompt),
+    modelOptions: ModelUtils.getModelOptions(),
+    config: MODELS.config
+  };
+
+  return (
+    <ModelContext.Provider value={value}>
+      {children}
+    </ModelContext.Provider>
+  );
+}
+
+export function useModel() {
+  const context = useContext(ModelContext);
+  if (!context) {
+    throw new Error('useModel must be used within a ModelProvider');
+  }
+  return context;
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 03:13:36
+// Current User's Login: NUbivek
+
+import React, { useCallback } from 'react';
+import { Search } from 'lucide-react';
+import { PREDEFINED_SEARCHES } from '@/config/constants';
+import ModelSelector from './ModelSelector';
+
+const SearchBar = ({ 
+  searchQuery, 
+  setSearchQuery, 
+  handleSearch, 
+  isLoading 
+}) => {
+  const handleKeyPress = useCallback((e) => {
+    if (e.key === 'Enter' && !isLoading) {
+      handleSearch();
+    }
+  }, [handleSearch, isLoading]);
+
+  const handlePredefinedSearch = useCallback((search) => {
+    setSearchQuery(search);
+    setTimeout(() => handleSearch(), 0);
+  }, [setSearchQuery, handleSearch]);
+
+  return (
+    <div className="space-y-4 mb-8">
+      {/* Model Selector Component */}
+      <div className="flex justify-center">
+        <ModelSelector disabled={isLoading} />
+      </div>
+
+      {/* Search Input */}
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Search insights, strategies, opportunities..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyPress={handleKeyPress}
+          className="
+            w-full p-4 pl-12
+            bg-white
+            border border-slate-200
+            rounded-xl
+            text-slate-800
+            placeholder-slate-400
+            focus:outline-none
+            focus:ring-2
+            focus:ring-blue-500
+            disabled:opacity-50
+          "
+          disabled={isLoading}
+        />
+        <Search
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600"
+          size={20}
+        />
+        <button
+          onClick={() => !isLoading && handleSearch()}
+          disabled={isLoading}
+          className="
+            absolute right-2 top-1/2 -translate-y-1/2
+            px-6 py-2
+            bg-blue-600 
+            text-white
+            rounded-lg
+            hover:bg-blue-700
+            disabled:opacity-50
+            disabled:cursor-not-allowed
+            flex items-center gap-2
+            transition-colors
+          "
+        >
+          {isLoading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Searching...</span>
+            </>
+          ) : (
+            'Search'
+          )}
+        </button>
+      </div>
+
+      {/* Predefined Searches */}
+      <div className="mb-8">
+        <h2 className="text-center text-sm text-slate-500 mb-4">
+          Popular Research Topics
+        </h2>
+        <div className="flex flex-wrap justify-center gap-2">
+          {PREDEFINED_SEARCHES.map((search, idx) => (
+            <button
+              key={idx}
+              onClick={() => handlePredefinedSearch(search)}
+              className="
+                px-3 py-1
+                text-xs
+                bg-slate-100
+                text-slate-600
+                rounded-lg
+                hover:bg-blue-100
+                hover:text-blue-700
+                transition-colors
+                disabled:opacity-50
+              "
+              disabled={isLoading}
+            >
+              {search}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SearchBar;// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 03:13:36
+// Current User's Login: NUbivek
+
+import React from 'react';
+import { useModel } from '@/contexts/ModelContext';
+
+const ModelSelector = ({ disabled }) => {
+  const { selectedModel, setSelectedModel, models } = useModel();
+
+  return (
+    <div className="relative inline-block w-48">
+      <select
+        value={selectedModel}
+        onChange={(e) => setSelectedModel(e.target.value)}
+        disabled={disabled}
+        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+      >
+        {models.map((model) => (
+          <option key={model.id} value={model.id}>
+            {model.name} - {model.description}
+          </option>
+        ))}
+      </select>
+      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+        <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+    </div>
+  );
+};
+
+export default ModelSelector;import React, { Component } from 'react';
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    this.setState({ error, errorInfo });
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h2>
+            <p className="text-gray-600 mb-4">
+              We apologize for the inconvenience. Please try refreshing the page or contact support if the problem persists.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Refresh Page
+            </button>
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-4 p-4 bg-gray-100 rounded-lg overflow-auto">
+                <pre className="text-sm text-gray-700">{this.state.error?.toString()}</pre>
+                <pre className="text-sm text-gray-700 mt-2">{this.state.errorInfo?.componentStack}</pre>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export default ErrorBoundary;// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 07:22:54
+// Current User's Login: NUbivek
+
+"use client";
+
+import { useState, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+// Dynamically import heavy components
+const SyntaxHighlighter = dynamic(
+  () => import('react-syntax-highlighter').then(mod => mod.Prism),
+  { ssr: false }
+);
+
+const atomDark = dynamic(
+  () => import('react-syntax-highlighter/dist/cjs/styles/prism').then(mod => mod.atomDark),
+  { ssr: false }
+);
+
+const CopyToClipboard = dynamic(
+  () => import('react-copy-to-clipboard'),
+  { ssr: false }
+);
+
+export default function SearchResults({ results, isSearching }) {
+  const [copied, setCopied] = useState({});
+  const [highlighterReady, setHighlighterReady] = useState(false);
+  const timeoutRefs = useRef({});
+
+  useEffect(() => {
+    setHighlighterReady(true);
+    return () => {
+      Object.values(timeoutRefs.current).forEach(timeout => clearTimeout(timeout));
+    };
+  }, []);
+
+  const handleCopy = (id) => {
+    setCopied(prev => ({ ...prev, [id]: true }));
+    
+    if (timeoutRefs.current[id]) {
+      clearTimeout(timeoutRefs.current[id]);
+    }
+    
+    timeoutRefs.current[id] = setTimeout(() => {
+      setCopied(prev => ({ ...prev, [id]: false }));
+    }, 2000);
+  };
+
+  if (isSearching) {
+    return (
+      <div className="mt-8 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-2 text-slate-600">Searching through codebase...</p>
+      </div>
+    );
+  }
+
+  if (!results) return null;
+
+  return (
+    <div className="mt-8">
+      <div className="bg-white rounded-xl p-6 shadow-lg border border-slate-100">
+        <div className="prose max-w-none dark:prose-invert">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              code: ({ node, inline, className, children, ...props }) => {
+                const match = /language-(\w+)/.exec(className || '');
+                const language = match ? match[1] : '';
+                const id = Math.random().toString(36).substr(2, 9);
+
+                if (inline) {
+                  return (
+                    <code className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-800 text-sm">
+                      {children}
+                    </code>
+                  );
+                }
+
+                if (!highlighterReady) {
+                  return (
+                    <pre className="bg-slate-800 rounded-lg p-4">
+                      <code className="text-slate-100">{children}</code>
+                    </pre>
+                  );
+                }
+
+                return (
+                  <div className="relative group">
+                    <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <CopyToClipboard text={String(children)} onCopy={() => handleCopy(id)}>
+                        <button
+                          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                            copied[id]
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {copied[id] ? 'Copied!' : 'Copy'}
+                        </button>
+                      </CopyToClipboard>
+                    </div>
+                    <SyntaxHighlighter
+                      language={language}
+                      style={atomDark}
+                      customStyle={{
+                        padding: '1.5rem',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                        lineHeight: '1.5',
+                        margin: '1.5rem 0'
+                      }}
+                      {...props}
+                    >
+                      {String(children).trim()}
+                    </SyntaxHighlighter>
+                  </div>
+                );
+              },
+              p: ({ children }) => (
+                <p className="mb-6 leading-relaxed text-slate-700">
+                  {children}
+                </p>
+              ),
+              h2: ({ children }) => (
+                <h2 className="text-2xl font-semibold text-slate-900 mb-4 mt-8 first:mt-0">
+                  {children}
+                </h2>
+              ),
+              h3: ({ children }) => (
+                <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">
+                  {children}
+                </h3>
+              ),
+              a: ({ node, children, href }) => {
+                const isFileLink = href?.startsWith('file://');
+                return (
+                  <a
+                    href={isFileLink ? '#' : href}
+                    target={isFileLink ? '_self' : '_blank'}
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 hover:underline"
+                    onClick={(e) => {
+                      if (isFileLink) {
+                        e.preventDefault();
+                      }
+                    }}
+                  >
+                    {children}
+                  </a>
+                );
+              },
+              ul: ({ children }) => (
+                <ul className="list-disc pl-6 mb-6 space-y-2">
+                  {children}
+                </ul>
+              ),
+              ol: ({ children }) => (
+                <ol className="list-decimal pl-6 mb-6 space-y-2">
+                  {children}
+                </ol>
+              ),
+              li: ({ children }) => (
+                <li className="text-slate-700">
+                  {children}
+                </li>
+              ),
+              blockquote: ({ children }) => (
+                <blockquote className="border-l-4 border-blue-500 pl-4 italic text-slate-600 mb-6">
+                  {children}
+                </blockquote>
+              ),
+              table: ({ children }) => (
+                <div className="overflow-x-auto mb-6">
+                  <table className="min-w-full divide-y divide-slate-200">
+                    {children}
+                  </table>
+                </div>
+              ),
+              th: ({ children }) => (
+                <th className="px-4 py-2 bg-slate-50 text-left text-sm font-semibold text-slate-900">
+                  {children}
+                </th>
+              ),
+              td: ({ children }) => (
+                <td className="px-4 py-2 text-sm text-slate-700 border-t border-slate-100">
+                  {children}
+                </td>
+              )
+            }}
+          >
+            {results.answer}
+          </ReactMarkdown>
+        </div>
+      </div>
+    </div>
+  );
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 03:13:14
+// Current User's Login: NUbivek
+
+import React, { useCallback } from 'react';
+import { Search } from 'lucide-react';
+import { useModel } from '@/contexts/ModelContext';
+import { PREDEFINED_SEARCHES } from '@/config/constants';
+
+const SearchBar = ({ 
+  searchQuery, 
+  setSearchQuery, 
+  handleSearch, 
+  isLoading 
+}) => {
+  const { selectedModel, setSelectedModel, models } = useModel();
+
+  const handleKeyPress = useCallback((e) => {
+    if (e.key === 'Enter' && !isLoading) {
+      handleSearch();
+    }
+  }, [handleSearch, isLoading]);
+
+  const handlePredefinedSearch = useCallback((search) => {
+    setSearchQuery(search);
+    setTimeout(() => handleSearch(), 0);
+  }, [setSearchQuery, handleSearch]);
+
+  return (
+    <div className="space-y-4 mb-8">
+      {/* Model Selector */}
+      <div className="flex justify-center">
+        <div className="relative inline-block w-48">
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            disabled={isLoading}
+            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+          >
+            {models.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name} - {model.description}
+              </option>
+            ))}
+          </select>
+          <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {/* Search Input */}
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Search insights, strategies, opportunities..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyPress={handleKeyPress}
+          className="
+            w-full p-4 pl-12
+            bg-white
+            border border-slate-200
+            rounded-xl
+            text-slate-800
+            placeholder-slate-400
+            focus:outline-none
+            focus:ring-2
+            focus:ring-blue-500
+            disabled:opacity-50
+          "
+          disabled={isLoading}
+        />
+        <Search
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600"
+          size={20}
+        />
+        <button
+          onClick={() => !isLoading && handleSearch()}
+          disabled={isLoading}
+          className="
+            absolute right-2 top-1/2 -translate-y-1/2
+            px-6 py-2
+            bg-blue-600 
+            text-white
+            rounded-lg
+            hover:bg-blue-700
+            disabled:opacity-50
+            disabled:cursor-not-allowed
+            flex items-center gap-2
+            transition-colors
+          "
+        >
+          {isLoading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Searching...</span>
+            </>
+          ) : (
+            'Search'
+          )}
+        </button>
+      </div>
+
+      {/* Predefined Searches */}
+      <div className="mb-8">
+        <h2 className="text-center text-sm text-slate-500 mb-4">
+          Popular Research Topics
+        </h2>
+        <div className="flex flex-wrap justify-center gap-2">
+          {PREDEFINED_SEARCHES.map((search, idx) => (
+            <button
+              key={idx}
+              onClick={() => handlePredefinedSearch(search)}
+              className="
+                px-3 py-1
+                text-xs
+                bg-slate-100
+                text-slate-600
+                rounded-lg
+                hover:bg-blue-100
+                hover:text-blue-700
+                transition-colors
+                disabled:opacity-50
+              "
+              disabled={isLoading}
+            >
+              {search}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SearchBar;// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 07:03:17
+// Current User's Login: NUbivek
+
+import ReactMarkdown from 'react-markdown';
+
+export default function LinkedInResults({ results, isSearching }) {
+  if (isSearching) {
+    return (
+      <div className="mt-8 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-2 text-slate-600">Analyzing LinkedIn insights...</p>
+      </div>
+    );
+  }
+
+  if (!results) return null;
+
+  return (
+    <div className="mt-8">
+      <div className="bg-white rounded-xl p-6 shadow-lg border border-slate-100">
+        <div className="prose max-w-none">
+          <ReactMarkdown
+            components={{
+              a: ({ node, children }) => (
+                <a
+                  href={node.properties.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.open(node.properties.href, '_blank', 'noopener,noreferrer');
+                  }}
+                  className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer font-medium 
+                           inline-block transition-colors duration-200 px-0.5 rounded
+                           hover:bg-blue-50"
+                >
+                  {children}
+                </a>
+              ),
+              p: ({ children }) => (
+                <p className="mb-6 leading-relaxed text-slate-700 text-lg">
+                  {children}
+                </p>
+              ),
+              h3: ({ children }) => (
+                <h3 className="text-xl font-semibold text-slate-900 mb-4 mt-8 first:mt-0 border-b border-slate-200 pb-2">
+                  {children}
+                </h3>
+              ),
+              blockquote: ({ children }) => (
+                <blockquote className="border-l-4 border-blue-500 pl-4 italic text-slate-600 mb-6">
+                  {children}
+                </blockquote>
+              ),
+              ul: ({ children }) => (
+                <ul className="list-disc pl-6 mb-6 space-y-2">
+                  {children}
+                </ul>
+              ),
+              li: ({ children }) => (
+                <li className="text-slate-700">
+                  {children}
+                </li>
+              )
+            }}
+          >
+            {results.answer}
+          </ReactMarkdown>
+        </div>
+      </div>
+    </div>
+  );
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 02:52:47
+// Current User's Login: NUbivek
+
+import React, { useState, useCallback } from 'react';
+import { Search, Upload, X, Plus, Link, FileText } from 'lucide-react';
+import SearchBar from '@/components/SearchBar';
+import SearchResults from '@/components/SearchResults';
+import LinkedInResults from '@/components/LinkedInResults';
+import { SEARCH_MODES, SOURCES_CONFIG, API_CONFIG } from '@/config/constants';
+import { useModel } from '@/contexts/ModelContext';
+import styles from '@/styles/Button.module.css';
+
+const SearchApp = () => {
+  const { selectedModel, setSelectedModel } = useModel();
+  
+  const [searchMode, setSearchMode] = useState(SEARCH_MODES.VERIFIED);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [filters, setFilters] = useState(SOURCES_CONFIG.initialFilters);
+  const [sourceScope, setSourceScope] = useState('only-user');
+  const [isSearching, setIsSearching] = useState(false);
+  const [webSearchResults, setWebSearchResults] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [urls, setUrls] = useState([]);
+  const [newUrl, setNewUrl] = useState('');
+
+  // Your processSearch function - updated to use selectedModel from context
+  const processSearch = useCallback(async (query) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(API_CONFIG.endpoints.search, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          filters,
+          searchMode,
+          model: selectedModel,
+          sourceScope,
+          sources: {
+            files: uploadedFiles.map(f => f.name),
+            urls: urls
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to process search: ${errorData}`);
+      }
+
+      const data = await response.json();
+      setSearchResults(data.result);
+    } catch (error) {
+      setError(error.message);
+      console.error('Search processing error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters, searchMode, selectedModel, sourceScope, uploadedFiles, urls]);
+
+  // Your handleWebSearch function - updated to use selectedModel from context
+  const handleWebSearch = useCallback(async () => {
+    if (!searchQuery.trim() || !filters.web) return;
+    
+    setIsSearching(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/websearch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: searchQuery,
+          model: selectedModel,
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to process web search: ${errorData}`);
+      }
+  
+      const data = await response.json();
+      setWebSearchResults(data);
+    } catch (error) {
+      setError(error.message);
+      console.error('Web search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, selectedModel, filters.web]);
+
+  // Your handleLinkedInSearch function - updated to use selectedModel from context
+  const handleLinkedInSearch = useCallback(async () => {
+    if (!searchQuery.trim() || !filters.linkedin) return;
+    
+    setIsSearching(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/linkedinsearch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: searchQuery,
+          model: selectedModel,
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to process LinkedIn search: ${errorData}`);
+      }
+  
+      const data = await response.json();
+      setWebSearchResults(data);
+    } catch (error) {
+      setError(error.message);
+      console.error('LinkedIn search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, selectedModel, filters.linkedin]);
+
+  const handleFileUpload = useCallback((event) => {
+    const files = Array.from(event.target.files);
+    const validFiles = files.filter(file => {
+      const isValidSize = file.size <= API_CONFIG.maxFileSize;
+      const isValidType = API_CONFIG.allowedFileTypes.includes(file.type);
+      return isValidSize && isValidType;
+    });
+
+    setUploadedFiles(prev => [...prev, ...validFiles]);
+  }, []);
+
+  const handleUrlAdd = useCallback(() => {
+    if (newUrl && isValidUrl(newUrl)) {
+      setUrls(prev => [...prev, newUrl]);
+      setNewUrl('');
+    }
+  }, [newUrl]);
+
+  const isValidUrl = (string) => {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const CustomSourcesPanel = () => (
+    <div className="flex-1 bg-white rounded-xl p-6 shadow-lg border border-slate-100">
+      <h2 className="text-lg font-semibold text-blue-800 mb-4">Your Custom Sources</h2>
+      <div className="mb-6">
+        <h3 className="text-sm font-medium mb-3 text-slate-700">Upload Files & URL</h3>
+        <label className="flex items-center gap-2 px-4 py-3 bg-slate-50 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-50 border-2 border-dashed border-blue-200">
+          <Upload size={20} />
+          <span>Choose Files</span>
+          <input
+            type="file"
+            multiple
+            onChange={handleFileUpload}
+            accept={API_CONFIG.allowedFileTypes.join(',')}
+            className="hidden"
+          />
+        </label>
+        {uploadedFiles.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {uploadedFiles.map((file, index) => (
+              <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <FileText size={16} className="text-blue-600" />
+                  <span className="text-sm text-slate-700 truncate">{file.name}</span>
+                </div>
+                <button
+                  onClick={() => setUploadedFiles(files => files.filter((_, i) => i !== index))}
+                  className="p-1 hover:bg-slate-200 rounded-full"
+                >
+                  <X size={16} className="text-slate-500" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div>
+        <h3 className="text-sm font-medium mb-3 text-slate-700">Add URLs</h3>
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              placeholder="Enter URL..."
+              className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={handleUrlAdd}
+              disabled={!newUrl || !isValidUrl(newUrl)}
+              className="button-primary"
+            >
+              <Plus size={20} />
+            </button>
+          </div>
+          {urls.length > 0 && (
+            <div className="space-y-2">
+              {urls.map((url, index) => (
+                <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Link size={16} className="text-blue-600" />
+                    <span className="text-sm text-slate-700 truncate">{url}</span>
+                  </div>
+                  <button
+                    onClick={() => setUrls(urls => urls.filter((_, i) => i !== index))}
+                    className="p-1 hover:bg-slate-200 rounded-full"
+                  >
+                    <X size={16} className="text-slate-500" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-white text-slate-800 p-6">
+      <div className="max-w-6xl mx-auto">
+        <header className="text-center mb-8">
+          <h1 className="text-4xl font-bold mb-4 text-blue-600">
+            Founder&apos;s Research Hub
+          </h1>
+          <p className="text-xl text-slate-600">
+            Strategic insights powered by curated sources
+          </p>
+        </header>
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex bg-slate-100 rounded-full p-1">
+            {Object.values(SEARCH_MODES).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setSearchMode(mode)}
+                className={`
+                  px-6 py-2 rounded-full
+                  ${searchMode === mode ? 'bg-blue-800 text-white' : 'text-slate-600 hover:bg-slate-200'}
+                `}
+              >
+                {mode === SEARCH_MODES.VERIFIED ? 'Verified Sources' : 'Open Research'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <SearchBar
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          handleSearch={async () => {
+            if (filters.web) {
+              await handleWebSearch();
+            } else if (filters.linkedin) {
+              await handleLinkedInSearch();
+            } else {
+              await processSearch(searchQuery);
+            }
+          }}
+          isLoading={isLoading || isSearching}
+        />
+
+        {searchMode === SEARCH_MODES.VERIFIED && (
+          <div className="flex flex-col md:flex-row gap-6 mb-8">
+            <div className="flex-1 bg-white rounded-xl p-6 shadow-lg border border-slate-100">
+              <h2 className="text-lg font-semibold text-blue-800 mb-4">Select Source Scope</h2>
+              <div className="space-y-4">
+                {SOURCES_CONFIG.scopeOptions.map((scope) => (
+                  <label
+                    key={scope.id}
+                    className={`
+                      block p-4 rounded-lg cursor-pointer
+                      ${sourceScope === scope.id ? 'bg-blue-50 border-2 border-blue-500' : 'bg-slate-50 border border-slate-200'}
+                      hover:bg-blue-50 transition-colors
+                    `}
+                  >
+                    <input
+                      type="radio"
+                      name="sourceScope"
+                      value={scope.id}
+                      checked={sourceScope === scope.id}
+                      onChange={(e) => setSourceScope(e.target.value)}
+                      className="hidden"
+                    />
+                    <div className="font-medium text-slate-800">{scope.label}</div>
+                    <div className="text-sm text-slate-600 mt-1">{scope.desc}</div>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <CustomSourcesPanel />
+          </div>
+        )}
+
+        {searchMode === SEARCH_MODES.OPEN && (
+          <div className="mb-8">
+            <h2 className="text-center text-sm mb-4 font-medium text-slate-900">
+              Select Sources
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              {Object.entries(filters).map(([source, isActive]) => {
+                const LogoIcon = SOURCES_CONFIG.logoMap[source];
+                const getSourceLabel = (source) => {
+                  switch(source) {
+                    case 'ycombinator': return 'YC+VC websites';
+                    case 'upload': return 'Upload Files & URL';
+                    case 'x': return 'Twitter/X';
+                    default: return source.charAt(0).toUpperCase() + source.slice(1);
+                  }
+                };
+                
+                return (
+                  <button
+                    key={source}
+                    onClick={() => {
+                      setFilters(prev => ({
+                        ...prev,
+                        [source]: !prev[source]
+                      }));
+                    }}
+                    style={{
+                      backgroundColor: isActive ? '#0076B6' : 'white',
+                      color: isActive ? 'white' : '#4b5563',
+                      border: '2px solid',
+                      borderColor: isActive ? '#0076B6' : '#e5e7eb',
+                      padding: '0.75rem',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.75rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      transition: 'all 0.2s',
+                      width: '100%',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {LogoIcon && (
+                      <LogoIcon
+                        size={16}
+                        style={{
+                          color: isActive ? 'white' : '#6b7280',
+                          transition: 'color 0.2s'
+                        }}
+                      />
+                    )}
+                    <span style={{ whiteSpace: 'nowrap' }}>
+                      {getSourceLabel(source)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {/* Only show CustomSourcesPanel when upload filter is active */}
+            {filters.upload && <div className="mt-8"><CustomSourcesPanel /></div>}
+          </div>
+        )}
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+        {/* Web search results */}
+        {filters.web && (
+          <SearchResults 
+            results={webSearchResults} 
+            isSearching={isSearching} 
+          />
+        )}
+        {/* LinkedIn search results */}
+        {filters.linkedin && (
+          <LinkedInResults 
+            results={webSearchResults} 
+            isSearching={isSearching} 
+          />
+        )}
+        {/* Regular search results */}
+        {!filters.web && !filters.linkedin && searchResults && (
+          <div className="mt-6 overflow-y-auto max-h-[60vh] rounded-xl bg-white border border-slate-200 shadow-lg animate-fadeIn">
+            <div className="p-6">
+              <div className="prose max-w-none">
+                {searchResults.content.split('\n').map((paragraph, idx) => (
+                  paragraph.trim() && (
+                    <p
+                      key={idx}
+                      className="text-slate-800 mb-4 last:mb-0 animate-slideUp"
+                      style={{
+                        animationDelay: `${idx * 100}ms`
+                      }}
+                    >
+                      {paragraph}
+                    </p>
+                  )
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default SearchApp;// UTC timestamp: 2025-02-17 02:11:51
+// User: NUbivek
+
+import { MODELS } from '@/config/constants';
+import { formatPromptForModel, getModelStopTokens } from '@/utils/modelHelpers';
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
+  const TOGETHER_API_KEY = process.env.TOGETHER_API_KEY;
+  if (!TOGETHER_API_KEY) {
+    return res.status(401).json({ message: 'Together API key is missing' });
+  }
+
+  try {
+    const { query, filters, searchMode, model, sourceScope, sources } = req.body;
+
+    if (!query) {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+
+    const selectedModel = MODELS.find(m => m.id === model);
+    if (!selectedModel) {
+      return res.status(400).json({ message: 'Invalid model selection' });
+    }
+
+    const prompt = constructPrompt(query, searchMode, filters, sourceScope, sources);
+
+    const requestBody = {
+      model: selectedModel.apiModel,
+      prompt: formatPromptForModel(prompt, selectedModel),
+      max_tokens: 512,
+      temperature: 0.7,
+      top_p: 0.9,
+      stop: getModelStopTokens(selectedModel.id)
+    };
+
+    const response = await fetch('https://api.together.xyz/v1/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${TOGETHER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(`API responded with status ${response.status}: ${JSON.stringify(data)}`);
+    }
+
+    return res.status(200).json({
+      result: {
+        content: data.choices?.[0]?.text || JSON.stringify(data),
+        sources: [],
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Search processing error:', error);
+    return res.status(500).json({
+      message: error.message,
+      details: error.response?.data || error
+    });
+  }
+}
+
+function constructPrompt(query, searchMode, filters, sourceScope, sources) {
+  let prompt = `Search query: ${query}\nSearch mode: ${searchMode}\n`;
+
+  const activeSources = Object.entries(filters)
+    .filter(([_, isActive]) => isActive)
+    .map(([source]) => source)
+    .join(', ');
+  prompt += `Active sources: ${activeSources}\n`;
+
+  if (searchMode === 'verified') {
+    prompt += `Source scope: ${sourceScope}\n`;
+  }
+
+  if (sources) {
+    if (sources.files?.length > 0) {
+      prompt += `Custom files: ${sources.files.join(', ')}\n`;
+    }
+    if (sources.urls?.length > 0) {
+      prompt += `Custom URLs: ${sources.urls.join(', ')}\n`;
+    }
+  }
+
+  return prompt;
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 03:28:21
+// Current User's Login: NUbivek
+
+import { searchWeb } from '@/lib/search';
+import { 
+  formatPromptForModel, 
+  getModelStopTokens, 
+  getModelById,
+  getApiModel 
+} from '@/utils/modelHelpers';
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
+  const TOGETHER_API_KEY = process.env.TOGETHER_API_KEY;
+  if (!TOGETHER_API_KEY) {
+    return res.status(401).json({ message: 'Together API key is missing' });
+  }
+
+  try {
+    const { query, model } = req.body;
+    console.log('Received request:', { query, model }); // Debug log
+
+    if (!query) {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+
+    const selectedModel = getModelById(model);
+    console.log('Selected model:', selectedModel); // Debug log
+
+    if (!selectedModel) {
+      return res.status(400).json({ message: 'Invalid model selection' });
+    }
+
+    // Perform web search
+    console.log('Performing web search for query:', query); // Debug log
+    const searchResults = await searchWeb(query);
+    console.log('Search results:', searchResults); // Debug log
+
+    // Construct prompt for LLM
+    const prompt = constructPrompt(query, searchResults);
+    console.log('Constructed prompt:', prompt); // Debug log
+
+    const apiModel = getApiModel(model);
+    console.log('API Model:', apiModel); // Debug log
+
+    const requestBody = {
+      model: apiModel,
+      prompt: formatPromptForModel(prompt, selectedModel),
+      max_tokens: 1024,
+      temperature: 0.7,
+      top_p: 0.9,
+      stop: getModelStopTokens(selectedModel.id)
+    };
+
+    console.log('Calling Together API...'); // Debug log
+    const response = await fetch('https://api.together.xyz/v1/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${TOGETHER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data = await response.json();
+    console.log('API Response:', { 
+      status: response.status, 
+      ok: response.ok,
+      data: data 
+    }); // Debug log
+
+    if (!response.ok) {
+      throw new Error(`API responded with status ${response.status}: ${JSON.stringify(data)}`);
+    }
+
+    // Process the response to include clickable links
+    const rawAnswer = data.choices?.[0]?.text || '';
+    console.log('Raw answer:', rawAnswer); // Debug log
+
+    const processedAnswer = processResponseWithLinks(rawAnswer, searchResults);
+    console.log('Processed answer:', processedAnswer); // Debug log
+
+    return res.status(200).json({
+      answer: processedAnswer,
+      sources: searchResults,
+      markdown: true
+    });
+
+  } catch (error) {
+    console.error('Search processing error:', {
+      message: error.message,
+      stack: error.stack,
+      details: error.response?.data || error
+    });
+    return res.status(500).json({
+      message: 'Failed to process web search',
+      details: error.message
+    });
+  }
+}
+
+function constructPrompt(query, searchResults) {
+  // Create the search results section with proper source numbering
+  const searchResultsText = searchResults.map((result, index) => `
+[Source ${index + 1}]
+Title: ${result.title}
+URL: ${result.url}
+Content: ${result.snippet}
+`).join('\n');
+
+  // Construct the full prompt with proper source number references
+  return `Please analyze the following web search results for the query: "${query}"
+
+Search Results:
+${searchResultsText}
+
+Please provide:
+1. A comprehensive answer based on these search results
+2. Include specific citations using markdown links: [Source X](URL) for each claim
+3. Use direct quotes when relevant, followed by the source link
+4. Be factual and precise
+
+Format your response in a clear, readable way with:
+- Main points and key findings
+- Supporting evidence from the sources (with clickable links)
+- Any relevant comparisons or contrasts
+- Conclusions based on the available information
+
+Remember: Every source citation should be a clickable link in markdown format [Source X](URL) where X is the source number (1-${searchResults.length}).`;
+}
+
+function processResponseWithLinks(text, searchResults) {
+  let processedText = text;
+  
+  // First, handle any existing markdown-style links
+  searchResults.forEach((result, index) => {
+    const sourceNum = index + 1;
+    const markdownLinkPattern = new RegExp(`\\[Source ${sourceNum}\\]\\(${sourceNum}\\)`, 'g');
+    processedText = processedText.replace(markdownLinkPattern, 
+      `[Source ${sourceNum}](${result.url})`
+    );
+  });
+
+  // Then handle traditional [Source X] citations
+  searchResults.forEach((result, index) => {
+    const sourceNum = index + 1;
+    const traditionalPattern = new RegExp(`\\[Source ${sourceNum}\\](?!\\()`, 'g');
+    processedText = processedText.replace(traditionalPattern, 
+      `[Source ${sourceNum}](${result.url})`
+    );
+  });
+
+  // Clean up any remaining non-linked citations
+  searchResults.forEach((result, index) => {
+    const sourceNum = index + 1;
+    const cleanupPattern = new RegExp(`Source ${sourceNum}(?!\\])`, 'g');
+    processedText = processedText.replace(cleanupPattern, 
+      `[Source ${sourceNum}](${result.url})`
+    );
+  });
+
+  // Replace any remaining (URL) with actual URLs
+  searchResults.forEach((result, index) => {
+    const sourceNum = index + 1;
+    processedText = processedText.replace(
+      new RegExp(`\\[Source ${sourceNum}\\]\\(URL\\)`, 'g'),
+      `[Source ${sourceNum}](${result.url})`
+    );
+  });
+
+  return processedText;
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 07:12:12
+// Current User's Login: NUbivek
+
+import { 
+  formatPromptForModel, 
+  getModelStopTokens, 
+  getModelById,
+  getApiModel,
+  DEFAULT_MODEL 
+} from '@/utils/modelHelpers';
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
+  const TOGETHER_API_KEY = process.env.TOGETHER_API_KEY;
+  if (!TOGETHER_API_KEY) {
+    return res.status(401).json({ message: 'Together API key is missing' });
+  }
+
+  try {
+    const { query, model = DEFAULT_MODEL } = req.body;
+
+    if (!query) {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+
+    const selectedModel = getModelById(model);
+    if (!selectedModel) {
+      console.warn(`Invalid model selection: ${model}, falling back to default`);
+      return res.status(400).json({ message: 'Invalid model selection' });
+    }
+
+    const baseKeywords = encodeURIComponent(query);
+    const searchUrls = {
+      feed: `https://www.linkedin.com/feed/search/?keywords=${baseKeywords}`,
+      posts: `https://www.linkedin.com/search/results/content/?keywords=${baseKeywords}`,
+      articles: `https://www.linkedin.com/search/results/content/?keywords=${baseKeywords}&filters=article`,
+      comments: `https://www.linkedin.com/search/results/content/?keywords=${baseKeywords}&filters=comment`,
+      groups: `https://www.linkedin.com/search/results/groups/?keywords=${baseKeywords}`,
+      companies: `https://www.linkedin.com/search/results/companies/?keywords=${baseKeywords}`,
+      people: `https://www.linkedin.com/search/results/people/?keywords=${baseKeywords}`,
+      events: `https://www.linkedin.com/search/results/events/?keywords=${baseKeywords}`,
+      schools: `https://www.linkedin.com/search/results/schools/?keywords=${baseKeywords}`,
+      learning: `https://www.linkedin.com/learning/search?keywords=${baseKeywords}`,
+      jobs: `https://www.linkedin.com/jobs/search/?keywords=${baseKeywords}`,
+      hashtag: (tag) => `https://www.linkedin.com/feed/hashtag/${tag.replace(/[^a-zA-Z0-9]/g, '')}`
+    };
+
+    const linkedinSearchPrompt = `
+Analyze recent LinkedIn content for: "${query}"
+
+Structure your response in clear sections using this format:
+
+### Key Industry Discussions and Trends
+Begin with the most significant conversations and patterns.
+
+### Recent Company Updates
+Format company news as clear, concise updates with dates.
+Example: [Company Name] announced [update] on [date]
+
+### Professional Insights
+Format quotes as:
+> "Quote text"
+> — [Expert Name], [Title at Company]
+
+### Upcoming Events
+Format each event as:
+### [Event Name]
+*[Date, Location]*
+
+[Brief description of the event, focusing on key highlights]
+
+### Career Opportunities
+List current roles with companies:
+• [Role Title] at [Company]: [Key Requirements]
+
+### Learning Resources
+Format as:
+• [Course/Resource Name] by [Provider]: [Brief Description]
+
+Keep the writing style natural but structured.
+Use proper spacing between sections.
+Include specific names, dates, and metrics.
+Link all companies, people, events, and resources mentioned.`;
+
+    const requestBody = {
+      model: getApiModel(model),
+      prompt: formatPromptForModel(linkedinSearchPrompt, selectedModel),
+      max_tokens: 1500,
+      temperature: 0.7,
+      top_p: 0.9,
+      stop: getModelStopTokens(model)
+    };
+
+    const response = await fetch('https://api.together.xyz/v1/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${TOGETHER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(`API responded with status ${response.status}: ${JSON.stringify(data)}`);
+    }
+
+    const rawAnswer = data.choices?.[0]?.text || '';
+    const processedAnswer = processLinkedInResponse(rawAnswer, searchUrls);
+
+    return res.status(200).json({
+      answer: processedAnswer,
+      searchUrls: searchUrls,
+      markdown: true
+    });
+
+  } catch (error) {
+    console.error('LinkedIn search processing error:', error);
+    return res.status(500).json({
+      message: 'Failed to process LinkedIn search',
+      details: error.message
+    });
+  }
+}
+
+function processLinkedInResponse(text, searchUrls) {
+  if (!text) return '';
+
+  function cleanText(text) {
+    return text
+      .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/_{2,}/g, '')
+      .trim();
+  }
+
+  function createLink(text, url, type = '') {
+    const cleanedText = cleanText(text);
+    
+    if (type === 'event') {
+      const [title, details] = cleanedText.split(':').map(s => s.trim());
+      if (details) {
+        return `**${createLink(title, url)}**\n${details}`;
+      }
+    }
+    
+    return `[${cleanedText}](${url})`;
+  }
+
+  function processSection(content) {
+    if (!content.trim()) return '';
+
+    let processed = content;
+
+    // Process events with dates
+    processed = processed.replace(
+      /### ([^#\n]+)\n\*([^*]+)\*\n\n([^\n]+)/g,
+      (match, title, date, description) => {
+        const eventLink = createLink(title, searchUrls.events);
+        return `### ${eventLink}\n*${date}*\n\n${description}`;
+      }
+    );
+
+    // Process companies
+    processed = processed.replace(
+      /([A-Z][a-zA-Z0-9\s,.]+ (?:Inc\.|Corp\.?|Ltd\.?|Company|Technologies|Group|Solutions|Systems))/g,
+      match => createLink(match, searchUrls.companies)
+    );
+
+    // Process professional titles and names
+    processed = processed.replace(
+      /([A-Z][a-zA-Z\s]+ (?:CEO|CTO|CFO|Founder|Director|Manager|Lead|Professional))/g,
+      match => createLink(match, searchUrls.people)
+    );
+
+    // Process hashtags
+    processed = processed.replace(
+      /#[\w\d]+/g,
+      match => {
+        const tag = match.replace('#', '');
+        return createLink(match, searchUrls.hashtag(tag));
+      }
+    );
+
+    // Process quotes with attribution
+    processed = processed.replace(
+      /> "([^"]+)"\n> — ([^,]+), ([^\n]+)/g,
+      (match, quote, name, title) => {
+        const nameLink = createLink(name, searchUrls.people);
+        return `> "${quote}"\n> — ${nameLink}, ${title}`;
+      }
+    );
+
+    // Process job opportunities
+    processed = processed.replace(
+      /• ([^:]+) at ([^:]+): /g,
+      (match, role, company) => {
+        const roleLink = createLink(role, searchUrls.jobs);
+        const companyLink = createLink(company, searchUrls.companies);
+        return `• ${roleLink} at ${companyLink}: `;
+      }
+    );
+
+    // Process learning resources
+    processed = processed.replace(
+      /• ([^:]+) by ([^:]+): /g,
+      (match, course, provider) => {
+        const courseLink = createLink(course, searchUrls.learning);
+        const providerLink = createLink(provider, searchUrls.companies);
+        return `• ${courseLink} by ${providerLink}: `;
+      }
+    );
+
+    return processed;
+  }
+
+  const sections = text.split(/(?=### )/);
+  const processedSections = sections.map(section => {
+    const [header, ...content] = section.split('\n');
+    if (header.startsWith('#')) {
+      return `${header}\n${processSection(content.join('\n'))}`;
+    }
+    return processSection(section);
+  });
+
+  let result = processedSections
+    .filter(section => section.trim())
+    .join('\n\n');
+
+  result += '\n\n---\n\n### 🔍 Explore More on LinkedIn\n\n';
+  const footerCategories = [
+    ['📱 Latest Discussions', searchUrls.feed],
+    ['🔥 Trending Posts', searchUrls.posts],
+    ['📚 Featured Articles', searchUrls.articles],
+    ['👥 Active Groups', searchUrls.groups],
+    ['📅 Upcoming Events', searchUrls.events],
+    ['🎓 Learning Resources', searchUrls.learning],
+    ['💼 Job Opportunities', searchUrls.jobs]
+  ];
+
+  result += footerCategories
+    .map(([text, url]) => `• ${createLink(text, url)}`)
+    .join('\n');
+
+  return result;
+}import { IncomingForm } from 'formidable';
+import { promises as fs } from 'fs';
+import { API_CONFIG } from '@/config/constants';
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
+  try {
+    const form = new IncomingForm({
+      maxFileSize: API_CONFIG.maxFileSize,
+      filter: (part) => {
+        return API_CONFIG.allowedFileTypes.includes(part.mimetype);
+      },
+    });
+
+    const [fields, files] = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) reject(err);
+        resolve([fields, files]);
+      });
+    });
+
+    const processedFiles = await Promise.all(
+      Object.values(files).map(async (file) => {
+        const content = await fs.readFile(file.filepath);
+        const fileInfo = {
+          name: file.originalFilename,
+          type: file.mimetype,
+          size: file.size,
+          content: content.toString('base64'),
+        };
+        await fs.unlink(file.filepath);
+        return fileInfo;
+      })
+    );
+
+    return res.status(200).json({
+      message: 'Files uploaded successfully',
+      files: processedFiles,
+    });
+
+  } catch (error) {
+    console.error('File upload error:', error);
+    return res.status(500).json({
+      message: 'Error processing file upload',
+      error: error.message,
+    });
+  }
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 03:08:24
+// Current User's Login: NUbivek
+
+import { ModelProvider } from '@/contexts/ModelContext';
+import '@/styles/globals.css';
+
+export default function MyApp({ Component, pageProps }) {
+  return (
+    <ModelProvider>
+      <Component {...pageProps} />
+    </ModelProvider>
+  );
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 02:41:27
+// Current User's Login: NUbivek
+
+import { 
+  Search, Linkedin, Globe, BookOpen, FileText, 
+  FileSpreadsheet, Twitter, Upload, X, Plus, Link 
+} from 'lucide-react';
+import { MODELS } from './models.config';
+
+export { MODELS };
+
+export const SEARCH_MODES = {
+  VERIFIED: 'verified',
+  OPEN: 'open'
+};
+
+export const PREDEFINED_SEARCHES = [
+  "AI Strategies",
+  "Growth Frameworks",
+  "Enterprise Optimization",
+  "Tech Innovation",
+  "Market Expansion",
+  "Scaling Techniques"
+];
+
+export const SOURCES_CONFIG = {
+  logoMap: {
+    web: Search,
+    linkedin: Linkedin,
+    x: Twitter,
+    crunchbase: Globe,
+    pitchbook: BookOpen,
+    reddit: Globe,
+    ycombinator: Globe,
+    substack: FileText,
+    medium: FileSpreadsheet,
+    upload: Upload
+  },
+  initialFilters: {
+    web: true,          // Only web search is active by default
+    linkedin: false,    // All other sources inactive by default
+    x: false,
+    crunchbase: false,
+    pitchbook: false,
+    reddit: false,
+    ycombinator: false,
+    substack: false,
+    medium: false,
+    upload: false
+  },
+  scopeOptions: [
+    { 
+      id: 'only-user', 
+      label: 'Only Your Sources', 
+      desc: 'Search using only your uploaded files and URLs' 
+    },
+    { 
+      id: 'combined', 
+      label: 'Combined Sources', 
+      desc: 'Search using both your sources and our verified database' 
+    }
+  ]
+};
+
+export const API_CONFIG = {
+  endpoints: {
+    search: '/api/chat',
+    upload: '/api/upload'
+  },
+  maxFileSize: 10 * 1024 * 1024, // 10MB
+  allowedFileTypes: [
+    'application/pdf',
+    'text/plain',
+    'text/csv',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ]
+};   /**
+    * @typedef {Object} SearchResult
+    * @property {string} content - The search result content
+    * @property {Array<string>} sources - List of sources used
+    * @property {number} confidence - Confidence score of the result
+    */
+
+   /**
+    * @typedef {Object} SourceScope
+    * @property {string} id - Unique identifier for the scope
+    * @property {string} label - Display label
+    * @property {string} desc - Description of the scope
+    */
+
+   /**
+    * @typedef {Object} Model
+    * @property {string} id - Model identifier
+    * @property {string} name - Display name
+    * @property {string} description - Short description
+    * @property {string} apiModel - API model identifier
+    */
+
+   /**
+    * @typedef {Object} SearchFilters
+    * @property {boolean} linkedin - LinkedIn filter state
+    * @property {boolean} x - Twitter/X filter state
+    * @property {boolean} crunchbase - Crunchbase filter state
+    * @property {boolean} pitchbook - PitchBook filter state
+    * @property {boolean} reddit - Reddit filter state
+    * @property {boolean} ycombinator - Y Combinator filter state
+    * @property {boolean} substack - Substack filter state
+    * @property {boolean} medium - Medium filter state
+    * @property {boolean} uploadedFiles - Uploaded files filter state
+    */// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 03:08:24
+// Current User's Login: NUbivek
+
+const MODELS = {
+  // Active models - Add or remove models here
+  active: [
+    { 
+      id: 'deepseek', 
+      name: 'DeepSeek', 
+      description: 'Accuracy',
+      apiModel: 'deepseek-ai/deepseek-llm-67b-chat',
+      stopTokens: ['<end_of_turn>'],
+      promptFormat: (prompt) => `<start_of_turn>user\n${prompt}\n<end_of_turn>\n<start_of_turn>assistant\n`
+    },
+    { 
+      id: 'gemma', 
+      name: 'Gemma 2.0', 
+      description: 'Efficiency',
+      apiModel: 'google/gemma-2-9b-it',
+      stopTokens: ['<end_of_turn>'],
+      promptFormat: (prompt) => `<start_of_turn>user\n${prompt}\n<end_of_turn>\n<start_of_turn>assistant\n`
+    },
+    { 
+      id: 'mixtral', 
+      name: 'Mixtral 8x7B', 
+      description: 'Balanced',
+      apiModel: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+      stopTokens: ['<end_of_turn>'],
+      promptFormat: (prompt) => `<start_of_turn>user\n${prompt}\n<end_of_turn>\n<start_of_turn>assistant\n`
+    }
+  ],
+
+  // Default model ID
+  default: 'gemma',
+
+  // Global model configurations
+  config: {
+    temperature: 0.7,
+    top_p: 0.9,
+    max_tokens: 1024,
+    api: {
+      endpoint: 'https://api.together.xyz/v1/completions',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }
+  }
+};
+
+// Helper functions
+const ModelUtils = {
+  getModelById: (id) => {
+    return MODELS.active.find(m => m.id === id) || MODELS.active.find(m => m.id === MODELS.default);
+  },
+
+  isValidModel: (id) => {
+    return MODELS.active.some(m => m.id === id);
+  },
+
+  getApiModel: (id) => {
+    const model = ModelUtils.getModelById(id);
+    return model ? model.apiModel : ModelUtils.getModelById(MODELS.default).apiModel;
+  },
+
+  getModelConfig: (id) => {
+    const model = ModelUtils.getModelById(id);
+    return {
+      ...MODELS.config,
+      model: model.apiModel,
+      stop: model.stopTokens
+    };
+  },
+
+  formatPrompt: (id, prompt) => {
+    const model = ModelUtils.getModelById(id);
+    return model.promptFormat(prompt);
+  },
+
+  getModelOptions: () => {
+    return MODELS.active.map(({ id, name, description }) => ({
+      id,
+      name,
+      description
+    }));
+  }
+};
+
+// Freeze the configuration
+Object.freeze(MODELS);
+Object.freeze(ModelUtils);
+
+export { MODELS, ModelUtils };
+
+// Example usage of adding a new model:
+/*
+To add a new model, copy this template and add to the active array above:
+
+{
+  id: 'new-model-id',
+  name: 'New Model Name',
+  description: 'Model Description',
+  apiModel: 'provider/model-name',
+  stopTokens: ['<end_of_turn>'],
+  promptFormat: (prompt) => `<start_of_turn>user\n${prompt}\n<end_of_turn>\n<start_of_turn>assistant\n`
+}
+*/import { useState, useEffect } from 'react';
+
+export const useDebounce = (value, delay = 500) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};import { useState, useCallback } from 'react';
+import { processFiles } from '../fileProcessing';
+
+export const useFileUpload = () => {
+  const [files, setFiles] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+
+  const handleUpload = useCallback(async (newFiles) => {
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      const { processedFiles, errors } = await processFiles(newFiles);
+      if (errors.length > 0) {
+        setUploadError(errors);
+      }
+      setFiles(prev => [...prev, ...processedFiles]);
+    } catch (error) {
+      setUploadError(error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  }, []);
+
+  const removeFile = useCallback((fileIndex) => {
+    setFiles(prev => prev.filter((_, index) => index !== fileIndex));
+  }, []);
+
+  return {
+    files,
+    isUploading,
+    uploadError,
+    handleUpload,
+    removeFile
+  };
+};// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 06:38:25
+// Current User's Login: NUbivek
+
+import { MODELS, ModelUtils } from '@/config/models.config';
+
+export const formatPromptForModel = (prompt, selectedModel) => {
+  const model = typeof selectedModel === 'string' 
+    ? ModelUtils.getModelById(selectedModel)
+    : selectedModel;
+
+  if (!model) {
+    console.warn('No valid model found, using default prompt format');
+    return prompt;
+  }
+
+  return model.promptFormat(prompt);
+};
+
+export const getModelStopTokens = (modelId) => {
+  const model = ModelUtils.getModelById(modelId);
+  return model ? model.stopTokens : [];
+};
+
+export const getModelConfig = (modelId) => {
+  return ModelUtils.getModelConfig(modelId);
+};
+
+export const getModelById = (modelId) => {
+  return ModelUtils.getModelById(modelId);
+};
+
+export const getApiModel = (modelId) => {
+  return ModelUtils.getApiModel(modelId);
+};
+
+export const DEFAULT_MODEL = MODELS.default;export const isValidUrl = (url) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  export const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  export const validateSearchQuery = (query) => {
+    if (!query?.trim()) {
+      return { isValid: false, error: 'Search query cannot be empty' };
+    }
+    if (query.length < 3) {
+      return { isValid: false, error: 'Search query must be at least 3 characters' };
+    }
+    return { isValid: true, error: null };
+  };export const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  };
+
+  export const formatDate = (timestamp) => {
+    const date = new Date(timestamp);
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
+  };
+
+  export const truncateText = (text, length = 50) => {
+    if (!text || text.length <= length) return text;
+    return `${text.substring(0, length)}...`;
+  };import { API_CONFIG } from '@/config/constants';
+
+export const processFiles = async (files) => {
+  const processedFiles = [];
+  const errors = [];
+
+  for (const file of files) {
+    try {
+      if (file.size > API_CONFIG.maxFileSize) {
+        throw new Error(`File ${file.name} exceeds maximum size of ${API_CONFIG.maxFileSize / 1024 / 1024}MB`);
+      }
+
+      if (!API_CONFIG.allowedFileTypes.includes(file.type)) {
+        throw new Error(`File type ${file.type} not allowed for ${file.name}`);
+      }
+
+      const content = await readFileAsText(file);
+      processedFiles.push({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        content,
+        lastModified: file.lastModified
+      });
+    } catch (error) {
+      errors.push({ file: file.name, error: error.message });
+    }
+  }
+
+  return { processedFiles, errors };
+};
+
+export const readFileAsText = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => resolve(event.target.result);
+    reader.onerror = (error) => reject(error);
+    reader.readAsText(file);
+  });
+};// Using DuckDuckGo scraping API as it's free and doesn't require API keys
+export async function searchWeb(query) {
+    try {
+      const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`);
+      const data = await response.json();
+      
+      return data.RelatedTopics
+        .filter(topic => topic.FirstURL && topic.Text)
+        .map(topic => ({
+          title: topic.Text.split(' - ')[0],
+          url: topic.FirstURL,
+          snippet: topic.Text
+        }))
+        .slice(0, 5); // Get top 5 results
+    } catch (error) {
+      console.error('Web search error:', error);
+      throw new Error('Failed to perform web search');
+    }
+  }

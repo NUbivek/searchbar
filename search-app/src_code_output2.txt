@@ -1,0 +1,5362 @@
+.sourceButtonContainer {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  @media (min-width: 640px) {
+    .sourceButtonContainer {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .sourceButtonContainer {
+      grid-template-columns: repeat(5, 1fr);
+    }
+  }
+  
+  .sourceButton {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid #e5e7eb;
+    background-color: white;
+    color: #4b5563;
+  }
+  
+  .sourceButton:hover {
+    border-color: #0076B6;
+    background-color: #f9fafb;
+  }
+  
+  .sourceButtonActive {
+    border-color: #0076B6;
+    background-color: #0076B6;
+    color: white;
+  }
+  
+  .sourceButtonActive:hover {
+    background-color: #0076B6;
+  }
+  
+  .sourceButtonIcon {
+    transition: color 0.2s;
+  }/* Tailwind Directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Root Variables for Theme Colors */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --primary-blue: #0076B6;
+  --secondary-blue: #003087;
+  --light-slate: #F8FAFC;
+  --dark-slate: #1E293B;
+}
+
+/* Dark Mode Theme Settings */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/* Base Styles */
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #E2E8F0;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #CBD5E1;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #E2E8F0 transparent;
+}
+
+/* Custom Utility Classes */
+@layer components {
+  .input-focus {
+    @apply focus:ring-2 focus:ring-[#0076B6] focus:border-transparent focus:outline-none;
+  }
+  
+  .button-primary {
+    @apply bg-[#0076B6] text-white px-4 py-2 rounded-lg 
+           hover:opacity-90 transition-opacity disabled:opacity-50 
+           disabled:cursor-not-allowed;
+  }
+  
+  .card-shadow {
+    @apply shadow-lg hover:shadow-xl transition-shadow duration-200;
+  }
+
+  /* Source Button Styles */
+  .source-button-container {
+    @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3;
+  }
+
+  .source-button {
+    @apply px-4 py-3 
+           rounded-lg
+           text-xs
+           transition-all duration-200
+           flex items-center justify-center
+           gap-2
+           border border-gray-200
+           bg-white text-gray-600
+           hover:border-[#0076B6]
+           hover:bg-gray-50;
+  }
+  
+  .source-button-active {
+    @apply border-[#0076B6]
+           bg-[#0076B6]
+           text-white
+           hover:bg-[#0076B6]
+           hover:border-[#0076B6];
+  }
+
+  .source-button-icon {
+    @apply transition-colors duration-200;
+  }
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 03:08:24
+// Current User's Login: NUbivek
+
+import { createContext, useContext, useState } from 'react';
+import { MODELS, ModelUtils } from '@/config/models.config';
+
+const ModelContext = createContext();
+
+export function ModelProvider({ children }) {
+  const [selectedModel, setSelectedModel] = useState(MODELS.default);
+
+  const value = {
+    selectedModel,
+    setSelectedModel,
+    models: MODELS.active,
+    getModelConfig: () => ModelUtils.getModelConfig(selectedModel),
+    getCurrentModel: () => ModelUtils.getModelById(selectedModel),
+    formatPrompt: (prompt) => ModelUtils.formatPrompt(selectedModel, prompt),
+    modelOptions: ModelUtils.getModelOptions(),
+    config: MODELS.config
+  };
+
+  return (
+    <ModelContext.Provider value={value}>
+      {children}
+    </ModelContext.Provider>
+  );
+}
+
+export function useModel() {
+  const context = useContext(ModelContext);
+  if (!context) {
+    throw new Error('useModel must be used within a ModelProvider');
+  }
+  return context;
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 03:13:36
+// Current User's Login: NUbivek
+
+import React, { useCallback } from 'react';
+import { Search } from 'lucide-react';
+import { PREDEFINED_SEARCHES } from '@/config/constants';
+import ModelSelector from './ModelSelector';
+
+const SearchBar = ({ 
+  searchQuery, 
+  setSearchQuery, 
+  handleSearch, 
+  isLoading 
+}) => {
+  const handleKeyPress = useCallback((e) => {
+    if (e.key === 'Enter' && !isLoading) {
+      handleSearch();
+    }
+  }, [handleSearch, isLoading]);
+
+  const handlePredefinedSearch = useCallback((search) => {
+    setSearchQuery(search);
+    setTimeout(() => handleSearch(), 0);
+  }, [setSearchQuery, handleSearch]);
+
+  return (
+    <div className="space-y-4 mb-8">
+      {/* Model Selector Component */}
+      <div className="flex justify-center">
+        <ModelSelector disabled={isLoading} />
+      </div>
+
+      {/* Search Input */}
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Search insights, strategies, opportunities..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyPress={handleKeyPress}
+          className="
+            w-full p-4 pl-12
+            bg-white
+            border border-slate-200
+            rounded-xl
+            text-slate-800
+            placeholder-slate-400
+            focus:outline-none
+            focus:ring-2
+            focus:ring-blue-500
+            disabled:opacity-50
+          "
+          disabled={isLoading}
+        />
+        <Search
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600"
+          size={20}
+        />
+        <button
+          onClick={() => !isLoading && handleSearch()}
+          disabled={isLoading}
+          className="
+            absolute right-2 top-1/2 -translate-y-1/2
+            px-6 py-2
+            bg-blue-600 
+            text-white
+            rounded-lg
+            hover:bg-blue-700
+            disabled:opacity-50
+            disabled:cursor-not-allowed
+            flex items-center gap-2
+            transition-colors
+          "
+        >
+          {isLoading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Searching...</span>
+            </>
+          ) : (
+            'Search'
+          )}
+        </button>
+      </div>
+
+      {/* Predefined Searches */}
+      <div className="mb-8">
+        <h2 className="text-center text-sm text-slate-500 mb-4">
+          Popular Research Topics
+        </h2>
+        <div className="flex flex-wrap justify-center gap-2">
+          {PREDEFINED_SEARCHES.map((search, idx) => (
+            <button
+              key={idx}
+              onClick={() => handlePredefinedSearch(search)}
+              className="
+                px-3 py-1
+                text-xs
+                bg-slate-100
+                text-slate-600
+                rounded-lg
+                hover:bg-blue-100
+                hover:text-blue-700
+                transition-colors
+                disabled:opacity-50
+              "
+              disabled={isLoading}
+            >
+              {search}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SearchBar;// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 03:13:36
+// Current User's Login: NUbivek
+
+import React from 'react';
+import { useModel } from '@/contexts/ModelContext';
+
+const ModelSelector = ({ disabled }) => {
+  const { selectedModel, setSelectedModel, models } = useModel();
+
+  return (
+    <div className="relative inline-block w-48">
+      <select
+        value={selectedModel}
+        onChange={(e) => setSelectedModel(e.target.value)}
+        disabled={disabled}
+        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+      >
+        {models.map((model) => (
+          <option key={model.id} value={model.id}>
+            {model.name} - {model.description}
+          </option>
+        ))}
+      </select>
+      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+        <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+    </div>
+  );
+};
+
+export default ModelSelector;import React, { Component } from 'react';
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    this.setState({ error, errorInfo });
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h2>
+            <p className="text-gray-600 mb-4">
+              We apologize for the inconvenience. Please try refreshing the page or contact support if the problem persists.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Refresh Page
+            </button>
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-4 p-4 bg-gray-100 rounded-lg overflow-auto">
+                <pre className="text-sm text-gray-700">{this.state.error?.toString()}</pre>
+                <pre className="text-sm text-gray-700 mt-2">{this.state.errorInfo?.componentStack}</pre>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export default ErrorBoundary;// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 23:32:45
+// Current User's Login: NUbivek
+
+"use client";
+
+import { useState, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+// Dynamically import heavy components with loading states
+const SyntaxHighlighter = dynamic(
+  () => import('react-syntax-highlighter').then(mod => mod.Prism),
+  { 
+    ssr: false,
+    loading: () => <div className="animate-pulse bg-gray-200 rounded h-32"></div>
+  }
+);
+
+const atomDark = dynamic(
+  () => import('react-syntax-highlighter/dist/cjs/styles/prism').then(mod => mod.atomDark),
+  { 
+    ssr: false,
+    loading: () => <div className="animate-pulse bg-gray-200 rounded h-4"></div>
+  }
+);
+
+const CopyToClipboard = dynamic(
+  () => import('react-copy-to-clipboard').then(mod => mod.default),
+  { 
+    ssr: false,
+    loading: () => <div className="animate-pulse bg-gray-200 rounded w-6 h-6"></div>
+  }
+);
+
+export default function SearchResults({ results, isSearching }) {
+  const [copied, setCopied] = useState({});
+  const [highlighterReady, setHighlighterReady] = useState(false);
+  const timeoutRefs = useRef({});
+
+  useEffect(() => {
+    setHighlighterReady(true);
+    const currentTimeouts = timeoutRefs.current;
+    
+    return () => {
+      if (currentTimeouts) {
+        Object.values(currentTimeouts).forEach(timeout => {
+          if (timeout) clearTimeout(timeout);
+        });
+      }
+    };
+  }, []);
+
+  const handleCopy = (id) => {
+    setCopied(prev => ({ ...prev, [id]: true }));
+    
+    if (timeoutRefs.current[id]) {
+      clearTimeout(timeoutRefs.current[id]);
+    }
+    
+    timeoutRefs.current[id] = setTimeout(() => {
+      setCopied(prev => ({ ...prev, [id]: false }));
+    }, 2000);
+  };
+
+  if (isSearching) {
+    return (
+      <div className="mt-8 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-2 text-slate-600">Searching through codebase...</p>
+      </div>
+    );
+  }
+
+  if (!results) return null;
+
+  return (
+    <div className="mt-8">
+      <div className="bg-white rounded-xl p-6 shadow-lg border border-slate-100">
+        <div className="prose max-w-none dark:prose-invert">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              code: ({ node, inline, className, children, ...props }) => {
+                const match = /language-(\w+)/.exec(className || '');
+                const language = match ? match[1] : '';
+                const id = Math.random().toString(36).substr(2, 9);
+
+                if (inline) {
+                  return (
+                    <code className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-800 text-sm">
+                      {children}
+                    </code>
+                  );
+                }
+
+                if (!highlighterReady) {
+                  return (
+                    <pre className="bg-slate-800 rounded-lg p-4">
+                      <code className="text-slate-100">{children}</code>
+                    </pre>
+                  );
+                }
+
+                return (
+                  <div className="relative group">
+                    <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <CopyToClipboard text={String(children)} onCopy={() => handleCopy(id)}>
+                        <button
+                          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                            copied[id]
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {copied[id] ? 'Copied!' : 'Copy'}
+                        </button>
+                      </CopyToClipboard>
+                    </div>
+                    <SyntaxHighlighter
+                      language={language}
+                      style={atomDark}
+                      customStyle={{
+                        padding: '1.5rem',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                        lineHeight: '1.5',
+                        margin: '1.5rem 0'
+                      }}
+                      {...props}
+                    >
+                      {String(children).trim()}
+                    </SyntaxHighlighter>
+                  </div>
+                );
+              },
+              p: ({ children }) => (
+                <p className="mb-6 leading-relaxed text-slate-700">
+                  {children}
+                </p>
+              ),
+              h2: ({ children }) => (
+                <h2 className="text-2xl font-semibold text-slate-900 mb-4 mt-8 first:mt-0">
+                  {children}
+                </h2>
+              ),
+              h3: ({ children }) => (
+                <h3 className="text-xl font-semibold text-slate-900 mb-3 mt-6">
+                  {children}
+                </h3>
+              ),
+              a: ({ node, children, href }) => {
+                const isFileLink = href?.startsWith('file://');
+                return (
+                  <a
+                    href={isFileLink ? '#' : href}
+                    target={isFileLink ? '_self' : '_blank'}
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 hover:underline"
+                    onClick={(e) => {
+                      if (isFileLink) {
+                        e.preventDefault();
+                      }
+                    }}
+                  >
+                    {children}
+                  </a>
+                );
+              },
+              ul: ({ children }) => (
+                <ul className="list-disc pl-6 mb-6 space-y-2">
+                  {children}
+                </ul>
+              ),
+              ol: ({ children }) => (
+                <ol className="list-decimal pl-6 mb-6 space-y-2">
+                  {children}
+                </ol>
+              ),
+              li: ({ children }) => (
+                <li className="text-slate-700">
+                  {children}
+                </li>
+              ),
+              blockquote: ({ children }) => (
+                <blockquote className="border-l-4 border-blue-500 pl-4 italic text-slate-600 mb-6">
+                  {children}
+                </blockquote>
+              ),
+              table: ({ children }) => (
+                <div className="overflow-x-auto mb-6">
+                  <table className="min-w-full divide-y divide-slate-200">
+                    {children}
+                  </table>
+                </div>
+              ),
+              th: ({ children }) => (
+                <th className="px-4 py-2 bg-slate-50 text-left text-sm font-semibold text-slate-900">
+                  {children}
+                </th>
+              ),
+              td: ({ children }) => (
+                <td className="px-4 py-2 text-sm text-slate-700 border-t border-slate-100">
+                  {children}
+                </td>
+              )
+            }}
+          >
+            {results.answer}
+          </ReactMarkdown>
+        </div>
+      </div>
+    </div>
+  );
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 03:13:14
+// Current User's Login: NUbivek
+
+import React, { useCallback } from 'react';
+import { Search } from 'lucide-react';
+import { useModel } from '@/contexts/ModelContext';
+import { PREDEFINED_SEARCHES } from '@/config/constants';
+
+const SearchBar = ({ 
+  searchQuery, 
+  setSearchQuery, 
+  handleSearch, 
+  isLoading 
+}) => {
+  const { selectedModel, setSelectedModel, models } = useModel();
+
+  const handleKeyPress = useCallback((e) => {
+    if (e.key === 'Enter' && !isLoading) {
+      handleSearch();
+    }
+  }, [handleSearch, isLoading]);
+
+  const handlePredefinedSearch = useCallback((search) => {
+    setSearchQuery(search);
+    setTimeout(() => handleSearch(), 0);
+  }, [setSearchQuery, handleSearch]);
+
+  return (
+    <div className="space-y-4 mb-8">
+      {/* Model Selector */}
+      <div className="flex justify-center">
+        <div className="relative inline-block w-48">
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            disabled={isLoading}
+            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+          >
+            {models.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name} - {model.description}
+              </option>
+            ))}
+          </select>
+          <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {/* Search Input */}
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Search insights, strategies, opportunities..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyPress={handleKeyPress}
+          className="
+            w-full p-4 pl-12
+            bg-white
+            border border-slate-200
+            rounded-xl
+            text-slate-800
+            placeholder-slate-400
+            focus:outline-none
+            focus:ring-2
+            focus:ring-blue-500
+            disabled:opacity-50
+          "
+          disabled={isLoading}
+        />
+        <Search
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600"
+          size={20}
+        />
+        <button
+          onClick={() => !isLoading && handleSearch()}
+          disabled={isLoading}
+          className="
+            absolute right-2 top-1/2 -translate-y-1/2
+            px-6 py-2
+            bg-blue-600 
+            text-white
+            rounded-lg
+            hover:bg-blue-700
+            disabled:opacity-50
+            disabled:cursor-not-allowed
+            flex items-center gap-2
+            transition-colors
+          "
+        >
+          {isLoading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Searching...</span>
+            </>
+          ) : (
+            'Search'
+          )}
+        </button>
+      </div>
+
+      {/* Predefined Searches */}
+      <div className="mb-8">
+        <h2 className="text-center text-sm text-slate-500 mb-4">
+          Popular Research Topics
+        </h2>
+        <div className="flex flex-wrap justify-center gap-2">
+          {PREDEFINED_SEARCHES.map((search, idx) => (
+            <button
+              key={idx}
+              onClick={() => handlePredefinedSearch(search)}
+              className="
+                px-3 py-1
+                text-xs
+                bg-slate-100
+                text-slate-600
+                rounded-lg
+                hover:bg-blue-100
+                hover:text-blue-700
+                transition-colors
+                disabled:opacity-50
+              "
+              disabled={isLoading}
+            >
+              {search}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SearchBar;// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-18 01:15:27
+// Current User's Login: NUbivek
+
+import React, { useMemo } from 'react';
+import VC_FIRMS, { 
+  getVerifiedPartners, 
+  getCombinedHandles, 
+  getVCsByFocus,
+  getFoundersByFocus 
+} from '../config/vcAccounts';
+
+// Initialize VC data
+const VERIFIED_VCS = getVerifiedPartners();
+const VC_HANDLES = getCombinedHandles();
+
+const CONTENT_CATEGORIES = {
+  PRIMARY: {
+    VC_INSIGHTS: {
+      id: 'vc_insights',
+      icon: '💎',
+      title: 'Verified VC Insights',
+      keywords: ['invested', 'investing', 'investment', 'fund', 'portfolio']
+    },
+    MARKET_INTEL: {
+      id: 'market_intel',
+      icon: '📊',
+      title: 'Market Intelligence',
+      keywords: ['market', 'trend', 'analysis', 'research', 'report']
+    }
+  },
+  LINKEDIN: {
+    POSTS: {
+      id: 'linkedin_posts',
+      icon: '📝',
+      title: 'LinkedIn Highlights',
+      keywords: ['posted', 'shared', 'commented', 'discussed']
+    },
+    COMPANIES: {
+      id: 'companies',
+      icon: '🏢',
+      title: 'Company Updates',
+      keywords: ['announced', 'launched', 'company', 'startup']
+    }
+  }
+};
+
+const LinkedInResults = ({ results, isSearching }) => {
+  const processedContent = useMemo(() => {
+    if (!results?.answer?.content) return null;
+
+    const cleanContent = String(results.answer.content)
+      .replace(/[⭐️*]/g, '')
+      .replace(/#{1,3}\s*/g, '')
+      .replace(/•+\s*/g, '')
+      .trim();
+
+    return {
+      vcContent: extractVCContent(cleanContent),
+      marketIntel: extractMarketIntel(cleanContent),
+      linkedinContent: extractLinkedInContent(cleanContent)
+    };
+  }, [results]);
+
+  if (isSearching) {
+    return <LoadingState />;
+  }
+
+  if (!processedContent) return null;
+
+  return (
+    <div className="mt-8 animate-fadeIn">
+      <div className="bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden">
+        {/* Header */}
+        <Header role={results.answer?.role} />
+
+        {/* Main Content */}
+        <div className="p-6 space-y-8">
+          {/* VC Insights Section */}
+          {processedContent.vcContent.length > 0 && (
+            <VCInsightsSection insights={processedContent.vcContent} />
+          )}
+
+          {/* Market Intelligence Section */}
+          {processedContent.marketIntel.length > 0 && (
+            <MarketIntelSection data={processedContent.marketIntel} />
+          )}
+
+          {/* LinkedIn Content Section */}
+          {processedContent.linkedinContent.length > 0 && (
+            <LinkedInSection content={processedContent.linkedinContent} />
+          )}
+        </div>
+
+        {/* Quick Links */}
+        <QuickLinks searchUrls={results.searchUrls} />
+      </div>
+    </div>
+  );
+};
+
+// Component Functions
+const Header = ({ role }) => (
+  <div className="bg-gradient-to-r from-[#0077B5] to-[#00A0DC] px-6 py-5">
+    <div className="flex items-center justify-between">
+      <h2 className="text-xl text-white font-semibold flex items-center gap-2">
+        <span className="text-2xl">💡</span>
+        Market Intelligence Report
+      </h2>
+      {role && (
+        <span className="px-3 py-1 bg-white/20 text-white rounded-full text-sm font-medium">
+          {role}
+        </span>
+      )}
+    </div>
+  </div>
+);
+
+const VCInsightsSection = ({ insights }) => (
+  <div className="space-y-4">
+    <SectionHeader 
+      icon={CONTENT_CATEGORIES.PRIMARY.VC_INSIGHTS.icon}
+      title={CONTENT_CATEGORIES.PRIMARY.VC_INSIGHTS.title}
+    />
+    <div className="grid gap-4">
+      {insights.map((insight, index) => (
+        <VCCard key={index} insight={insight} />
+      ))}
+    </div>
+  </div>
+);
+
+const MarketIntelSection = ({ data }) => (
+  <div className="space-y-4">
+    <SectionHeader 
+      icon={CONTENT_CATEGORIES.PRIMARY.MARKET_INTEL.icon}
+      title={CONTENT_CATEGORIES.PRIMARY.MARKET_INTEL.title}
+    />
+    <div className="bg-slate-50 rounded-lg p-4">
+      {data.map((item, index) => (
+        <div key={index} className="prose prose-sm max-w-none text-slate-600 mb-3 last:mb-0">
+          {item}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const LinkedInSection = ({ content }) => (
+  <div className="space-y-4">
+    <SectionHeader 
+      icon={CONTENT_CATEGORIES.LINKEDIN.POSTS.icon}
+      title={CONTENT_CATEGORIES.LINKEDIN.POSTS.title}
+    />
+    <div className="grid gap-4">
+      {content.map((item, index) => (
+        <ContentCard key={index} content={item} />
+      ))}
+    </div>
+  </div>
+);
+
+const SectionHeader = ({ icon, title }) => (
+  <div className="flex items-center gap-2 mb-4">
+    <span className="text-xl">{icon}</span>
+    <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
+  </div>
+);
+
+const VCCard = ({ insight }) => (
+  <div className="bg-gradient-to-r from-blue-50 to-white rounded-lg p-4 border border-blue-100">
+    <div className="flex flex-col gap-3">
+      <div className="prose prose-sm max-w-none text-slate-600" 
+           dangerouslySetInnerHTML={{ __html: insight.content }} />
+      <div className="flex items-center gap-2 text-sm">
+        <a
+          href={insight.linkedIn}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 font-medium hover:text-blue-700 flex items-center gap-1"
+        >
+          {insight.name}
+          {insight.verified && (
+            <span className="text-blue-500">✓</span>
+          )}
+        </a>
+        <span className="text-slate-400">•</span>
+        <span className="text-slate-600">{insight.title}</span>
+        {insight.company && (
+          <>
+            <span className="text-slate-400">•</span>
+            <span className="text-slate-600">{insight.company}</span>
+          </>
+        )}
+      </div>
+      {insight.focus?.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {insight.focus.map((area, index) => (
+            <span 
+              key={index}
+              className="px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium"
+            >
+              {area}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+const ContentCard = ({ content }) => (
+  <div className="bg-white rounded-lg p-4 border border-slate-100 hover:border-blue-100 transition-colors duration-200">
+    <div className="prose prose-sm max-w-none text-slate-600" 
+         dangerouslySetInnerHTML={{ __html: content }} />
+  </div>
+);
+
+const QuickLinks = ({ searchUrls }) => (
+  <div className="bg-gradient-to-r from-slate-50 to-white px-6 py-4 border-t border-slate-100">
+    <div className="flex flex-wrap gap-2">
+      {searchUrls && Object.entries(searchUrls)
+        .filter(([key, url]) => typeof url === 'string' && !key.includes('hashtag'))
+        .map(([key, url]) => (
+          <a
+            key={key}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm
+                     bg-white text-blue-600 hover:bg-blue-50 border border-slate-200
+                     transition-all duration-200 hover:scale-105"
+          >
+            {getIconForLink(key)}
+            <span>{formatLinkLabel(key)}</span>
+          </a>
+        ))}
+    </div>
+  </div>
+);
+
+const LoadingState = () => (
+  <div className="mt-8 flex flex-col items-center justify-center gap-3 p-8">
+    <div className="relative w-12 h-12">
+      <div className="absolute inset-0 border-4 border-blue-100 rounded-full"></div>
+      <div className="absolute inset-0 border-4 border-blue-500 rounded-full animate-spin border-t-transparent"></div>
+    </div>
+    <p className="text-slate-600 font-medium">Processing insights...</p>
+  </div>
+);
+
+// Utility Functions
+const extractVCContent = (content) => {
+  const vcInsights = [];
+  if (!content) return vcInsights;
+
+  const contentLines = content.split('\n').filter(line => line.trim());
+
+  contentLines.forEach(line => {
+    VERIFIED_VCS.forEach(vc => {
+      if (vc?.name && line.toLowerCase().includes(vc.name.toLowerCase())) {
+        vcInsights.push({
+          content: formatContent(line),
+          name: vc.name,
+          title: vc.title || '',
+          company: vc.firm || '',
+          linkedIn: vc.handles?.linkedin || '#',
+          verified: true,
+          focus: vc.focus || []
+        });
+      }
+    });
+  });
+
+  return vcInsights;
+};
+
+const extractMarketIntel = (content) => {
+  if (!content) return [];
+
+  return content
+    .split('\n')
+    .filter(line => line.trim())
+    .filter(line => {
+      const containsVCHandle = VC_HANDLES.some(handle => 
+        line.toLowerCase().includes(handle.toLowerCase())
+      );
+      
+      return !containsVCHandle && 
+        CONTENT_CATEGORIES.PRIMARY.MARKET_INTEL.keywords.some(keyword =>
+          line.toLowerCase().includes(keyword)
+        );
+    })
+    .map(line => formatContent(line));
+};
+
+const extractLinkedInContent = (content) => {
+  if (!content) return [];
+  
+  return content
+    .split('\n')
+    .filter(line => line.trim())
+    .filter(line => {
+      const containsVCHandle = VC_HANDLES.some(handle => 
+        line.toLowerCase().includes(handle.toLowerCase())
+      );
+      
+      return !containsVCHandle && (
+        line.includes('linkedin.com') || 
+        CONTENT_CATEGORIES.LINKEDIN.POSTS.keywords.some(keyword =>
+          line.toLowerCase().includes(keyword)
+        )
+      );
+    })
+    .map(line => formatContent(line));
+};
+
+const formatContent = (content) => {
+  return content
+    .replace(/\[(.*?)\]\((https:\/\/[^)]+)\)/g, (match, text, url) => 
+      `<a href="${url}" target="_blank" rel="noopener noreferrer" 
+          class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-1.5 py-0.5 rounded transition-colors duration-200">
+          ${text}
+       </a>`
+    );
+};
+
+const getIconForLink = (type) => {
+  const icons = {
+    companies: '🏢',
+    people: '👥',
+    posts: '📝',
+    groups: '👥',
+    feed: '📰',
+    default: '🔍'
+  };
+  return icons[type] || icons.default;
+};
+
+const formatLinkLabel = (key) => {
+  return key.charAt(0).toUpperCase() + 
+         key.slice(1).replace(/([A-Z])/g, ' $1');
+};
+
+export default LinkedInResults;// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 02:52:47
+// Current User's Login: NUbivek
+
+import React, { useState, useCallback } from 'react';
+import { Search, Upload, X, Plus, Link, FileText } from 'lucide-react';
+import SearchBar from '@/components/SearchBar';
+import SearchResults from '@/components/SearchResults';
+import LinkedInResults from '@/components/LinkedInResults';
+import { SEARCH_MODES, SOURCES_CONFIG, API_CONFIG } from '@/config/constants';
+import { useModel } from '@/contexts/ModelContext';
+import styles from '@/styles/Button.module.css';
+
+const SearchApp = () => {
+  const { selectedModel, setSelectedModel } = useModel();
+  
+  const [searchMode, setSearchMode] = useState(SEARCH_MODES.VERIFIED);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [filters, setFilters] = useState(SOURCES_CONFIG.initialFilters);
+  const [sourceScope, setSourceScope] = useState('only-user');
+  const [isSearching, setIsSearching] = useState(false);
+  const [webSearchResults, setWebSearchResults] = useState(null);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [urls, setUrls] = useState([]);
+  const [newUrl, setNewUrl] = useState('');
+
+  // Your processSearch function - updated to use selectedModel from context
+  const processSearch = useCallback(async (query) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(API_CONFIG.endpoints.search, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          filters,
+          searchMode,
+          model: selectedModel,
+          sourceScope,
+          sources: {
+            files: uploadedFiles.map(f => f.name),
+            urls: urls
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to process search: ${errorData}`);
+      }
+
+      const data = await response.json();
+      setSearchResults(data.result);
+    } catch (error) {
+      setError(error.message);
+      console.error('Search processing error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters, searchMode, selectedModel, sourceScope, uploadedFiles, urls]);
+
+  // Your handleWebSearch function - updated to use selectedModel from context
+  const handleWebSearch = useCallback(async () => {
+    if (!searchQuery.trim() || !filters.web) return;
+    
+    setIsSearching(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/websearch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: searchQuery,
+          model: selectedModel,
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to process web search: ${errorData}`);
+      }
+  
+      const data = await response.json();
+      setWebSearchResults(data);
+    } catch (error) {
+      setError(error.message);
+      console.error('Web search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, selectedModel, filters.web]);
+
+  // Your handleLinkedInSearch function - updated to use selectedModel from context
+  const handleLinkedInSearch = useCallback(async () => {
+    if (!searchQuery.trim() || !filters.linkedin) return;
+    
+    setIsSearching(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/linkedinsearch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: searchQuery,
+          model: selectedModel,
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to process LinkedIn search: ${errorData}`);
+      }
+  
+      const data = await response.json();
+      setWebSearchResults(data);
+    } catch (error) {
+      setError(error.message);
+      console.error('LinkedIn search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, selectedModel, filters.linkedin]);
+
+  const handleFileUpload = useCallback((event) => {
+    const files = Array.from(event.target.files);
+    const validFiles = files.filter(file => {
+      const isValidSize = file.size <= API_CONFIG.maxFileSize;
+      const isValidType = API_CONFIG.allowedFileTypes.includes(file.type);
+      return isValidSize && isValidType;
+    });
+
+    setUploadedFiles(prev => [...prev, ...validFiles]);
+  }, []);
+
+  const handleUrlAdd = useCallback(() => {
+    if (newUrl && isValidUrl(newUrl)) {
+      setUrls(prev => [...prev, newUrl]);
+      setNewUrl('');
+    }
+  }, [newUrl]);
+
+  const isValidUrl = (string) => {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const CustomSourcesPanel = () => (
+    <div className="flex-1 bg-white rounded-xl p-6 shadow-lg border border-slate-100">
+      <h2 className="text-lg font-semibold text-blue-800 mb-4">Your Custom Sources</h2>
+      <div className="mb-6">
+        <h3 className="text-sm font-medium mb-3 text-slate-700">Upload Files & URL</h3>
+        <label className="flex items-center gap-2 px-4 py-3 bg-slate-50 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-50 border-2 border-dashed border-blue-200">
+          <Upload size={20} />
+          <span>Choose Files</span>
+          <input
+            type="file"
+            multiple
+            onChange={handleFileUpload}
+            accept={API_CONFIG.allowedFileTypes.join(',')}
+            className="hidden"
+          />
+        </label>
+        {uploadedFiles.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {uploadedFiles.map((file, index) => (
+              <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <FileText size={16} className="text-blue-600" />
+                  <span className="text-sm text-slate-700 truncate">{file.name}</span>
+                </div>
+                <button
+                  onClick={() => setUploadedFiles(files => files.filter((_, i) => i !== index))}
+                  className="p-1 hover:bg-slate-200 rounded-full"
+                >
+                  <X size={16} className="text-slate-500" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div>
+        <h3 className="text-sm font-medium mb-3 text-slate-700">Add URLs</h3>
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              placeholder="Enter URL..."
+              className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={handleUrlAdd}
+              disabled={!newUrl || !isValidUrl(newUrl)}
+              className="button-primary"
+            >
+              <Plus size={20} />
+            </button>
+          </div>
+          {urls.length > 0 && (
+            <div className="space-y-2">
+              {urls.map((url, index) => (
+                <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Link size={16} className="text-blue-600" />
+                    <span className="text-sm text-slate-700 truncate">{url}</span>
+                  </div>
+                  <button
+                    onClick={() => setUrls(urls => urls.filter((_, i) => i !== index))}
+                    className="p-1 hover:bg-slate-200 rounded-full"
+                  >
+                    <X size={16} className="text-slate-500" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-white text-slate-800 p-6">
+      <div className="max-w-6xl mx-auto">
+        <header className="text-center mb-8">
+          <h1 className="text-4xl font-bold mb-4 text-blue-600">
+            Founder&apos;s Research Hub
+          </h1>
+          <p className="text-xl text-slate-600">
+            Strategic insights powered by curated sources
+          </p>
+        </header>
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex bg-slate-100 rounded-full p-1">
+            {Object.values(SEARCH_MODES).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setSearchMode(mode)}
+                className={`
+                  px-6 py-2 rounded-full
+                  ${searchMode === mode ? 'bg-blue-800 text-white' : 'text-slate-600 hover:bg-slate-200'}
+                `}
+              >
+                {mode === SEARCH_MODES.VERIFIED ? 'Verified Sources' : 'Open Research'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <SearchBar
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          handleSearch={async () => {
+            if (filters.web) {
+              await handleWebSearch();
+            } else if (filters.linkedin) {
+              await handleLinkedInSearch();
+            } else {
+              await processSearch(searchQuery);
+            }
+          }}
+          isLoading={isLoading || isSearching}
+        />
+
+        {searchMode === SEARCH_MODES.VERIFIED && (
+          <div className="flex flex-col md:flex-row gap-6 mb-8">
+            <div className="flex-1 bg-white rounded-xl p-6 shadow-lg border border-slate-100">
+              <h2 className="text-lg font-semibold text-blue-800 mb-4">Select Source Scope</h2>
+              <div className="space-y-4">
+                {SOURCES_CONFIG.scopeOptions.map((scope) => (
+                  <label
+                    key={scope.id}
+                    className={`
+                      block p-4 rounded-lg cursor-pointer
+                      ${sourceScope === scope.id ? 'bg-blue-50 border-2 border-blue-500' : 'bg-slate-50 border border-slate-200'}
+                      hover:bg-blue-50 transition-colors
+                    `}
+                  >
+                    <input
+                      type="radio"
+                      name="sourceScope"
+                      value={scope.id}
+                      checked={sourceScope === scope.id}
+                      onChange={(e) => setSourceScope(e.target.value)}
+                      className="hidden"
+                    />
+                    <div className="font-medium text-slate-800">{scope.label}</div>
+                    <div className="text-sm text-slate-600 mt-1">{scope.desc}</div>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <CustomSourcesPanel />
+          </div>
+        )}
+
+        {searchMode === SEARCH_MODES.OPEN && (
+          <div className="mb-8">
+            <h2 className="text-center text-sm mb-4 font-medium text-slate-900">
+              Select Sources
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              {Object.entries(filters).map(([source, isActive]) => {
+                const LogoIcon = SOURCES_CONFIG.logoMap[source];
+                const getSourceLabel = (source) => {
+                  switch(source) {
+                    case 'ycombinator': return 'YC+VC websites';
+                    case 'upload': return 'Upload Files & URL';
+                    case 'x': return 'Twitter/X';
+                    default: return source.charAt(0).toUpperCase() + source.slice(1);
+                  }
+                };
+                
+                return (
+                  <button
+                    key={source}
+                    onClick={() => {
+                      setFilters(prev => ({
+                        ...prev,
+                        [source]: !prev[source]
+                      }));
+                    }}
+                    style={{
+                      backgroundColor: isActive ? '#0076B6' : 'white',
+                      color: isActive ? 'white' : '#4b5563',
+                      border: '2px solid',
+                      borderColor: isActive ? '#0076B6' : '#e5e7eb',
+                      padding: '0.75rem',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.75rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      transition: 'all 0.2s',
+                      width: '100%',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {LogoIcon && (
+                      <LogoIcon
+                        size={16}
+                        style={{
+                          color: isActive ? 'white' : '#6b7280',
+                          transition: 'color 0.2s'
+                        }}
+                      />
+                    )}
+                    <span style={{ whiteSpace: 'nowrap' }}>
+                      {getSourceLabel(source)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {/* Only show CustomSourcesPanel when upload filter is active */}
+            {filters.upload && <div className="mt-8"><CustomSourcesPanel /></div>}
+          </div>
+        )}
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+        {/* Web search results */}
+        {filters.web && (
+          <SearchResults 
+            results={webSearchResults} 
+            isSearching={isSearching} 
+          />
+        )}
+        {/* LinkedIn search results */}
+        {filters.linkedin && (
+          <LinkedInResults 
+            results={webSearchResults} 
+            isSearching={isSearching} 
+          />
+        )}
+        {/* Regular search results */}
+        {!filters.web && !filters.linkedin && searchResults && (
+          <div className="mt-6 overflow-y-auto max-h-[60vh] rounded-xl bg-white border border-slate-200 shadow-lg animate-fadeIn">
+            <div className="p-6">
+              <div className="prose max-w-none">
+                {searchResults.content.split('\n').map((paragraph, idx) => (
+                  paragraph.trim() && (
+                    <p
+                      key={idx}
+                      className="text-slate-800 mb-4 last:mb-0 animate-slideUp"
+                      style={{
+                        animationDelay: `${idx * 100}ms`
+                      }}
+                    >
+                      {paragraph}
+                    </p>
+                  )
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default SearchApp;// UTC timestamp: 2025-02-17 02:11:51
+// User: NUbivek
+
+import { MODELS } from '@/config/constants';
+import { formatPromptForModel, getModelStopTokens } from '@/utils/modelHelpers';
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
+  const TOGETHER_API_KEY = process.env.TOGETHER_API_KEY;
+  if (!TOGETHER_API_KEY) {
+    return res.status(401).json({ message: 'Together API key is missing' });
+  }
+
+  try {
+    const { query, filters, searchMode, model, sourceScope, sources } = req.body;
+
+    if (!query) {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+
+    const selectedModel = MODELS.find(m => m.id === model);
+    if (!selectedModel) {
+      return res.status(400).json({ message: 'Invalid model selection' });
+    }
+
+    const prompt = constructPrompt(query, searchMode, filters, sourceScope, sources);
+
+    const requestBody = {
+      model: selectedModel.apiModel,
+      prompt: formatPromptForModel(prompt, selectedModel),
+      max_tokens: 512,
+      temperature: 0.7,
+      top_p: 0.9,
+      stop: getModelStopTokens(selectedModel.id)
+    };
+
+    const response = await fetch('https://api.together.xyz/v1/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${TOGETHER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(`API responded with status ${response.status}: ${JSON.stringify(data)}`);
+    }
+
+    return res.status(200).json({
+      result: {
+        content: data.choices?.[0]?.text || JSON.stringify(data),
+        sources: [],
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Search processing error:', error);
+    return res.status(500).json({
+      message: error.message,
+      details: error.response?.data || error
+    });
+  }
+}
+
+function constructPrompt(query, searchMode, filters, sourceScope, sources) {
+  let prompt = `Search query: ${query}\nSearch mode: ${searchMode}\n`;
+
+  const activeSources = Object.entries(filters)
+    .filter(([_, isActive]) => isActive)
+    .map(([source]) => source)
+    .join(', ');
+  prompt += `Active sources: ${activeSources}\n`;
+
+  if (searchMode === 'verified') {
+    prompt += `Source scope: ${sourceScope}\n`;
+  }
+
+  if (sources) {
+    if (sources.files?.length > 0) {
+      prompt += `Custom files: ${sources.files.join(', ')}\n`;
+    }
+    if (sources.urls?.length > 0) {
+      prompt += `Custom URLs: ${sources.urls.join(', ')}\n`;
+    }
+  }
+
+  return prompt;
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 03:28:21
+// Current User's Login: NUbivek
+
+import { searchWeb } from '@/lib/search';
+import { 
+  formatPromptForModel, 
+  getModelStopTokens, 
+  getModelById,
+  getApiModel 
+} from '@/utils/modelHelpers';
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
+  const TOGETHER_API_KEY = process.env.TOGETHER_API_KEY;
+  if (!TOGETHER_API_KEY) {
+    return res.status(401).json({ message: 'Together API key is missing' });
+  }
+
+  try {
+    const { query, model } = req.body;
+    console.log('Received request:', { query, model }); // Debug log
+
+    if (!query) {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+
+    const selectedModel = getModelById(model);
+    console.log('Selected model:', selectedModel); // Debug log
+
+    if (!selectedModel) {
+      return res.status(400).json({ message: 'Invalid model selection' });
+    }
+
+    // Perform web search
+    console.log('Performing web search for query:', query); // Debug log
+    const searchResults = await searchWeb(query);
+    console.log('Search results:', searchResults); // Debug log
+
+    // Construct prompt for LLM
+    const prompt = constructPrompt(query, searchResults);
+    console.log('Constructed prompt:', prompt); // Debug log
+
+    const apiModel = getApiModel(model);
+    console.log('API Model:', apiModel); // Debug log
+
+    const requestBody = {
+      model: apiModel,
+      prompt: formatPromptForModel(prompt, selectedModel),
+      max_tokens: 1024,
+      temperature: 0.7,
+      top_p: 0.9,
+      stop: getModelStopTokens(selectedModel.id)
+    };
+
+    console.log('Calling Together API...'); // Debug log
+    const response = await fetch('https://api.together.xyz/v1/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${TOGETHER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data = await response.json();
+    console.log('API Response:', { 
+      status: response.status, 
+      ok: response.ok,
+      data: data 
+    }); // Debug log
+
+    if (!response.ok) {
+      throw new Error(`API responded with status ${response.status}: ${JSON.stringify(data)}`);
+    }
+
+    // Process the response to include clickable links
+    const rawAnswer = data.choices?.[0]?.text || '';
+    console.log('Raw answer:', rawAnswer); // Debug log
+
+    const processedAnswer = processResponseWithLinks(rawAnswer, searchResults);
+    console.log('Processed answer:', processedAnswer); // Debug log
+
+    return res.status(200).json({
+      answer: processedAnswer,
+      sources: searchResults,
+      markdown: true
+    });
+
+  } catch (error) {
+    console.error('Search processing error:', {
+      message: error.message,
+      stack: error.stack,
+      details: error.response?.data || error
+    });
+    return res.status(500).json({
+      message: 'Failed to process web search',
+      details: error.message
+    });
+  }
+}
+
+function constructPrompt(query, searchResults) {
+  // Create the search results section with proper source numbering
+  const searchResultsText = searchResults.map((result, index) => `
+[Source ${index + 1}]
+Title: ${result.title}
+URL: ${result.url}
+Content: ${result.snippet}
+`).join('\n');
+
+  // Construct the full prompt with proper source number references
+  return `Please analyze the following web search results for the query: "${query}"
+
+Search Results:
+${searchResultsText}
+
+Please provide:
+1. A comprehensive answer based on these search results
+2. Include specific citations using markdown links: [Source X](URL) for each claim
+3. Use direct quotes when relevant, followed by the source link
+4. Be factual and precise
+
+Format your response in a clear, readable way with:
+- Main points and key findings
+- Supporting evidence from the sources (with clickable links)
+- Any relevant comparisons or contrasts
+- Conclusions based on the available information
+
+Remember: Every source citation should be a clickable link in markdown format [Source X](URL) where X is the source number (1-${searchResults.length}).`;
+}
+
+function processResponseWithLinks(text, searchResults) {
+  let processedText = text;
+  
+  // First, handle any existing markdown-style links
+  searchResults.forEach((result, index) => {
+    const sourceNum = index + 1;
+    const markdownLinkPattern = new RegExp(`\\[Source ${sourceNum}\\]\\(${sourceNum}\\)`, 'g');
+    processedText = processedText.replace(markdownLinkPattern, 
+      `[Source ${sourceNum}](${result.url})`
+    );
+  });
+
+  // Then handle traditional [Source X] citations
+  searchResults.forEach((result, index) => {
+    const sourceNum = index + 1;
+    const traditionalPattern = new RegExp(`\\[Source ${sourceNum}\\](?!\\()`, 'g');
+    processedText = processedText.replace(traditionalPattern, 
+      `[Source ${sourceNum}](${result.url})`
+    );
+  });
+
+  // Clean up any remaining non-linked citations
+  searchResults.forEach((result, index) => {
+    const sourceNum = index + 1;
+    const cleanupPattern = new RegExp(`Source ${sourceNum}(?!\\])`, 'g');
+    processedText = processedText.replace(cleanupPattern, 
+      `[Source ${sourceNum}](${result.url})`
+    );
+  });
+
+  // Replace any remaining (URL) with actual URLs
+  searchResults.forEach((result, index) => {
+    const sourceNum = index + 1;
+    processedText = processedText.replace(
+      new RegExp(`\\[Source ${sourceNum}\\]\\(URL\\)`, 'g'),
+      `[Source ${sourceNum}](${result.url})`
+    );
+  });
+
+  return processedText;
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-18 00:35:50
+// Current User's Login: NUbivek
+
+import { 
+  formatPromptForModel, 
+  getModelStopTokens, 
+  getModelById,
+  getApiModel,
+  DEFAULT_MODEL 
+} from '@/utils/modelHelpers';
+
+import { generatePlatformQuery, enrichResultsWithVC } from '@/config/platformConfig';
+import { VC_FIRMS } from '@/config/vcAccounts';
+import { enrichContentWithRoles } from '@/utils/roleDetection';
+import { 
+  BOUTIQUE_AND_SPECIALIST_FIRMS, 
+  MARKET_DATA_SOURCES,
+  COMBINED_DATA_SOURCES 
+} from '@/config/marketDataSources';
+import { 
+  getAllKeyPersonnel, 
+  getHandlesByTopic,
+  marketDataIntegration 
+} from '@/config/marketDataIntegration';
+
+// Combine all LinkedIn handles from both VC firms and market data sources
+const ALL_LINKEDIN_HANDLES = {
+  ...Object.entries(VC_FIRMS).reduce((acc, [key, firm]) => ({
+    ...acc,
+    [key]: firm.handles?.linkedin || null
+  }), {}),
+  ...Object.entries(COMBINED_DATA_SOURCES).reduce((acc, [key, firm]) => ({
+    ...acc,
+    [key]: firm.handles?.linkedin || null
+  }), {})
+};
+
+// Filter out null handles
+const VALID_LINKEDIN_HANDLES = Object.fromEntries(
+  Object.entries(ALL_LINKEDIN_HANDLES).filter(([_, handle]) => handle !== null)
+);
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
+  const TOGETHER_API_KEY = process.env.TOGETHER_API_KEY;
+  if (!TOGETHER_API_KEY) {
+    return res.status(401).json({ message: 'Together API key is missing' });
+  }
+
+  try {
+    const { query, model = DEFAULT_MODEL } = req.body;
+
+    if (!query) {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+
+    const selectedModel = getModelById(model);
+    if (!selectedModel) {
+      console.warn(`Invalid model selection: ${model}, falling back to default`);
+      return res.status(400).json({ message: 'Invalid model selection' });
+    }
+
+    const baseKeywords = encodeURIComponent(query);
+    const searchUrls = {
+      feed: `https://www.linkedin.com/feed/search/?keywords=${baseKeywords}`,
+      posts: `https://www.linkedin.com/search/results/content/?keywords=${baseKeywords}`,
+      articles: `https://www.linkedin.com/search/results/content/?keywords=${baseKeywords}&filters=article`,
+      comments: `https://www.linkedin.com/search/results/content/?keywords=${baseKeywords}&filters=comment`,
+      groups: `https://www.linkedin.com/search/results/groups/?keywords=${baseKeywords}`,
+      companies: `https://www.linkedin.com/search/results/companies/?keywords=${baseKeywords}`,
+      people: `https://www.linkedin.com/search/results/people/?keywords=${baseKeywords}`,
+      events: `https://www.linkedin.com/search/results/events/?keywords=${baseKeywords}`,
+      schools: `https://www.linkedin.com/search/results/schools/?keywords=${baseKeywords}`,
+      learning: `https://www.linkedin.com/learning/search?keywords=${baseKeywords}`,
+      jobs: `https://www.linkedin.com/jobs/search/?keywords=${baseKeywords}`,
+      hashtag: (tag) => `https://www.linkedin.com/feed/hashtag/${tag.replace(/[^a-zA-Z0-9]/g, '')}`
+    };
+
+    // Get platform-specific query enhancement
+    const platformQuery = generatePlatformQuery('linkedin', query);
+
+    // Get relevant firms and personnel
+    const relevantFirms = Object.entries(VALID_LINKEDIN_HANDLES)
+      .filter(([key]) => {
+        const firm = VC_FIRMS[key] || COMBINED_DATA_SOURCES[key];
+        return firm && (
+          query.toLowerCase().includes(firm.name.toLowerCase()) ||
+          firm.specialty_areas?.some(area => 
+            query.toLowerCase().includes(area.toLowerCase())
+          )
+        );
+      })
+      .map(([key, handle]) => {
+        const firm = VC_FIRMS[key] || COMBINED_DATA_SOURCES[key];
+        return `${firm.name} (${handle})`;
+      })
+      .join(', ');
+
+    // Get key personnel from both VCs and market data firms
+    const personnelData = getAllKeyPersonnel();
+    const allPersonnel = [
+      ...(personnelData.vc_personnel || []),
+      ...(personnelData.banking_personnel || []),
+      ...(personnelData.consulting_personnel || []),
+      ...(personnelData.research_personnel || []),
+      ...(personnelData.market_personnel || [])
+    ];
+
+    const keyPersonnel = allPersonnel
+      .filter(person => person && person.handles?.linkedin)
+      .map(person => `${person.name} (${person.title} at ${person.firm})`)
+      .join(', ');
+
+    const linkedinSearchPrompt = `
+Analyze recent LinkedIn content for: "${query}"
+Focus on insights from:
+1. VCs and Investment Professionals
+2. Market Research Firms and Analysts
+3. Investment Banks and Financial Advisors
+4. Founders and Executive Leadership
+5. Industry Experts and Consultants
+
+Structure your response in clear sections:
+
+### Investment & Market Insights
+Focus on perspectives from leading firms about:
+- Market opportunities and investment trends
+- Industry analysis and strategic insights
+- Key research findings and forecasts
+- Expert commentary and analysis
+Particularly focus on insights from: ${relevantFirms}
+
+### Financial & Investment Updates
+Format updates as:
+[Firm/Expert] announced [update] on [date]
+Include: 
+- Investment announcements and market analysis
+- Research findings and forecasts
+- Industry outlooks and trends
+- Strategic insights and recommendations
+Key experts to track: ${keyPersonnel}
+
+### Expert Perspectives & Analysis
+Format quotes as:
+> "Quote text"
+> — [Expert Name], [Firm/Position]
+Prioritize insights from verified experts and investors
+
+### Upcoming Events & Conferences
+Format each event as:
+### [Event Name]
+*[Date, Location]*
+[Description focusing on investment/market relevance]
+
+### Research & Investment Resources
+Format as:
+• [Resource Title] by [Firm/Expert]: [Key Findings]
+
+### Strategic Opportunities
+List current focus areas:
+• [Opportunity] identified by [Firm]: [Analysis/Impact]
+
+Additional Focus:
+- Prioritize updates from verified experts and investors
+- Highlight strategic insights and market analysis
+- Focus on data-driven investment opportunities
+- Include specific market trends and predictions
+- Emphasize quantitative analysis and research findings`;
+
+    const requestBody = {
+      model: getApiModel(model),
+      prompt: formatPromptForModel(linkedinSearchPrompt, selectedModel),
+      max_tokens: 1500,
+      temperature: 0.7,
+      top_p: 0.9,
+      stop: getModelStopTokens(model)
+    };
+
+    const response = await fetch('https://api.together.xyz/v1/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${TOGETHER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(`API responded with status ${response.status}: ${JSON.stringify(data)}`);
+    }
+
+    const rawAnswer = data.choices?.[0]?.text || '';
+    const processedAnswer = processLinkedInResponse(rawAnswer, searchUrls);
+
+    const resultObject = {
+      text: processedAnswer,
+      query: query,
+      platform: 'linkedin',
+      originalContent: processedAnswer
+    };
+
+    const enrichedResults = enrichResultsWithVC(resultObject)[0];
+    const enrichedAnswer = enrichContentWithRoles(enrichedResults);
+    const prioritizedContent = prioritizeSections(enrichedAnswer.text);
+
+    const finalAnswer = {
+      content: prioritizedContent,
+      role: enrichedAnswer.role,
+      vcMentions: enrichedAnswer.vcMentions,
+      founderMentions: enrichedAnswer.founderMentions
+    };
+
+    return res.status(200).json({
+      answer: finalAnswer,
+      searchUrls: searchUrls,
+      markdown: true,
+      vcFocus: platformQuery.filters,
+      rolePrioritization: true,
+      detectedRole: enrichedAnswer.role
+    });
+
+  } catch (error) {
+    console.error('LinkedIn search processing error:', error);
+    return res.status(500).json({
+      message: 'Failed to process LinkedIn search',
+      details: error.message
+    });
+  }
+}
+
+function prioritizeSections(content) {
+  if (typeof content !== 'string') return content;
+  
+  const sections = content.split(/(?=### )/);
+  
+  return sections.map(section => {
+    const [header, ...contentParts] = section.split('\n');
+    const sectionContent = contentParts.join('\n');
+    
+    const enriched = enrichContentWithRoles({
+      text: sectionContent,
+      platform: 'linkedin'
+    });
+    
+    // Prioritize sections with investment or market analysis content
+    const isPriority = (
+      header.includes('Investment') || 
+      header.includes('Market') ||
+      header.includes('Analysis') ||
+      enriched.role === 'INVESTOR' ||
+      enriched.role === 'EXPERT'
+    );
+    
+    return isPriority ? `⭐️ ${header}\n${enriched.text}` : section;
+  }).join('\n\n');
+}
+
+function processLinkedInResponse(text, searchUrls) {
+  if (!text) return '';
+
+  function cleanText(text) {
+    return text
+      .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/_{2,}/g, '')
+      .trim();
+  }
+
+  function createLink(text, url, type = '') {
+    const cleanedText = cleanText(text);
+    
+    // Check if text matches any known LinkedIn handle
+    const matchedHandle = Object.entries(VALID_LINKEDIN_HANDLES).find(([key, handle]) => {
+      const firm = VC_FIRMS[key] || COMBINED_DATA_SOURCES[key];
+      return firm && cleanedText.includes(firm.name);
+    });
+    
+    if (matchedHandle) {
+      const [_, handle] = matchedHandle;
+      return `[${cleanedText}](https://linkedin.com${handle})`;
+    }
+    
+    if (type === 'event') {
+      const [title, details] = cleanedText.split(':').map(s => s.trim());
+      if (details) {
+        return `**${createLink(title, url)}**\n${details}`;
+      }
+    }
+    
+    return `[${cleanedText}](${url})`;
+  }
+
+  function processSection(content) {
+    if (!content.trim()) return '';
+
+    let processed = content;
+
+    // Process events with dates
+    processed = processed.replace(
+      /### ([^#\n]+)\n\*([^*]+)\*\n\n([^\n]+)/g,
+      (match, title, date, description) => {
+        const eventLink = createLink(title, searchUrls.events);
+        return `### ${eventLink}\n*${date}*\n\n${description}`;
+      }
+    );
+
+    // Process companies
+    processed = processed.replace(
+      /([A-Z][a-zA-Z0-9\s,.]+ (?:Inc\.|Corp\.?|Ltd\.?|Company|Technologies|Group|Solutions|Systems))/g,
+      match => createLink(match, searchUrls.companies)
+    );
+
+    // Process professional titles and names
+    processed = processed.replace(
+      /([A-Z][a-zA-Z\s]+ (?:CEO|CTO|CFO|Founder|Director|Manager|Lead|Professional|Analyst|Researcher))/g,
+      match => createLink(match, searchUrls.people)
+    );
+
+    // Process hashtags
+    processed = processed.replace(
+      /#[\w\d]+/g,
+      match => {
+        const tag = match.replace('#', '');
+        return createLink(match, searchUrls.hashtag(tag));
+      }
+    );
+
+    // Process quotes with attribution
+    processed = processed.replace(
+      /> \"([^\"]+)\"\n> — ([^,]+), ([^\n]+)/g,
+      (match, quote, name, title) => {
+        const nameLink = createLink(name, searchUrls.people);
+        return `> "${quote}"\n> — ${nameLink}, ${title}`;
+      }
+    );
+
+    // Process job opportunities
+    processed = processed.replace(
+      /• ([^:]+) at ([^:]+): /g,
+      (match, role, company) => {
+        const roleLink = createLink(role, searchUrls.jobs);
+        const companyLink = createLink(company, searchUrls.companies);
+        return `• ${roleLink} at ${companyLink}: `;
+      }
+    );
+
+    // Process learning resources
+    processed = processed.replace(
+      /• ([^:]+) by ([^:]+): /g,
+      (match, course, provider) => {
+        const courseLink = createLink(course, searchUrls.learning);
+        const providerLink = createLink(provider, searchUrls.companies);
+        return `• ${courseLink} by ${providerLink}: `;
+      }
+    );
+
+    return processed;
+  }
+
+  const sections = text.split(/(?=### )/);
+  const processedSections = sections.map(section => {
+    const [header, ...content] = section.split('\n');
+    if (header.startsWith('#')) {
+      return `${header}\n${processSection(content.join('\n'))}`;
+    }
+    return processSection(section);
+  });
+
+  let result = processedSections
+    .filter(section => section.trim())
+    .join('\n\n');
+
+  result += '\n\n---\n\n### 🔍 Explore More on LinkedIn\n\n';
+  const footerCategories = [
+    ['📱 Latest Discussions', searchUrls.feed],
+    ['🔥 Trending Posts', searchUrls.posts],
+    ['📚 Featured Articles', searchUrls.articles],
+    ['👥 Active Groups', searchUrls.groups],
+    ['📅 Upcoming Events', searchUrls.events],
+    ['🎓 Learning Resources', searchUrls.learning],
+    ['💼 Job Opportunities', searchUrls.jobs]
+  ];
+
+  result += footerCategories
+    .map(([text, url]) => `• ${createLink(text, url)}`)
+    .join('\n');
+
+  return result;
+}import { IncomingForm } from 'formidable';
+import { promises as fs } from 'fs';
+import { API_CONFIG } from '@/config/constants';
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
+  try {
+    const form = new IncomingForm({
+      maxFileSize: API_CONFIG.maxFileSize,
+      filter: (part) => {
+        return API_CONFIG.allowedFileTypes.includes(part.mimetype);
+      },
+    });
+
+    const [fields, files] = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) reject(err);
+        resolve([fields, files]);
+      });
+    });
+
+    const processedFiles = await Promise.all(
+      Object.values(files).map(async (file) => {
+        const content = await fs.readFile(file.filepath);
+        const fileInfo = {
+          name: file.originalFilename,
+          type: file.mimetype,
+          size: file.size,
+          content: content.toString('base64'),
+        };
+        await fs.unlink(file.filepath);
+        return fileInfo;
+      })
+    );
+
+    return res.status(200).json({
+      message: 'Files uploaded successfully',
+      files: processedFiles,
+    });
+
+  } catch (error) {
+    console.error('File upload error:', error);
+    return res.status(500).json({
+      message: 'Error processing file upload',
+      error: error.message,
+    });
+  }
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 03:08:24
+// Current User's Login: NUbivek
+
+import { ModelProvider } from '@/contexts/ModelContext';
+import '@/styles/globals.css';
+
+export default function MyApp({ Component, pageProps }) {
+  return (
+    <ModelProvider>
+      <Component {...pageProps} />
+    </ModelProvider>
+  );
+}// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 23:01:18
+// Current User's Login: NUbivek
+
+/**
+ * @typedef {Object} SocialHandles
+ * @property {string} x - X (Twitter) handle
+ * @property {string} linkedin - LinkedIn profile/company URL
+ * @property {string} [substack] - Optional Substack URL
+ */
+
+/**
+ * @typedef {Object} ResearchPortals
+ * @property {string} public - Public research portal URL
+ * @property {string} subscription - Subscription/Premium research portal URL
+ */
+
+/**
+ * @typedef {Object} Personnel
+ * @property {string} name - Full name
+ * @property {string} title - Job title
+ * @property {SocialHandles} handles - Social media handles
+ * @property {string[]} focus - Areas of focus/expertise
+ */
+
+/**
+ * @typedef {Object} Firm
+ * @property {string} name - Company name
+ * @property {SocialHandles} handles - Company social media handles
+ * @property {ResearchPortals} [research_portals] - Research portals if available
+ * @property {string[]} [specialty] - Specialty areas
+ * @property {string[]} [data_types] - Types of data/research provided
+ * @property {Personnel[]} [key_personnel] - Key team members
+ */
+
+export const PLATFORMS = {
+    X: 'x',
+    LINKEDIN: 'linkedin',
+    SUBSTACK: 'substack'
+};
+
+export const FIRM_TYPES = {
+    BOUTIQUE_BANK: 'boutique_banks',
+    BOUTIQUE_CONSULTING: 'boutique_consulting',
+    SPECIALIST_RESEARCH: 'specialist_research',
+    INDEPENDENT_RESEARCH: 'independent_research',
+    INVESTMENT_BANK: 'investment_banks',
+    CONSULTING: 'consulting_firms',
+    RESEARCH: 'research_firms',
+    DATA_PROVIDER: 'data_providers'
+};// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 02:41:27
+// Current User's Login: NUbivek
+
+import { 
+  Search, Linkedin, Globe, BookOpen, FileText, 
+  FileSpreadsheet, Twitter, Upload, X, Plus, Link 
+} from 'lucide-react';
+import { MODELS } from './models.config';
+
+export { MODELS };
+
+export const SEARCH_MODES = {
+  VERIFIED: 'verified',
+  OPEN: 'open'
+};
+
+export const PREDEFINED_SEARCHES = [
+  "AI Strategies",
+  "Growth Frameworks",
+  "Enterprise Optimization",
+  "Tech Innovation",
+  "Market Expansion",
+  "Scaling Techniques"
+];
+
+export const SOURCES_CONFIG = {
+  logoMap: {
+    web: Search,
+    linkedin: Linkedin,
+    x: Twitter,
+    crunchbase: Globe,
+    pitchbook: BookOpen,
+    reddit: Globe,
+    ycombinator: Globe,
+    substack: FileText,
+    medium: FileSpreadsheet,
+    upload: Upload
+  },
+  initialFilters: {
+    web: true,          // Only web search is active by default
+    linkedin: false,    // All other sources inactive by default
+    x: false,
+    crunchbase: false,
+    pitchbook: false,
+    reddit: false,
+    ycombinator: false,
+    substack: false,
+    medium: false,
+    upload: false
+  },
+  scopeOptions: [
+    { 
+      id: 'only-user', 
+      label: 'Only Your Sources', 
+      desc: 'Search using only your uploaded files and URLs' 
+    },
+    { 
+      id: 'combined', 
+      label: 'Combined Sources', 
+      desc: 'Search using both your sources and our verified database' 
+    }
+  ]
+};
+
+export const API_CONFIG = {
+  endpoints: {
+    search: '/api/chat',
+    upload: '/api/upload'
+  },
+  maxFileSize: 10 * 1024 * 1024, // 10MB
+  allowedFileTypes: [
+    'application/pdf',
+    'text/plain',
+    'text/csv',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ]
+};   /**
+    * @typedef {Object} SearchResult
+    * @property {string} content - The search result content
+    * @property {Array<string>} sources - List of sources used
+    * @property {number} confidence - Confidence score of the result
+    */
+
+   /**
+    * @typedef {Object} SourceScope
+    * @property {string} id - Unique identifier for the scope
+    * @property {string} label - Display label
+    * @property {string} desc - Description of the scope
+    */
+
+   /**
+    * @typedef {Object} Model
+    * @property {string} id - Model identifier
+    * @property {string} name - Display name
+    * @property {string} description - Short description
+    * @property {string} apiModel - API model identifier
+    */
+
+   /**
+    * @typedef {Object} SearchFilters
+    * @property {boolean} linkedin - LinkedIn filter state
+    * @property {boolean} x - Twitter/X filter state
+    * @property {boolean} crunchbase - Crunchbase filter state
+    * @property {boolean} pitchbook - PitchBook filter state
+    * @property {boolean} reddit - Reddit filter state
+    * @property {boolean} ycombinator - Y Combinator filter state
+    * @property {boolean} substack - Substack filter state
+    * @property {boolean} medium - Medium filter state
+    * @property {boolean} uploadedFiles - Uploaded files filter state
+    */// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 03:08:24
+// Current User's Login: NUbivek
+
+const MODELS = {
+  // Active models - Add or remove models here
+  active: [
+    { 
+      id: 'deepseek', 
+      name: 'DeepSeek', 
+      description: 'Accuracy',
+      apiModel: 'deepseek-ai/deepseek-llm-67b-chat',
+      stopTokens: ['<end_of_turn>'],
+      promptFormat: (prompt) => `<start_of_turn>user\n${prompt}\n<end_of_turn>\n<start_of_turn>assistant\n`
+    },
+    { 
+      id: 'gemma', 
+      name: 'Gemma 2.0', 
+      description: 'Efficiency',
+      apiModel: 'google/gemma-2-9b-it',
+      stopTokens: ['<end_of_turn>'],
+      promptFormat: (prompt) => `<start_of_turn>user\n${prompt}\n<end_of_turn>\n<start_of_turn>assistant\n`
+    },
+    { 
+      id: 'mixtral', 
+      name: 'Mixtral 8x7B', 
+      description: 'Balanced',
+      apiModel: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+      stopTokens: ['<end_of_turn>'],
+      promptFormat: (prompt) => `<start_of_turn>user\n${prompt}\n<end_of_turn>\n<start_of_turn>assistant\n`
+    }
+  ],
+
+  // Default model ID
+  default: 'gemma',
+
+  // Global model configurations
+  config: {
+    temperature: 0.7,
+    top_p: 0.9,
+    max_tokens: 1024,
+    api: {
+      endpoint: 'https://api.together.xyz/v1/completions',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    }
+  }
+};
+
+// Helper functions
+const ModelUtils = {
+  getModelById: (id) => {
+    return MODELS.active.find(m => m.id === id) || MODELS.active.find(m => m.id === MODELS.default);
+  },
+
+  isValidModel: (id) => {
+    return MODELS.active.some(m => m.id === id);
+  },
+
+  getApiModel: (id) => {
+    const model = ModelUtils.getModelById(id);
+    return model ? model.apiModel : ModelUtils.getModelById(MODELS.default).apiModel;
+  },
+
+  getModelConfig: (id) => {
+    const model = ModelUtils.getModelById(id);
+    return {
+      ...MODELS.config,
+      model: model.apiModel,
+      stop: model.stopTokens
+    };
+  },
+
+  formatPrompt: (id, prompt) => {
+    const model = ModelUtils.getModelById(id);
+    return model.promptFormat(prompt);
+  },
+
+  getModelOptions: () => {
+    return MODELS.active.map(({ id, name, description }) => ({
+      id,
+      name,
+      description
+    }));
+  }
+};
+
+// Freeze the configuration
+Object.freeze(MODELS);
+Object.freeze(ModelUtils);
+
+export { MODELS, ModelUtils };
+
+// Example usage of adding a new model:
+/*
+To add a new model, copy this template and add to the active array above:
+
+{
+  id: 'new-model-id',
+  name: 'New Model Name',
+  description: 'Model Description',
+  apiModel: 'provider/model-name',
+  stopTokens: ['<end_of_turn>'],
+  promptFormat: (prompt) => `<start_of_turn>user\n${prompt}\n<end_of_turn>\n<start_of_turn>assistant\n`
+}
+*/// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 22:41:50
+// Current User's Login: NUbivek
+
+
+
+
+// Platform-specific handle prefixes and URL generators
+export const PLATFORMS = {
+    x: {
+        prefix: '@',
+        urlPrefix: 'https://twitter.com/',
+        getUrl: (handle) => `https://twitter.com/${handle.replace('@', '')}`
+    },
+    linkedin: {
+        prefix: '/in/',
+        urlPrefix: 'https://linkedin.com/',
+        getUrl: (handle) => `https://linkedin.com${handle}`
+    },
+    reddit: {
+        prefix: 'u/',
+        urlPrefix: 'https://reddit.com/user/',
+        getUrl: (handle) => `https://reddit.com/user/${handle.replace('u/', '')}`
+    },
+    substack: {
+        prefix: '',
+        urlPrefix: 'https://',
+        getUrl: (handle) => `https://${handle}`
+    }
+};
+
+// Top-tier VC Firms (Part 1)
+export const VC_FIRMS = {
+    // Andreessen Horowitz (a16z)
+    'a16z': {
+        name: 'Andreessen Horowitz',
+        handles: {
+            x: '@a16z',
+            linkedin: 'company/andreessen-horowitz',
+            substack: 'future.a16z.com'
+        },
+        aum: '35B+',
+        tier: 1,
+        focus: ['Software', 'Crypto', 'BioTech', 'FinTech'],
+        partners: [
+            {
+                name: 'Marc Andreessen',
+                handles: {
+                    x: '@pmarca',
+                    linkedin: '/in/mandreessen',
+                    substack: 'pmarca.substack.com'
+                },
+                focus: ['Enterprise', 'Software', 'Fintech'],
+                verified: true
+            },
+            {
+                name: 'Ben Horowitz',
+                handles: {
+                    x: '@bhorowitz',
+                    linkedin: '/in/benhorowitz'
+                },
+                focus: ['Enterprise', 'Crypto', 'Culture'],
+                verified: true
+            },
+            {
+                name: 'Chris Dixon',
+                handles: {
+                    x: '@cdixon',
+                    linkedin: '/in/chrisdixon',
+                    substack: 'cdixon.org'
+                },
+                focus: ['Crypto', 'Web3', 'AI'],
+                verified: true
+            },
+            {
+                name: 'Martin Casado',
+                handles: {
+                    x: '@martin_casado',
+                    linkedin: '/in/martincasado'
+                },
+                focus: ['Enterprise', 'Infrastructure', 'AI'],
+                verified: true
+            },
+            {
+                name: 'Katherine Boyle',
+                handles: {
+                    x: '@KTmBoyle',
+                    linkedin: '/in/katherineboyle'
+                },
+                focus: ['Defense', 'Space', 'AI'],
+                verified: true
+            }
+        ]
+    },
+    // Sequoia Capital
+    'sequoia': {
+        name: 'Sequoia Capital',
+        handles: {
+            x: '@sequoia',
+            linkedin: 'company/sequoia-capital',
+            substack: 'sequoia.substack.com'
+        },
+        aum: '85B+',
+        tier: 1,
+        focus: ['Enterprise', 'Consumer', 'Deep Tech'],
+        partners: [
+            {
+                name: 'Roelof Botha',
+                handles: {
+                    x: '@roelofbotha',
+                    linkedin: '/in/roelofbotha'
+                },
+                focus: ['Enterprise', 'Fintech', 'AI'],
+                verified: true
+            },
+            {
+                name: 'Alfred Lin',
+                handles: {
+                    x: '@Alfred_Lin',
+                    linkedin: '/in/alfredlin'
+                },
+                focus: ['Consumer', 'Marketplaces'],
+                verified: true
+            },
+            {
+                name: 'Pat Grady',
+                handles: {
+                    x: '@gradypat',
+                    linkedin: '/in/pat-grady-7b0978'
+                },
+                focus: ['Enterprise', 'SaaS'],
+                verified: true
+            },
+            {
+                name: 'Michelle Bailhe',
+                handles: {
+                    x: '@mbailhe',
+                    linkedin: '/in/michelle-bailhe'
+                },
+                focus: ['AI', 'Enterprise', 'Infrastructure'],
+                verified: true
+            }
+        ]
+    },
+
+    // Accel
+    'accel': {
+        name: 'Accel',
+        handles: {
+            x: '@accel',
+            linkedin: 'company/accel-partners',
+            substack: 'accel.substack.com'
+        },
+        aum: '50B+',
+        tier: 1,
+        focus: ['Enterprise', 'Consumer', 'Infrastructure'],
+        partners: [
+            {
+                name: 'Rich Wong',
+                handles: {
+                    x: '@rwong',
+                    linkedin: '/in/richwong'
+                },
+                focus: ['Enterprise', 'Mobile'],
+                verified: true
+            },
+            {
+                name: 'Dan Levine',
+                handles: {
+                    x: '@dlevine',
+                    linkedin: '/in/danlevine'
+                },
+                focus: ['Enterprise', 'Security'],
+                verified: true
+            },
+            {
+                name: 'Steve Loughlin',
+                handles: {
+                    x: '@sjloughlin',
+                    linkedin: '/in/steveloughlin'
+                },
+                focus: ['AI', 'Enterprise', 'SaaS'],
+                verified: true
+            },
+            {
+                name: 'Amit Kumar',
+                handles: {
+                    x: '@amitkumar',
+                    linkedin: '/in/amitkumar'
+                },
+                focus: ['Infrastructure', 'Developer Tools'],
+                verified: true
+            }
+        ]
+    },
+
+    // Greylock
+    'greylock': {
+        name: 'Greylock Partners',
+        handles: {
+            x: '@greylock',
+            linkedin: 'company/greylock-partners',
+            substack: 'greylock.substack.com'
+        },
+        aum: '45B+',
+        tier: 1,
+        focus: ['Enterprise', 'Consumer', 'AI', 'Security'],
+        partners: [
+            {
+                name: 'Reid Hoffman',
+                handles: {
+                    x: '@reidhoffman',
+                    linkedin: '/in/reidhoffman',
+                    substack: 'reidhoffman.substack.com'
+                },
+                focus: ['AI', 'Marketplaces', 'Networks'],
+                verified: true
+            },
+            {
+                name: 'Sarah Guo',
+                handles: {
+                    x: '@saranormous',
+                    linkedin: '/in/sarahguo',
+                    substack: 'sarahguo.substack.com'
+                },
+                focus: ['AI', 'Security', 'Enterprise'],
+                verified: true
+            },
+            {
+                name: 'David Thacker',
+                handles: {
+                    x: '@dthacker',
+                    linkedin: '/in/davidthacker'
+                },
+                focus: ['Enterprise', 'SaaS'],
+                verified: true
+            },
+            {
+                name: 'Mike Duboe',
+                handles: {
+                    x: '@mduboe',
+                    linkedin: '/in/mduboe'
+                },
+                focus: ['Growth', 'Marketplaces'],
+                verified: true
+            }
+        ]
+    },
+    // Benchmark
+    'benchmark': {
+        name: 'Benchmark',
+        handles: {
+            x: '@benchmark',
+            linkedin: 'company/benchmark'
+        },
+        aum: '30B+',
+        tier: 1,
+        focus: ['Consumer', 'Enterprise', 'Infrastructure'],
+        partners: [
+            {
+                name: 'Bill Gurley',
+                handles: {
+                    x: '@bgurley',
+                    linkedin: '/in/billgurley',
+                    substack: 'abovethecrowd.com'
+                },
+                focus: ['Marketplaces', 'Enterprise'],
+                verified: true
+            },
+            {
+                name: 'Sarah Tavel',
+                handles: {
+                    x: '@sarahtavel',
+                    linkedin: '/in/sarahtavel'
+                },
+                focus: ['Consumer', 'Marketplaces'],
+                verified: true
+            },
+            {
+                name: 'Peter Fenton',
+                handles: {
+                    x: '@peterfenton',
+                    linkedin: '/in/peter-fenton-1b9614'
+                },
+                focus: ['Enterprise', 'Open Source'],
+                verified: true
+            },
+            {
+                name: 'Chetan Puttagunta',
+                handles: {
+                    x: '@chetanp',
+                    linkedin: '/in/chetanputtagunta'
+                },
+                focus: ['Enterprise', 'Infrastructure'],
+                verified: true
+            }
+        ]
+    },
+
+    // Lightspeed
+    'lightspeed': {
+        name: 'Lightspeed Venture Partners',
+        handles: {
+            x: '@lightspeedvp',
+            linkedin: 'company/lightspeed-venture-partners',
+            substack: 'lightspeed.substack.com'
+        },
+        aum: '25B+',
+        tier: 1,
+        focus: ['Enterprise', 'Consumer', 'Crypto', 'Healthcare'],
+        partners: [
+            {
+                name: 'Arif Janmohamed',
+                handles: {
+                    x: '@arifj',
+                    linkedin: '/in/arifjanmohamed'
+                },
+                focus: ['Enterprise', 'Security'],
+                verified: true
+            },
+            {
+                name: 'Nicole Quinn',
+                handles: {
+                    x: '@nicolequinnvc',
+                    linkedin: '/in/nicole-quinn-2b557b1'
+                },
+                focus: ['Consumer', 'Creator Economy'],
+                verified: true
+            },
+            {
+                name: 'Ravi Mhatre',
+                handles: {
+                    x: '@ravimhatre',
+                    linkedin: '/in/ravi-mhatre-a57b'
+                },
+                focus: ['Enterprise', 'Infrastructure'],
+                verified: true
+            },
+            {
+                name: 'Mercedes Bent',
+                handles: {
+                    x: '@mercebent',
+                    linkedin: '/in/mercedesbent'
+                },
+                focus: ['Fintech', 'Consumer', 'Web3'],
+                verified: true
+            }
+        ]
+    },
+
+    // NEA
+    'nea': {
+        name: 'New Enterprise Associates',
+        handles: {
+            x: '@nea',
+            linkedin: 'company/nea',
+            substack: 'nea.substack.com'
+        },
+        aum: '25B+',
+        tier: 1,
+        focus: ['Enterprise', 'Healthcare', 'Technology'],
+        partners: [
+            {
+                name: 'Scott Sandell',
+                handles: {
+                    x: '@scottsandell',
+                    linkedin: '/in/scottsandell'
+                },
+                focus: ['Enterprise', 'Cloud'],
+                verified: true
+            },
+            {
+                name: 'Tony Florence',
+                handles: {
+                    x: '@tonyflorence',
+                    linkedin: '/in/tony-florence-96b2632'
+                },
+                focus: ['Consumer', 'Enterprise'],
+                verified: true
+            },
+            {
+                name: 'Mohamad Makhzoumi',
+                handles: {
+                    x: '@mmakhzoumi',
+                    linkedin: '/in/mohamadmakhzoumi'
+                },
+                focus: ['Healthcare', 'Technology'],
+                verified: true
+            },
+            {
+                name: 'Ann Bordetsky',
+                handles: {
+                    x: '@annbordetsky',
+                    linkedin: '/in/annbordetsky'
+                },
+                focus: ['Consumer', 'Climate'],
+                verified: true
+            }
+        ]
+    },
+    // Bessemer Venture Partners
+    'bessemer': {
+        name: 'Bessemer Venture Partners',
+        handles: {
+            x: '@bvp',
+            linkedin: 'company/bessemer-venture-partners',
+            substack: 'bvp.substack.com'
+        },
+        aum: '20B+',
+        tier: 1,
+        focus: ['Enterprise', 'Healthcare', 'Consumer', 'Space'],
+        partners: [
+            {
+                name: 'Byron Deeter',
+                handles: {
+                    x: '@bdeeter',
+                    linkedin: '/in/byrondeeter'
+                },
+                focus: ['Cloud', 'SaaS'],
+                verified: true
+            },
+            // Update the problematic section (around line 415-425)
+            {
+                name: "Mary D\u2019Onofrio",  // Using Unicode escape for apostrophe
+                // OR
+                name: 'Mary D\'Onofrio',      // Using escaped apostrophe
+                handles: {
+                    x: '@mary_donofrio',
+                    linkedin: '/in/mary-d-onofrio-96a3802b'
+                },
+                focus: ['Cloud', 'Infrastructure'],
+                verified: true
+            },
+            {
+                name: 'Ethan Kurzweil',
+                handles: {
+                    x: '@ethankurz',
+                    linkedin: '/in/ethankurzweil'
+                },
+                focus: ['Developer Tools', 'Infrastructure'],
+                verified: true
+            },
+            {
+                name: 'Talia Goldberg',
+                handles: {
+                    x: '@taliagoldberg',
+                    linkedin: '/in/taliagoldberg'
+                },
+                focus: ['Consumer', 'Marketplaces'],
+                verified: true
+            }
+        ]
+    },
+
+    // Index Ventures
+    'index': {
+        name: 'Index Ventures',
+        handles: {
+            x: '@indexventures',
+            linkedin: 'company/index-ventures',
+            substack: 'indexventures.substack.com'
+        },
+        aum: '18B+',
+        tier: 1,
+        focus: ['Enterprise', 'Consumer', 'Fintech', 'Gaming'],
+        partners: [
+            {
+                name: 'Danny Rimer',
+                handles: {
+                    x: '@dannyrimer',
+                    linkedin: '/in/dannyrimer'
+                },
+                focus: ['Consumer', 'Gaming'],
+                verified: true
+            },
+            {
+                name: 'Mike Volpi',
+                handles: {
+                    x: '@mavolpi',
+                    linkedin: '/in/mikevolpi'
+                },
+                focus: ['Enterprise', 'Infrastructure'],
+                verified: true
+            },
+            {
+                name: 'Nina Achadjian',
+                handles: {
+                    x: '@nina_achadjian',
+                    linkedin: '/in/ninaachadjian'
+                },
+                focus: ['Enterprise', 'AI'],
+                verified: true
+            },
+            {
+                name: 'Sarah Cannon',
+                handles: {
+                    x: '@sarahcannon',
+                    linkedin: '/in/sarah-cannon-85aa8b33'
+                },
+                focus: ['Fintech', 'Consumer'],
+                verified: true
+            }
+        ]
+    },
+
+    // General Catalyst
+    'generalcatalyst': {
+        name: 'General Catalyst',
+        handles: {
+            x: '@gcvp',
+            linkedin: 'company/general-catalyst-partners',
+            substack: 'generalcatalyst.substack.com'
+        },
+        aum: '22B+',
+        tier: 1,
+        focus: ['Enterprise', 'Healthcare', 'Consumer', 'Deep Tech'],
+        partners: [
+            {
+                name: 'Hemant Taneja',
+                handles: {
+                    x: '@htaneja',
+                    linkedin: '/in/hemanttaneja',
+                    substack: 'tantacost.substack.com'
+                },
+                focus: ['Healthcare', 'Climate'],
+                verified: true
+            },
+            {
+                name: 'Deep Nishar',
+                handles: {
+                    x: '@deepnishar',
+                    linkedin: '/in/deepnishar'
+                },
+                focus: ['Enterprise', 'AI'],
+                verified: true
+            },
+            {
+                name: 'Katherine Boyle',
+                handles: {
+                    x: '@ktboyle',
+                    linkedin: '/in/katherine-boyle-6591853'
+                },
+                focus: ['Defense', 'Space'],
+                verified: true
+            },
+            {
+                name: 'Paul Kwan',
+                handles: {
+                    x: '@paulkwan',
+                    linkedin: '/in/pkwan'
+                },
+                focus: ['Fintech', 'Enterprise'],
+                verified: true
+            }
+        ]
+    },
+    // Khosla Ventures
+    'khosla': {
+        name: 'Khosla Ventures',
+        handles: {
+            x: '@khoslaventures',
+            linkedin: 'company/khosla-ventures',
+            substack: 'khoslaventures.substack.com'
+        },
+        aum: '15B+',
+        tier: 1,
+        focus: ['Deep Tech', 'Climate', 'AI', 'Healthcare'],
+        partners: [
+            {
+                name: 'Vinod Khosla',
+                handles: {
+                    x: '@vkhosla',
+                    linkedin: '/in/vinodkhosla'
+                },
+                focus: ['Climate', 'Deep Tech'],
+                verified: true
+            },
+            {
+                name: 'Samir Kaul',
+                handles: {
+                    x: '@samirkaul',
+                    linkedin: '/in/samir-kaul-139b85'
+                },
+                focus: ['Healthcare', 'Biotech'],
+                verified: true
+            },
+            {
+                name: 'Sven Strohband',
+                handles: {
+                    x: '@sstrohband',
+                    linkedin: '/in/sven-strohband-81b095'
+                },
+                focus: ['Robotics', 'Deep Tech'],
+                verified: true
+            },
+            {
+                name: 'Alex Morgan',
+                handles: {
+                    x: '@alexmorgan',
+                    linkedin: '/in/alex-morgan-md-phd-1b9a316'
+                },
+                focus: ['Healthcare', 'Bio'],
+                verified: true
+            }
+        ]
+    },
+
+    // Founders Fund
+    'foundersfund': {
+        name: 'Founders Fund',
+        handles: {
+            x: '@foundersfund',
+            linkedin: 'company/founders-fund',
+            substack: 'foundersfund.substack.com'
+        },
+        aum: '11B+',
+        tier: 1,
+        focus: ['Deep Tech', 'Space', 'Biotech', 'Software'],
+        partners: [
+            {
+                name: 'Keith Rabois',
+                handles: {
+                    x: '@rabois',
+                    linkedin: '/in/keith-rabois-27015613'
+                },
+                focus: ['Consumer', 'Enterprise'],
+                verified: true
+            },
+            {
+                name: 'Brian Singerman',
+                handles: {
+                    x: '@briansingerman',
+                    linkedin: '/in/brian-singerman-a263733'
+                },
+                focus: ['Deep Tech', 'Healthcare'],
+                verified: true
+            },
+            {
+                name: 'Napoleon Ta',
+                handles: {
+                    x: '@napoleonta',
+                    linkedin: '/in/napoleonta'
+                },
+                focus: ['Enterprise', 'AI'],
+                verified: true
+            },
+            {
+                name: 'Trae Stephens',
+                handles: {
+                    x: '@traestephens',
+                    linkedin: '/in/traestephens'
+                },
+                focus: ['Defense', 'GovTech'],
+                verified: true
+            }
+        ]
+    },
+
+    // Tiger Global
+    'tigerglobal': {
+        name: 'Tiger Global Management',
+        handles: {
+            x: '@tigerglobal',
+            linkedin: 'company/tiger-global-management'
+        },
+        aum: '95B+',
+        tier: 1,
+        focus: ['Global', 'Technology', 'Software', 'Internet'],
+        partners: [
+            {
+                name: 'Chase Coleman',
+                handles: {
+                    x: '@colemanctc',
+                    linkedin: '/in/chase-coleman-iii-ab45362'
+                },
+                focus: ['Global Technology'],
+                verified: true
+            },
+            {
+                name: 'Scott Shleifer',
+                handles: {
+                    x: '@sshleifer',
+                    linkedin: '/in/scott-shleifer-94362'
+                },
+                focus: ['Global Internet'],
+                verified: true
+            },
+            {
+                name: 'John Curtius',
+                handles: {
+                    x: '@johncurtius',
+                    linkedin: '/in/john-curtius-6305543'
+                },
+                focus: ['Enterprise Software'],
+                verified: true
+            },
+            {
+                name: 'Griffin Schroeder',
+                handles: {
+                    x: '@griffschroeder',
+                    linkedin: '/in/griffin-schroeder-2a85382'
+                },
+                focus: ['Global Markets'],
+                verified: true
+            }
+        ]
+    },
+    // First Round Capital
+    'firstround': {
+        name: 'First Round Capital',
+        handles: {
+            x: '@firstround',
+            linkedin: 'company/first-round-capital',
+            substack: 'firstround.substack.com'
+        },
+        aum: '3B+',
+        tier: 1,
+        focus: ['Seed', 'Consumer', 'Enterprise', 'Healthcare'],
+        partners: [
+            {
+                name: 'Josh Kopelman',
+                handles: {
+                    x: '@joshk',
+                    linkedin: '/in/joshkopelman'
+                },
+                focus: ['Consumer', 'Marketplaces'],
+                verified: true
+            },
+            {
+                name: 'Bill Trenchard',
+                handles: {
+                    x: '@btrenchard',
+                    linkedin: '/in/billtrenchard'
+                },
+                focus: ['Enterprise', 'SaaS'],
+                verified: true
+            },
+            {
+                name: 'Hayley Barna',
+                handles: {
+                    x: '@hayleybarna',
+                    linkedin: '/in/hayleybarna'
+                },
+                focus: ['Consumer', 'Healthcare'],
+                verified: true
+            },
+            {
+                name: 'Todd Jackson',
+                handles: {
+                    x: '@tjackson',
+                    linkedin: '/in/toddjackson'
+                },
+                focus: ['Product', 'Consumer'],
+                verified: true
+            }
+        ]
+    },
+
+    // Union Square Ventures
+    'usv': {
+        name: 'Union Square Ventures',
+        handles: {
+            x: '@usv',
+            linkedin: 'company/union-square-ventures',
+            substack: 'usv.substack.com'
+        },
+        aum: '4.5B+',
+        tier: 1,
+        focus: ['Networks', 'Crypto', 'Climate', 'Education'],
+        partners: [
+            {
+                name: 'Fred Wilson',
+                handles: {
+                    x: '@fredwilson',
+                    linkedin: '/in/fredwilson',
+                    substack: 'avc.com'
+                },
+                focus: ['Networks', 'Crypto'],
+                verified: true
+            },
+            {
+                name: 'Albert Wenger',
+                handles: {
+                    x: '@albertwenger',
+                    linkedin: '/in/albertwenger',
+                    substack: 'continuations.com'
+                },
+                focus: ['Climate', 'Web3'],
+                verified: true
+            },
+            {
+                name: 'Rebecca Kaden',
+                handles: {
+                    x: '@rebeccakaden',
+                    linkedin: '/in/rebecca-kaden-2379544'
+                },
+                focus: ['Consumer', 'Healthcare'],
+                verified: true
+            },
+            {
+                name: 'Nick Grossman',
+                handles: {
+                    x: '@nickgrossman',
+                    linkedin: '/in/nickgrossman'
+                },
+                focus: ['Crypto', 'Networks'],
+                verified: true
+            }
+        ]
+    },
+
+    // Kleiner Perkins
+    'kleinerperkins': {
+        name: 'Kleiner Perkins',
+        handles: {
+            x: '@kleinerperkins',
+            linkedin: 'company/kleiner-perkins',
+            substack: 'kleinerperkins.substack.com'
+        },
+        aum: '19B+',
+        tier: 1,
+        focus: ['Consumer', 'Enterprise', 'Fintech', 'Healthcare'],
+        partners: [
+            {
+                name: 'Mamoon Hamid',
+                handles: {
+                    x: '@mamoonha',
+                    linkedin: '/in/mamoonha'
+                },
+                focus: ['Enterprise', 'SaaS'],
+                verified: true
+            },
+            {
+                name: 'Ilya Fushman',
+                handles: {
+                    x: '@ilyaf',
+                    linkedin: '/in/ilyaf'
+                },
+                focus: ['Enterprise', 'Infrastructure'],
+                verified: true
+            },
+            {
+                name: 'Bucky Moore',
+                handles: {
+                    x: '@buckymoore',
+                    linkedin: '/in/buckymoore'
+                },
+                focus: ['Infrastructure', 'Developer Tools'],
+                verified: true
+            },
+            {
+                name: 'Annie Case',
+                handles: {
+                    x: '@anniecase',
+                    linkedin: '/in/annie-case'
+                },
+                focus: ['Consumer', 'Marketplaces'],
+                verified: true
+            }
+        ]
+    },
+    // Insight Partners
+    'insight': {
+        name: 'Insight Partners',
+        handles: {
+            x: '@insightpartners',
+            linkedin: 'company/insight-partners',
+            substack: 'insight.substack.com'
+        },
+        aum: '65B+',
+        tier: 1,
+        focus: ['Software', 'ScaleUp', 'Enterprise', 'Data'],
+        partners: [
+            {
+                name: 'Deven Parekh',
+                handles: {
+                    x: '@devenparekh',
+                    linkedin: '/in/devenparekh'
+                },
+                focus: ['Enterprise', 'Software'],
+                verified: true
+            },
+            {
+                name: 'Lonne Jaffe',
+                handles: {
+                    x: '@lonnejaffe',
+                    linkedin: '/in/lonnejaffe'
+                },
+                focus: ['Software', 'AI'],
+                verified: true
+            },
+            {
+                name: 'Nikhil Sachdev',
+                handles: {
+                    x: '@nikhilsachdev',
+                    linkedin: '/in/nikhil-sachdev-96b4582'
+                },
+                focus: ['Enterprise', 'Fintech'],
+                verified: true
+            },
+            {
+                name: 'Rebecca Liu-Doyle',
+                handles: {
+                    x: '@rebeccaliudoyle',
+                    linkedin: '/in/rebecca-liu-doyle-4a933639'
+                },
+                focus: ['Enterprise', 'Data'],
+                verified: true
+            }
+        ]
+    },
+
+    // GGV Capital
+    'ggv': {
+        name: 'GGV Capital',
+        handles: {
+            x: '@ggvcapital',
+            linkedin: 'company/ggv-capital',
+            substack: 'ggv.substack.com'
+        },
+        aum: '9.2B+',
+        tier: 1,
+        focus: ['Global', 'Consumer', 'Enterprise', 'Crypto'],
+        partners: [
+            {
+                name: 'Hans Tung',
+                handles: {
+                    x: '@hanstung',
+                    linkedin: '/in/hanstung',
+                    substack: 'hans.substack.com'
+                },
+                focus: ['Global', 'Consumer'],
+                verified: true
+            },
+            {
+                name: 'Glenn Solomon',
+                handles: {
+                    x: '@glennsolomon',
+                    linkedin: '/in/glenn-solomon-a29b2'
+                },
+                focus: ['Enterprise', 'Cloud'],
+                verified: true
+            },
+            {
+                name: 'Jeff Richards',
+                handles: {
+                    x: '@jrichlive',
+                    linkedin: '/in/jeffrichards'
+                },
+                focus: ['Enterprise', 'SaaS'],
+                verified: true
+            },
+            {
+                name: 'Robin Li',
+                handles: {
+                    x: '@robinliggv',
+                    linkedin: '/in/robinli'
+                },
+                focus: ['Consumer', 'EdTech'],
+                verified: true
+            }
+        ]
+    },
+
+    // Coatue Management
+    'coatue': {
+        name: 'Coatue Management',
+        handles: {
+            x: '@coatue',
+            linkedin: 'company/coatue-management'
+        },
+        aum: '50B+',
+        tier: 1,
+        focus: ['Technology', 'Consumer', 'Enterprise', 'AI'],
+        partners: [
+            {
+                name: 'Philippe Laffont',
+                handles: {
+                    x: '@philippelaffont',
+                    linkedin: '/in/philippe-laffont-92385'
+                },
+                focus: ['Technology', 'Global'],
+                verified: true
+            },
+            {
+                name: 'Caryn Marooney',
+                handles: {
+                    x: '@carynm',
+                    linkedin: '/in/carynmarooney'
+                },
+                focus: ['Enterprise', 'AI'],
+                verified: true
+            },
+            {
+                name: 'Matt Mazzeo',
+                handles: {
+                    x: '@mazzeo',
+                    linkedin: '/in/mazzeo'
+                },
+                focus: ['Consumer', 'Creator Economy'],
+                verified: true
+            },
+            {
+                name: 'Lucas Swisher',
+                handles: {
+                    x: '@lucasswisher',
+                    linkedin: '/in/lucas-swisher-8b397645'
+                },
+                focus: ['Enterprise', 'Software'],
+                verified: true
+            }
+        ]
+    },
+    // Battery Ventures
+    'battery': {
+        name: 'Battery Ventures',
+        handles: {
+            x: '@batteryventures',
+            linkedin: 'company/battery-ventures',
+            substack: 'battery.substack.com'
+        },
+        aum: '13B+',
+        tier: 1,
+        focus: ['Enterprise', 'Infrastructure', 'Consumer', 'Industrial Tech'],
+        partners: [
+            {
+                name: 'Neeraj Agrawal',
+                handles: {
+                    x: '@neerajVC',
+                    linkedin: '/in/neerajagrawal'
+                },
+                focus: ['Enterprise', 'Cloud'],
+                verified: true
+            },
+            {
+                name: 'Dharmesh Thakker',
+                handles: {
+                    x: '@dthakker',
+                    linkedin: '/in/dharmeshthakker'
+                },
+                focus: ['Infrastructure', 'Cloud'],
+                verified: true
+            },
+            {
+                name: 'Chelsea Stoner',
+                handles: {
+                    x: '@chelseastoner',
+                    linkedin: '/in/chelsea-stoner-4544914'
+                },
+                focus: ['Healthcare', 'Software'],
+                verified: true
+            }
+        ]
+    },
+
+    // Emergence Capital
+    'emergence': {
+        name: 'Emergence Capital',
+        handles: {
+            x: '@emergencecap',
+            linkedin: 'company/emergence-capital-partners',
+            substack: 'emergence.substack.com'
+        },
+        aum: '4B+',
+        tier: 1,
+        focus: ['Enterprise', 'Cloud', 'SaaS'],
+        partners: [
+            {
+                name: 'Jason Green',
+                handles: {
+                    x: '@jasonegreen',
+                    linkedin: '/in/jasongreen'
+                },
+                focus: ['Enterprise', 'SaaS'],
+                verified: true
+            },
+            {
+                name: 'Santi Subotovsky',
+                handles: {
+                    x: '@ssubo',
+                    linkedin: '/in/santisubotovsky'
+                },
+                focus: ['Enterprise', 'Future of Work'],
+                verified: true
+            },
+            {
+                name: 'Jake Saper',
+                handles: {
+                    x: '@jacobsaper',
+                    linkedin: '/in/jakesaper'
+                },
+                focus: ['Enterprise', 'AI'],
+                verified: true
+            }
+        ]
+    },
+
+    // IVP (Institutional Venture Partners)
+    'ivp': {
+        name: 'IVP',
+        handles: {
+            x: '@ivp',
+            linkedin: 'company/ivp',
+            substack: 'ivp.substack.com'
+        },
+        aum: '8.7B+',
+        tier: 1,
+        focus: ['Growth', 'Enterprise', 'Consumer'],
+        partners: [
+            {
+                name: 'Somesh Dash',
+                handles: {
+                    x: '@someshdash',
+                    linkedin: '/in/someshdash'
+                },
+                focus: ['Enterprise', 'Fintech'],
+                verified: true
+            },
+            {
+                name: 'Jules Maltz',
+                handles: {
+                    x: '@julesmaltz',
+                    linkedin: '/in/julesmaltz'
+                },
+                focus: ['Growth', 'SaaS'],
+                verified: true
+            },
+            {
+                name: 'Tom Loverro',
+                handles: {
+                    x: '@tomloverro',
+                    linkedin: '/in/tomloverro'
+                },
+                focus: ['Enterprise', 'Crypto'],
+                verified: true
+            }
+        ]
+    },
+
+    // Ribbit Capital
+    'ribbit': {
+        name: 'Ribbit Capital',
+        handles: {
+            x: '@ribbitcapital',
+            linkedin: 'company/ribbit-capital'
+        },
+        aum: '6.7B+',
+        tier: 1,
+        focus: ['Fintech', 'Crypto', 'Financial Services'],
+        partners: [
+            {
+                name: 'Micky Malka',
+                handles: {
+                    x: '@mickymalka',
+                    linkedin: '/in/mickymalka'
+                },
+                focus: ['Fintech', 'Crypto'],
+                verified: true
+            },
+            {
+                name: 'Nick Shalek',
+                handles: {
+                    x: '@nickshalek',
+                    linkedin: '/in/nickshalek'
+                },
+                focus: ['Fintech', 'Healthcare'],
+                verified: true
+            }
+        ]
+    },
+
+    // Thrive Capital
+    'thrive': {
+        name: 'Thrive Capital',
+        handles: {
+            x: '@thrivecap',
+            linkedin: 'company/thrive-capital'
+        },
+        aum: '15B+',
+        tier: 1,
+        focus: ['Consumer', 'Enterprise', 'Healthcare'],
+        partners: [
+            {
+                name: 'Josh Kushner',
+                handles: {
+                    x: '@joshkushner',
+                    linkedin: '/in/jkushner'
+                },
+                focus: ['Consumer', 'Healthcare'],
+                verified: true
+            },
+            {
+                name: 'Kareem Zaki',
+                handles: {
+                    x: '@kareemzaki',
+                    linkedin: '/in/kareem-zaki-4a0a333'
+                },
+                focus: ['Enterprise', 'Fintech'],
+                verified: true
+            }
+        ]
+    },
+
+    // Redpoint Ventures
+    'redpoint': {
+        name: 'Redpoint Ventures',
+        handles: {
+            x: '@redpointvc',
+            linkedin: 'company/redpoint-ventures',
+            substack: 'redpoint.substack.com'
+        },
+        aum: '7B+',
+        tier: 1,
+        focus: ['Enterprise', 'Consumer', 'Infrastructure'],
+        partners: [
+            {
+                name: 'Tomasz Tunguz',
+                handles: {
+                    x: '@ttunguz',
+                    linkedin: '/in/ttunguz',
+                    substack: 'tomtunguz.com'
+                },
+                focus: ['SaaS', 'Data'],
+                verified: true
+            },
+            {
+                name: 'Annie Kadavy',
+                handles: {
+                    x: '@anniekadavy',
+                    linkedin: '/in/anniekadavy'
+                },
+                focus: ['Consumer', 'Marketplaces'],
+                verified: true
+            },
+            {
+                name: 'Alex Bard',
+                handles: {
+                    x: '@alexbard',
+                    linkedin: '/in/alexbard'
+                },
+                focus: ['Enterprise', 'AI'],
+                verified: true
+            }
+        ]
+    },
+
+    // Lux Capital
+    'lux': {
+        name: 'Lux Capital',
+        handles: {
+            x: '@luxcapital',
+            linkedin: 'company/lux-capital',
+            substack: 'lux.substack.com'
+        },
+        aum: '4B+',
+        tier: 1,
+        focus: ['Deep Tech', 'Science', 'Healthcare'],
+        partners: [
+            {
+                name: 'Josh Wolfe',
+                handles: {
+                    x: '@wolfejosh',
+                    linkedin: '/in/joshwolfe',
+                    substack: 'wolfejosh.substack.com'
+                },
+                focus: ['Deep Tech', 'Science'],
+                verified: true
+            },
+            {
+                name: 'Bilal Zuberi',
+                handles: {
+                    x: '@bznotes',
+                    linkedin: '/in/bilalzuberi'
+                },
+                focus: ['Robotics', 'Space'],
+                verified: true
+            },
+            {
+                name: 'Deena Shakir',
+                handles: {
+                    x: '@deenashakir',
+                    linkedin: '/in/deenashakir'
+                },
+                focus: ['Healthcare', 'Bio'],
+                verified: true
+            }
+        ]
+    },
+
+    // Felicis Ventures
+    'felicis': {
+        name: 'Felicis Ventures',
+        handles: {
+            x: '@felicis',
+            linkedin: 'company/felicis-ventures'
+        },
+        aum: '2.1B+',
+        tier: 1,
+        focus: ['Health', 'Security', 'Fintech'],
+        partners: [
+            {
+                name: 'Aydin Senkut',
+                handles: {
+                    x: '@aydinsenkut',
+                    linkedin: '/in/aydinsenkut'
+                },
+                focus: ['Global', 'Consumer'],
+                verified: true
+            },
+            {
+                name: 'Victoria Treyger',
+                handles: {
+                    x: '@vtreyger',
+                    linkedin: '/in/victoriatreyger'
+                },
+                focus: ['Fintech', 'Enterprise'],
+                verified: true
+            },
+            {
+                name: 'Sundeep Peechu',
+                handles: {
+                    x: '@speechu',
+                    linkedin: '/in/sundeeppeechu'
+                },
+                focus: ['Enterprise', 'Developer Tools'],
+                verified: true
+            }
+        ]
+    },
+
+    // Scale Venture Partners
+    'scale': {
+        name: 'Scale Venture Partners',
+        handles: {
+            x: '@scalevp',
+            linkedin: 'company/scale-venture-partners',
+            substack: 'scale.substack.com'
+        },
+        aum: '3B+',
+        tier: 2,
+        focus: ['Enterprise', 'SaaS', 'Security'],
+        partners: [
+            {
+                name: 'Ariel Tseitlin',
+                handles: {
+                    x: '@atseitlin',
+                    linkedin: '/in/atseitlin'
+                },
+                focus: ['Cloud', 'DevOps'],
+                verified: true
+            },
+            {
+                name: 'Alex Niehenke',
+                handles: {
+                    x: '@alex_niehenke',
+                    linkedin: '/in/alexniehenke'
+                },
+                focus: ['Enterprise', 'SaaS'],
+                verified: true
+            },
+            {
+                name: 'Stacey Bishop',
+                handles: {
+                    x: '@staceybishopvc',
+                    linkedin: '/in/staceybishop'
+                },
+                focus: ['Enterprise', 'Cloud'],
+                verified: true
+            }
+        ]
+    },
+
+    // Social Capital
+    'socialcapital': {
+        name: 'Social Capital',
+        handles: {
+            x: '@socialcapital',
+            linkedin: 'company/social-capital'
+        },
+        aum: '2B+',
+        tier: 2,
+        focus: ['Healthcare', 'Education', 'Financial Services'],
+        partners: [
+            {
+                name: 'Chamath Palihapitiya',
+                handles: {
+                    x: '@chamath',
+                    linkedin: '/in/chamath'
+                },
+                focus: ['Technology', 'Climate'],
+                verified: true
+            },
+            {
+                name: 'Jay Zaveri',
+                handles: {
+                    x: '@jayzaveri',
+                    linkedin: '/in/jayzaveri'
+                },
+                focus: ['AI', 'Healthcare'],
+                verified: true
+            }
+        ]
+    }
+};
+
+// Utility functions for handling VC data
+export const getVCsByTier = (tier) => {
+    return Object.entries(VC_FIRMS)
+        .filter(([_, firm]) => firm.tier === tier)
+        .map(([key, firm]) => ({ key, ...firm }));
+};
+
+export const getVCsByFocus = (focus) => {
+    return Object.entries(VC_FIRMS)
+        .filter(([_, firm]) => firm.focus.includes(focus))
+        .map(([key, firm]) => ({ key, ...firm }));
+};
+
+export const getVerifiedPartners = () => {
+    const verifiedPartners = [];
+    Object.entries(VC_FIRMS).forEach(([firmKey, firm]) => {
+        firm.partners
+            .filter(partner => partner.verified)
+            .forEach(partner => {
+                verifiedPartners.push({
+                    ...partner,
+                    firm: firmKey
+                });
+            });
+    });
+    return verifiedPartners;
+};
+
+export const getSocialHandles = (platform) => {
+    const handles = {};
+    Object.entries(VC_FIRMS).forEach(([firmKey, firm]) => {
+        if (firm.handles[platform]) {
+            handles[firmKey] = firm.handles[platform];
+        }
+        firm.partners.forEach(partner => {
+            if (partner.handles[platform]) {
+                handles[`${firmKey}_${partner.name.replace(' ', '_')}`] = partner.handles[platform];
+            }
+        });
+    });
+    return handles;
+};
+
+export function getCombinedHandles() {
+    const handles = new Set();
+    Object.values(VC_FIRMS).forEach(firm => {
+        if (firm.handles.x) handles.add(firm.handles.x.replace('@', ''));
+        if (firm.handles.linkedin) handles.add(firm.handles.linkedin.replace('/in/', ''));
+        firm.partners.forEach(partner => {
+            if (partner.handles.x) handles.add(partner.handles.x.replace('@', ''));
+            if (partner.handles.linkedin) handles.add(partner.handles.linkedin.replace('/in/', ''));
+        });
+    });
+    return Array.from(handles);
+}
+
+export function getFoundersByFocus(focus) {
+    const founders = [];
+    Object.values(VC_FIRMS).forEach(firm => {
+        firm.partners.forEach(partner => {
+            if (partner.focus.some(f => f.toLowerCase() === focus.toLowerCase())) {
+                founders.push(partner);
+            }
+        });
+    });
+    return founders;
+}
+
+export default VC_FIRMS;// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 23:02:41
+// Current User's Login: NUbivek
+
+import { FIRM_TYPES } from './marketDataTypes';
+
+export const BOUTIQUE_AND_SPECIALIST_FIRMS = {
+    [FIRM_TYPES.BOUTIQUE_BANK]: {
+        'centerview': {
+            name: 'Centerview Partners',
+            handles: {
+                x: '@CenterviewP',
+                linkedin: 'company/centerview-partners'
+            },
+            research_portals: {
+                public: 'https://www.centerviewpartners.com/insights',
+                subscription: null
+            },
+            key_personnel: [
+                {
+                    name: 'Blair Effron',
+                    title: 'Co-Founder',
+                    handles: {
+                        x: '@BlairEffron',
+                        linkedin: 'in/blair-effron'
+                    },
+                    focus: ['M&A', 'Technology', 'Healthcare']
+                },
+                {
+                    name: 'Robert Pruzan',
+                    title: 'Co-Founder',
+                    handles: {
+                        x: '@RobertPruzan',
+                        linkedin: 'in/robert-pruzan'
+                    },
+                    focus: ['Financial Services', 'Media']
+                }
+            ],
+            specialty: ['Technology M&A', 'Healthcare', 'Media'],
+            verified: true
+        },
+        'evercore': {
+            name: 'Evercore',
+            handles: {
+                x: '@EVR',
+                linkedin: 'company/evercore'
+            },
+            research_portals: {
+                public: 'https://www.evercore.com/insights',
+                subscription: 'https://evercore-isi.com'
+            },
+            key_personnel: [
+                {
+                    name: 'John Weinberg',
+                    title: 'CEO',
+                    handles: {
+                        x: '@JohnWeinbergEVR',
+                        linkedin: 'in/john-s-weinberg'
+                    },
+                    focus: ['Strategic Advisory', 'Capital Markets']
+                },
+                {
+                    name: 'Ralph Schlosstein',
+                    title: 'Executive Chairman',
+                    handles: {
+                        x: '@RalphSchlosstein',
+                        linkedin: 'in/ralph-schlosstein'
+                    },
+                    focus: ['Investment Banking', 'Asset Management']
+                }
+            ],
+            specialty: ['M&A Advisory', 'Restructuring', 'Capital Markets'],
+            verified: true
+        },
+        'moelis': {
+            name: 'Moelis & Company',
+            handles: {
+                x: '@Moelis',
+                linkedin: 'company/moelis-and-company'
+            },
+            research_portals: {
+                public: 'https://www.moelis.com/insights',
+                subscription: null
+            },
+            key_personnel: [
+                {
+                    name: 'Ken Moelis',
+                    title: 'CEO',
+                    handles: {
+                        x: '@KenMoelis',
+                        linkedin: 'in/ken-moelis'
+                    },
+                    focus: ['M&A', 'Restructuring']
+                }
+            ],
+            specialty: ['Restructuring', 'M&A', 'Private Equity Advisory'],
+            verified: true
+        }
+    },
+    // Continuing from previous part...
+
+    [FIRM_TYPES.BOUTIQUE_CONSULTING]: {
+        'alixpartners': {
+            name: 'AlixPartners',
+            handles: {
+                x: '@AlixPartners',
+                linkedin: 'company/alixpartners'
+            },
+            research_portals: {
+                public: 'https://www.alixpartners.com/insights-impact',
+                subscription: 'https://www.alixpartners.com/client-portal'
+            },
+            key_personnel: [
+                {
+                    name: 'Simon Freakley',
+                    title: 'CEO',
+                    handles: {
+                        x: '@SimonFreakley',
+                        linkedin: 'in/simon-freakley'
+                    },
+                    focus: ['Turnaround', 'Restructuring']
+                }
+            ],
+            specialty: ['Turnaround & Restructuring', 'Digital Transformation'],
+            verified: true
+        },
+        'oliverwyman': {
+            name: 'Oliver Wyman',
+            handles: {
+                x: '@OliverWyman',
+                linkedin: 'company/oliver-wyman'
+            },
+            research_portals: {
+                public: 'https://www.oliverwyman.com/our-expertise/insights.html',
+                subscription: 'https://www.oliverwyman.com/portal'
+            },
+            key_personnel: [
+                {
+                    name: 'Nick Studer',
+                    title: 'CEO',
+                    handles: {
+                        x: '@NickStuderOW',
+                        linkedin: 'in/nick-studer'
+                    },
+                    focus: ['Financial Services', 'Strategy']
+                }
+            ],
+            specialty: ['Financial Services', 'Digital', 'Healthcare'],
+            verified: true
+        },
+        'leoadvisory': {
+            name: 'L.E.K. Consulting',
+            handles: {
+                x: '@LEK_Consulting',
+                linkedin: 'company/l.e.k.-consulting'
+            },
+            research_portals: {
+                public: 'https://www.lek.com/insights',
+                subscription: 'https://www.lek.com/executive-insights'
+            },
+            key_personnel: [
+                {
+                    name: 'Stuart Jackson',
+                    title: 'Global Managing Partner',
+                    handles: {
+                        x: '@StuartJacksonLEK',
+                        linkedin: 'in/stuart-jackson-lek'
+                    },
+                    focus: ['Strategy', 'Life Sciences']
+                }
+            ],
+            specialty: ['Life Sciences', 'Industrial', 'Private Equity'],
+            verified: true
+        }
+    },
+
+    [FIRM_TYPES.SPECIALIST_RESEARCH]: {
+        'redburn': {
+            name: 'Redburn (Europe)',
+            handles: {
+                x: '@RedburnToday',
+                linkedin: 'company/redburn'
+            },
+            research_portals: {
+                public: 'https://www.redburn.com/insights',
+                subscription: 'https://www.redburn.com/research'
+            },
+            key_personnel: [
+                {
+                    name: 'Jeremy Evans',
+                    title: 'Head of Research',
+                    handles: {
+                        x: '@JeremyEvansRB',
+                        linkedin: 'in/jeremy-evans-redburn'
+                    },
+                    focus: ['European Equities', 'Market Analysis']
+                }
+            ],
+            specialty: ['European Equity Research', 'Sector Analysis'],
+            verified: true
+        },
+        'alphasense': {
+            name: 'AlphaSense',
+            handles: {
+                x: '@AlphaSense',
+                linkedin: 'company/alpha-sense'
+            },
+            research_portals: {
+                public: 'https://www.alpha-sense.com/insights',
+                subscription: 'https://platform.alpha-sense.com'
+            },
+            key_personnel: [
+                {
+                    name: 'Jack Kokko',
+                    title: 'CEO',
+                    handles: {
+                        x: '@JackKokko',
+                        linkedin: 'in/jackkokko'
+                    },
+                    focus: ['AI', 'Market Intelligence']
+                }
+            ],
+            specialty: ['AI-Powered Research', 'Market Intelligence'],
+            verified: true
+        },
+        // Continuing from previous part...
+
+        'thirdbridge': {
+            name: 'Third Bridge',
+            handles: {
+                x: '@ThirdBridge',
+                linkedin: 'company/third-bridge'
+            },
+            research_portals: {
+                public: 'https://www.thirdbridge.com/insights',
+                subscription: 'https://forum.thirdbridge.com'
+            },
+            key_personnel: [
+                {
+                    name: 'Emmanuel Tahar',
+                    title: 'CEO',
+                    handles: {
+                        x: '@ETahar',
+                        linkedin: 'in/emmanuel-tahar'
+                    },
+                    focus: ['Expert Networks', 'Primary Research']
+                }
+            ],
+            specialty: ['Expert Networks', 'Primary Research', 'Industry Insights'],
+            verified: true
+        }
+    },
+
+    [FIRM_TYPES.INDEPENDENT_RESEARCH]: {
+        'fundstrat': {
+            name: 'Fundstrat Global Advisors',
+            handles: {
+                x: '@fundstrat',
+                linkedin: 'company/fundstrat-global-advisors'
+            },
+            research_portals: {
+                public: 'https://fundstrat.com/insights',
+                subscription: 'https://research.fundstrat.com'
+            },
+            key_personnel: [
+                {
+                    name: 'Thomas Lee',
+                    title: 'Co-Founder',
+                    handles: {
+                        x: '@fundstrat',
+                        linkedin: 'in/thomas-lee-fundstrat'
+                    },
+                    focus: ['Market Strategy', 'Crypto']
+                }
+            ],
+            specialty: ['Digital Assets', 'Technical Analysis', 'Market Strategy'],
+            verified: true
+        },
+        'hedgeye': {
+            name: 'Hedgeye Risk Management',
+            handles: {
+                x: '@Hedgeye',
+                linkedin: 'company/hedgeye-risk-management'
+            },
+            research_portals: {
+                public: 'https://www.hedgeye.com/insights',
+                subscription: 'https://app.hedgeye.com'
+            },
+            key_personnel: [
+                {
+                    name: 'Keith McCullough',
+                    title: 'CEO',
+                    handles: {
+                        x: '@KeithMcCullough',
+                        linkedin: 'in/keith-mccullough'
+                    },
+                    focus: ['Risk Management', 'Macro Research']
+                }
+            ],
+            specialty: ['Risk Management', 'Macro Analysis'],
+            verified: true
+        }
+    }
+};
+
+export const MARKET_DATA_SOURCES = {
+    [FIRM_TYPES.INVESTMENT_BANK]: {
+        'goldman_sachs': {
+            name: 'Goldman Sachs',
+            handles: {
+                x: '@GoldmanSachs',
+                linkedin: 'company/goldman-sachs',
+                substack: 'gs.insights.com'
+            },
+            research_portals: {
+                public: 'https://www.goldmansachs.com/insights',
+                subscription: 'https://research.gs.com'
+            },
+            data_types: ['Market Research', 'Industry Reports', 'Economic Forecasts'],
+            specialty_areas: ['Global Markets', 'Technology', 'Healthcare', 'ESG'],
+            content_series: {
+                'Top of Mind': 'Macro trends analysis',
+                'Global Investment Research': 'Sector deep dives',
+                'Global Markets Daily': 'Market updates'
+            },
+            verified: true
+        },
+        'morgan_stanley': {
+            name: 'Morgan Stanley',
+            handles: {
+                x: '@MorganStanley',
+                linkedin: 'company/morgan-stanley',
+                substack: 'morganstanley.insights.com'
+            },
+            research_portals: {
+                public: 'https://www.morganstanley.com/ideas',
+                subscription: 'https://research.morganstanley.com'
+            },
+            data_types: ['Equity Research', 'Strategy', 'Quantitative Analysis'],
+            specialty_areas: ['Technology', 'Consumer', 'Healthcare'],
+            verified: true
+        },
+        // Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 23:05:12
+// Current User's Login: NUbivek
+
+// Continuing from previous part...
+
+'jp_morgan': {
+    name: 'JP Morgan',
+    handles: {
+        x: '@JPMorgan',
+        linkedin: 'company/j-p-morgan',
+        substack: 'jpmorgan.insights.com'
+    },
+    research_portals: {
+        public: 'https://www.jpmorgan.com/insights',
+        subscription: 'https://markets.jpmorgan.com'
+    },
+    data_types: ['Market Analysis', 'Economic Research', 'Asset Management'],
+    specialty_areas: ['Investment Banking', 'Markets', 'Asset Management'],
+    verified: true
+}
+},
+
+[FIRM_TYPES.CONSULTING]: {
+'mckinsey': {
+    name: 'McKinsey & Company',
+    handles: {
+        x: '@McKinsey',
+        linkedin: 'company/mckinsey',
+        substack: 'mckinsey.insights.com'
+    },
+    research_portals: {
+        public: 'https://www.mckinsey.com/insights',
+        subscription: 'https://www.mckinsey.com/mgi'
+    },
+    data_types: ['Industry Insights', 'Digital Transformation', 'Strategy'],
+    specialty_publications: {
+        'McKinsey Quarterly': 'Management insights',
+        'MGI Research': 'Economic research'
+    },
+    verified: true
+},
+'bcg': {
+    name: 'Boston Consulting Group',
+    handles: {
+        x: '@BCG',
+        linkedin: 'company/boston-consulting-group',
+        substack: 'bcg.insights.com'
+    },
+    research_portals: {
+        public: 'https://www.bcg.com/publications',
+        subscription: 'https://www.bcgperspectives.com'
+    },
+    data_types: ['Digital Strategy', 'Innovation', 'Sustainability'],
+    specialty_areas: ['Strategy', 'Digital', 'Operations'],
+    verified: true
+},
+'bain': {
+    name: 'Bain & Company',
+    handles: {
+        x: '@BainAlerts',
+        linkedin: 'company/bain-and-company',
+        substack: 'bain.insights.com'
+    },
+    research_portals: {
+        public: 'https://www.bain.com/insights',
+        subscription: 'https://www.bain.com/research'
+    },
+    data_types: ['Private Equity', 'Customer Strategy', 'Digital'],
+    specialty_areas: ['Private Equity', 'Strategy', 'Customer Experience'],
+    verified: true
+}
+},
+
+[FIRM_TYPES.RESEARCH]: {
+'gartner': {
+    name: 'Gartner',
+    handles: {
+        x: '@Gartner_inc',
+        linkedin: 'company/gartner'
+    },
+    research_portals: {
+        public: 'https://www.gartner.com/en/insights',
+        subscription: 'https://www.gartner.com/research'
+    },
+    data_types: ['Technology Research', 'Market Analysis', 'Industry Forecasts'],
+    specialty_areas: ['Enterprise Tech', 'Digital Transformation', 'IT Leadership'],
+    verified: true
+},
+'forrester': {
+    name: 'Forrester',
+    handles: {
+        x: '@forrester',
+        linkedin: 'company/forrester-research'
+    },
+    research_portals: {
+        public: 'https://www.forrester.com/blogs',
+        subscription: 'https://www.forrester.com/research'
+    },
+    data_types: ['Technology Strategy', 'Market Research', 'Customer Experience'],
+    specialty_areas: ['Digital Business', 'Customer Experience', 'Technology'],
+    verified: true
+},
+// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 23:06:14
+// Current User's Login: NUbivek
+
+// Continuing from previous part...
+
+'cbinsights': {
+    name: 'CB Insights',
+    handles: {
+        x: '@CBinsights',
+        linkedin: 'company/cb-insights'
+    },
+    research_portals: {
+        public: 'https://www.cbinsights.com/research',
+        subscription: 'https://www.cbinsights.com/platform'
+    },
+    data_types: ['Startup Analysis', 'Venture Capital', 'Innovation Research'],
+    specialty_areas: ['Startups', 'VC', 'Corporate Innovation'],
+    verified: true
+}
+},
+
+[FIRM_TYPES.DATA_PROVIDER]: {
+'bloomberg': {
+    name: 'Bloomberg',
+    handles: {
+        x: '@Bloomberg',
+        linkedin: 'company/bloomberg'
+    },
+    research_portals: {
+        public: 'https://www.bloomberg.com/markets',
+        subscription: 'https://www.bloomberg.com/professional'
+    },
+    data_types: ['Financial Data', 'Market Analysis', 'News'],
+    specialty_areas: ['Financial Markets', 'Economic Data', 'News'],
+    key_products: {
+        'Bloomberg Terminal': 'Professional financial data platform',
+        'Bloomberg Intelligence': 'Research platform',
+        'Bloomberg News': 'Financial news service'
+    },
+    verified: true
+},
+'refinitiv': {
+    name: 'Refinitiv',
+    handles: {
+        x: '@Refinitiv',
+        linkedin: 'company/refinitiv'
+    },
+    research_portals: {
+        public: 'https://www.refinitiv.com/perspectives',
+        subscription: 'https://www.refinitiv.com/en/products'
+    },
+    data_types: ['Financial Markets', 'Risk Analysis', 'Trading Data'],
+    specialty_areas: ['Market Data', 'Trading Solutions', 'Risk'],
+    key_products: {
+        'Eikon': 'Financial analysis platform',
+        'DataScope': 'Reference data service',
+        'World-Check': 'Risk intelligence database'
+    },
+    verified: true
+}
+}
+};
+
+// Combine both data sources
+export const COMBINED_DATA_SOURCES = {
+...MARKET_DATA_SOURCES,
+...BOUTIQUE_AND_SPECIALIST_FIRMS
+};
+
+// Export utility functions for data access
+export const getFirmByType = (type) => COMBINED_DATA_SOURCES[type] || {};
+
+export const getAllFirms = () => {
+return Object.values(COMBINED_DATA_SOURCES)
+.reduce((acc, categoryFirms) => ({
+    ...acc,
+    ...categoryFirms
+}), {});
+};
+
+export const getFirmsByVerification = (verified = true) => {
+const allFirms = getAllFirms();
+return Object.entries(allFirms)
+.filter(([_, firm]) => firm.verified === verified)
+.reduce((acc, [key, firm]) => ({
+    ...acc,
+    [key]: firm
+}), {});
+};
+
+export const searchFirmsBySpecialty = (specialty) => {
+const allFirms = getAllFirms();
+return Object.entries(allFirms)
+.filter(([_, firm]) => 
+    firm.specialty?.includes(specialty) || 
+    firm.specialty_areas?.includes(specialty) ||
+    firm.data_types?.includes(specialty)
+)
+.reduce((acc, [key, firm]) => ({
+    ...acc,
+    [key]: firm
+}), {});
+};// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 23:06:52
+// Current User's Login: NUbivek
+
+import { PLATFORMS, FIRM_TYPES } from './marketDataTypes';
+import { COMBINED_DATA_SOURCES, getAllFirms } from './marketDataSources';
+
+/**
+ * Comprehensive personnel management and social handle integration
+ */
+export class MarketDataIntegration {
+    constructor() {
+        this.allFirms = getAllFirms();
+        this.cachedPersonnel = null;
+        this.cachedHandles = {};
+    }
+
+    /**
+     * Get all personnel across all firms with their social handles
+     * @param {string} platform - Social media platform to filter by
+     * @returns {Object} Categorized personnel data
+     */
+    getAllKeyPersonnel(platform = null) {
+        if (this.cachedPersonnel && !platform) {
+            return this.cachedPersonnel;
+        }
+
+        const personnel = {
+            vc_personnel: [],
+            banking_personnel: [],
+            consulting_personnel: [],
+            research_personnel: [],
+            market_personnel: []
+        };
+
+        Object.entries(this.allFirms).forEach(([firmKey, firm]) => {
+            const personnelList = firm.key_personnel || [];
+            personnelList.forEach(person => {
+                if (!platform || person.handles[platform]) {
+                    const personData = {
+                        name: person.name,
+                        firm: firm.name,
+                        firmKey: firmKey,
+                        title: person.title,
+                        focus: person.focus,
+                        handles: platform ? person.handles[platform] : person.handles,
+                        verified: person.verified || false,
+                        type: this.determinePersonnelType(firmKey)
+                    };
+
+                    switch (this.determinePersonnelCategory(firmKey)) {
+                        case 'banking':
+                            personnel.banking_personnel.push(personData);
+                            break;
+                        case 'consulting':
+                            personnel.consulting_personnel.push(personData);
+                            break;
+                        case 'research':
+                            personnel.research_personnel.push(personData);
+                            break;
+                        case 'market':
+                            personnel.market_personnel.push(personData);
+                            break;
+                        default:
+                            personnel.vc_personnel.push(personData);
+                    }
+                }
+            });
+        });
+
+        if (!platform) {
+            this.cachedPersonnel = personnel;
+        }
+
+        return personnel;
+    }
+    // Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 23:07:43
+// Current User's Login: NUbivek
+
+    /**
+     * Get all social handles filtered by topic/focus area
+     * @param {string} topic - Topic or focus area to filter by
+     * @param {string} platform - Social media platform
+     * @returns {Object} Categorized handles for firms and individuals
+     */
+    getHandlesByTopic(topic, platform) {
+        const cacheKey = `${topic}-${platform}`;
+        if (this.cachedHandles[cacheKey]) {
+            return this.cachedHandles[cacheKey];
+        }
+
+        const handles = {
+            firms: [],
+            individuals: [],
+            metadata: {
+                topic,
+                platform,
+                timestamp: new Date().toISOString()
+            }
+        };
+
+        Object.entries(this.allFirms).forEach(([firmKey, firm]) => {
+            // Check firm specialty and handles
+            const hasRelevantSpecialty = 
+                firm.specialty?.includes(topic) || 
+                firm.specialty_areas?.includes(topic) ||
+                firm.data_types?.includes(topic);
+
+            if (hasRelevantSpecialty && firm.handles[platform]) {
+                handles.firms.push({
+                    name: firm.name,
+                    handle: firm.handles[platform],
+                    type: this.determinePersonnelType(firmKey),
+                    category: this.determinePersonnelCategory(firmKey),
+                    verified: firm.verified || false
+                });
+            }
+
+            // Check personnel focus and handles
+            (firm.key_personnel || []).forEach(person => {
+                if (person.focus?.includes(topic) && person.handles[platform]) {
+                    handles.individuals.push({
+                        name: person.name,
+                        handle: person.handles[platform],
+                        firm: firm.name,
+                        title: person.title,
+                        type: this.determinePersonnelType(firmKey),
+                        category: this.determinePersonnelCategory(firmKey),
+                        verified: person.verified || false
+                    });
+                }
+            });
+        });
+
+        this.cachedHandles[cacheKey] = handles;
+        return handles;
+    }
+
+    /**
+     * Get trending voices in a specific area
+     * @param {string} area - Focus area or specialty
+     * @param {string} platform - Social media platform
+     * @param {Object} options - Additional options for filtering
+     * @returns {Array} Sorted list of trending voices
+     */
+    getTrendingVoices(area, platform, options = {}) {
+        const {
+            limit = 10,
+            verifiedOnly = true,
+            includeTypes = ['all']
+        } = options;
+
+        const voices = [];
+        const personnel = this.getAllKeyPersonnel(platform);
+
+        Object.values(personnel).forEach(category => {
+            category
+                .filter(person => {
+                    const typeMatch = includeTypes.includes('all') || 
+                                    includeTypes.includes(person.type);
+                    const verificationMatch = !verifiedOnly || person.verified;
+                    const areaMatch = person.focus?.includes(area);
+                    
+                    return typeMatch && verificationMatch && areaMatch;
+                })
+                .forEach(person => {
+                    voices.push({
+                        name: person.name,
+                        handle: person.handles,
+                        firm: person.firm,
+                        title: person.title,
+                        type: person.type,
+                        category: person.category,
+                        focus: person.focus,
+                        verified: person.verified
+                    });
+                });
+        });
+
+        // Sort by verification status and then alphabetically
+        return voices
+            .sort((a, b) => {
+                if (a.verified !== b.verified) return a.verified ? -1 : 1;
+                return a.name.localeCompare(b.name);
+            })
+            .slice(0, limit);
+    }
+    // Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 23:09:00
+// Current User's Login: NUbivek
+
+    /**
+     * Determine personnel type based on firm key
+     * @private
+     * @param {string} firmKey - Key identifier for the firm
+     * @returns {string} Personnel type classification
+     */
+    determinePersonnelType(firmKey) {
+        const firmCategories = {
+            [FIRM_TYPES.BOUTIQUE_BANK]: 'Boutique Banking',
+            [FIRM_TYPES.BOUTIQUE_CONSULTING]: 'Boutique Consulting',
+            [FIRM_TYPES.SPECIALIST_RESEARCH]: 'Specialist Research',
+            [FIRM_TYPES.INDEPENDENT_RESEARCH]: 'Independent Research',
+            [FIRM_TYPES.INVESTMENT_BANK]: 'Investment Banking',
+            [FIRM_TYPES.CONSULTING]: 'Management Consulting',
+            [FIRM_TYPES.RESEARCH]: 'Market Research',
+            [FIRM_TYPES.DATA_PROVIDER]: 'Data Provider'
+        };
+
+        return Object.entries(firmCategories)
+            .find(([category, _]) => 
+                COMBINED_DATA_SOURCES[category]?.[firmKey]
+            )?.[1] || 'Other';
+    }
+
+    /**
+     * Determine personnel category for grouping
+     * @private
+     * @param {string} firmKey - Key identifier for the firm
+     * @returns {string} Category classification
+     */
+    determinePersonnelCategory(firmKey) {
+        const bankingTypes = [FIRM_TYPES.BOUTIQUE_BANK, FIRM_TYPES.INVESTMENT_BANK];
+        const consultingTypes = [FIRM_TYPES.BOUTIQUE_CONSULTING, FIRM_TYPES.CONSULTING];
+        const researchTypes = [FIRM_TYPES.SPECIALIST_RESEARCH, FIRM_TYPES.INDEPENDENT_RESEARCH, FIRM_TYPES.RESEARCH];
+        const marketTypes = [FIRM_TYPES.DATA_PROVIDER];
+
+        for (const [types, category] of [
+            [bankingTypes, 'banking'],
+            [consultingTypes, 'consulting'],
+            [researchTypes, 'research'],
+            [marketTypes, 'market']
+        ]) {
+            if (types.some(type => COMBINED_DATA_SOURCES[type]?.[firmKey])) {
+                return category;
+            }
+        }
+
+        return 'other';
+    }
+
+    /**
+     * Get firm details with enhanced metadata
+     * @param {string} firmKey - Firm identifier
+     * @returns {Object|null} Enhanced firm details
+     */
+    getFirmDetails(firmKey) {
+        const firm = this.allFirms[firmKey];
+        if (!firm) return null;
+
+        return {
+            ...firm,
+            type: this.determinePersonnelType(firmKey),
+            category: this.determinePersonnelCategory(firmKey),
+            personnel_count: firm.key_personnel?.length || 0,
+            has_research_portal: Boolean(firm.research_portals?.public || firm.research_portals?.subscription),
+            social_presence: Object.keys(firm.handles || {})
+        };
+    }
+
+    /**
+     * Search across all firms and personnel
+     * @param {string} query - Search query
+     * @param {Object} options - Search options
+     * @returns {Object} Search results
+     */
+    searchMarketData(query, options = {}) {
+        const {
+            searchInFirms = true,
+            searchInPersonnel = true,
+            filterByType = [],
+            platform = null
+        } = options;
+
+        const results = {
+            firms: [],
+            personnel: [],
+            metadata: {
+                query,
+                timestamp: new Date().toISOString(),
+                options
+            }
+        };
+
+        const searchTerm = query.toLowerCase();
+
+        if (searchInFirms) {
+            results.firms = Object.entries(this.allFirms)
+                .filter(([key, firm]) => {
+                    const typeMatch = !filterByType.length || 
+                                    filterByType.includes(this.determinePersonnelType(key));
+                    const searchMatch = firm.name.toLowerCase().includes(searchTerm) ||
+                                     firm.specialty?.some(s => s.toLowerCase().includes(searchTerm)) ||
+                                     firm.specialty_areas?.some(s => s.toLowerCase().includes(searchTerm));
+                    return typeMatch && searchMatch;
+                })
+                .map(([key, firm]) => ({
+                    ...this.getFirmDetails(key),
+                    relevance: 'firm_match'
+                }));
+        }
+
+        if (searchInPersonnel) {
+            const personnel = this.getAllKeyPersonnel(platform);
+            results.personnel = Object.values(personnel)
+                .flat()
+                .filter(person => {
+                    const typeMatch = !filterByType.length || 
+                                    filterByType.includes(person.type);
+                    const searchMatch = person.name.toLowerCase().includes(searchTerm) ||
+                                     person.focus?.some(f => f.toLowerCase().includes(searchTerm));
+                    return typeMatch && searchMatch;
+                })
+                .map(person => ({
+                    ...person,
+                    relevance: 'personnel_match'
+                }));
+        }
+
+        return results;
+    }
+}
+
+// Export a singleton instance
+export const marketDataIntegration = new MarketDataIntegration();
+
+// Export convenience methods
+export const getAllKeyPersonnel = (platform) => 
+    marketDataIntegration.getAllKeyPersonnel(platform);
+
+export const getHandlesByTopic = (topic, platform) => 
+    marketDataIntegration.getHandlesByTopic(topic, platform);
+
+export const getTrendingVoices = (area, platform, options) => 
+    marketDataIntegration.getTrendingVoices(area, platform, options);
+
+export const searchMarketData = (query, options) => 
+    marketDataIntegration.searchMarketData(query, options);// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-18 00:13:20
+// Current User's Login: NUbivek
+
+import { getCombinedHandles, getVCsByFocus, getFoundersByFocus } from './vcAccounts';
+import { VC_FIRMS, VC_CATEGORIES } from './vcAccounts';
+import { FOUNDER_INVESTORS } from './vcFounders';
+
+// Ensure FOUNDER_INVESTORS is an object, default to empty object if undefined
+const founderInvestors = FOUNDER_INVESTORS || {};
+
+export const PLATFORM_CONFIGS = {
+  linkedin: {
+    companies: Object.values(VC_FIRMS)
+      .map(firm => firm.handles?.linkedin)
+      .filter(handle => handle)
+      .map(handle => handle.replace('/company/', '')),
+    keywords: [
+      'venture capital',
+      'startup investing',
+      'founder',
+      'seed funding',
+      'Series A',
+      'venture partner',
+      'angel investor'
+    ],
+    profiles: getCombinedHandles().map(handle => handle.replace('@', '')),
+    groups: [
+      'Venture Capital & Private Equity',
+      'Startup Founders Network',
+      'YC Founders & Alumni',
+      'Angel Investors Group'
+    ]
+  },
+  
+  x: {
+    handles: getCombinedHandles(),
+    lists: [
+      'VCs-to-follow',
+      'top-founders',
+      'emerging-managers',
+      'angel-investors'
+    ],
+    hashtags: [
+      'venturecapital',
+      'startups',
+      'founderlife',
+      'seedfunding',
+      'angelinvestor'
+    ]
+  },
+  
+  reddit: {
+    subreddits: [
+      'venturecapital',
+      'startups',
+      'investing',
+      'entrepreneur',
+      'YCombinator'
+    ],
+    keywords: [
+      'venture capital',
+      'VC funding',
+      'startup founder',
+      'angel investing',
+      'pitch deck'
+    ]
+  },
+  
+  substack: {
+    newsletters: [
+      ...Object.values(VC_FIRMS).flatMap(firm => 
+        firm.partners.map(p => ({
+          handle: p.handles?.substack,
+          focus: p.focus
+        })).filter(p => p.handle)
+      ),
+      ...Object.values(founderInvestors).flatMap(group =>
+        (group?.members || []).map(m => ({
+          handle: m.handles?.substack,
+          focus: m.focus
+        })).filter(m => m.handle)
+      )
+    ]
+  }
+};
+
+export function generatePlatformQuery(platform, baseQuery) {
+  const config = PLATFORM_CONFIGS[platform];
+  
+  switch (platform) {
+    case 'linkedin':
+      return {
+        query: baseQuery,
+        filters: {
+          companies: config.companies,
+          keywords: config.keywords,
+          groups: config.groups
+        }
+      };
+      
+    case 'x':
+      return {
+        query: baseQuery,
+        handles: config.handles,
+        lists: config.lists,
+        hashtags: config.hashtags.map(tag => `#${tag}`)
+      };
+      
+    case 'reddit':
+      return {
+        query: baseQuery,
+        subreddits: config.subreddits,
+        keywords: config.keywords
+      };
+      
+    case 'substack':
+      return {
+        query: baseQuery,
+        newsletters: config.newsletters
+      };
+      
+    default:
+      return { query: baseQuery };
+  }
+}
+
+export function getFocusedResults(results, focusArea) {
+  const relevantVCs = getVCsByFocus(focusArea);
+  const relevantFounders = getFoundersByFocus(focusArea);
+  const relevantHandles = [...relevantVCs, ...relevantFounders].map(p => 
+    p.handles?.x || p.handles?.linkedin
+  ).filter(handle => handle);
+  
+  return results.filter(result => 
+    relevantHandles.some(handle => 
+      result.text?.toLowerCase().includes(handle.toLowerCase()) ||
+      result.author?.toLowerCase().includes(handle.toLowerCase())
+    )
+  );
+}
+
+export function enrichResultsWithVC(result) {
+    // If result isn't an array, wrap it in an array
+    const results = Array.isArray(result) ? result : [result];
+    
+    return results.map(result => {
+      const mentionedVCs = Object.values(VC_FIRMS).filter(firm =>
+        (firm.handles?.x && result.text?.toLowerCase().includes(firm.handles.x.toLowerCase())) ||
+        firm.partners.some(p => 
+          p.handles?.x && result.text?.toLowerCase().includes(p.handles.x.toLowerCase())
+        )
+      );
+      
+      const mentionedFounders = Object.values(founderInvestors).flatMap(group =>
+        (group?.members || []).filter(m =>
+          m.handles?.x && result.text?.toLowerCase().includes(m.handles.x.toLowerCase())
+        )
+      );
+      
+      return {
+        ...result,
+        vcMentions: mentionedVCs,
+        founderMentions: mentionedFounders
+      };
+    });
+  }
+
+export default PLATFORM_CONFIGS;import { useState, useEffect } from 'react';
+
+export const useDebounce = (value, delay = 500) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};import { useState, useCallback } from 'react';
+import { processFiles } from '../fileProcessing';
+
+export const useFileUpload = () => {
+  const [files, setFiles] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+
+  const handleUpload = useCallback(async (newFiles) => {
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      const { processedFiles, errors } = await processFiles(newFiles);
+      if (errors.length > 0) {
+        setUploadError(errors);
+      }
+      setFiles(prev => [...prev, ...processedFiles]);
+    } catch (error) {
+      setUploadError(error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  }, []);
+
+  const removeFile = useCallback((fileIndex) => {
+    setFiles(prev => prev.filter((_, index) => index !== fileIndex));
+  }, []);
+
+  return {
+    files,
+    isUploading,
+    uploadError,
+    handleUpload,
+    removeFile
+  };
+};// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 06:38:25
+// Current User's Login: NUbivek
+
+import { MODELS, ModelUtils } from '@/config/models.config';
+
+export const formatPromptForModel = (prompt, selectedModel) => {
+  const model = typeof selectedModel === 'string' 
+    ? ModelUtils.getModelById(selectedModel)
+    : selectedModel;
+
+  if (!model) {
+    console.warn('No valid model found, using default prompt format');
+    return prompt;
+  }
+
+  return model.promptFormat(prompt);
+};
+
+export const getModelStopTokens = (modelId) => {
+  const model = ModelUtils.getModelById(modelId);
+  return model ? model.stopTokens : [];
+};
+
+export const getModelConfig = (modelId) => {
+  return ModelUtils.getModelConfig(modelId);
+};
+
+export const getModelById = (modelId) => {
+  return ModelUtils.getModelById(modelId);
+};
+
+export const getApiModel = (modelId) => {
+  return ModelUtils.getApiModel(modelId);
+};
+
+export const DEFAULT_MODEL = MODELS.default;export const isValidUrl = (url) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  export const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  export const validateSearchQuery = (query) => {
+    if (!query?.trim()) {
+      return { isValid: false, error: 'Search query cannot be empty' };
+    }
+    if (query.length < 3) {
+      return { isValid: false, error: 'Search query must be at least 3 characters' };
+    }
+    return { isValid: true, error: null };
+  };export const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  };
+
+  export const formatDate = (timestamp) => {
+    const date = new Date(timestamp);
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
+  };
+
+  export const truncateText = (text, length = 50) => {
+    if (!text || text.length <= length) return text;
+    return `${text.substring(0, length)}...`;
+  };import { API_CONFIG } from '@/config/constants';
+
+export const processFiles = async (files) => {
+  const processedFiles = [];
+  const errors = [];
+
+  for (const file of files) {
+    try {
+      if (file.size > API_CONFIG.maxFileSize) {
+        throw new Error(`File ${file.name} exceeds maximum size of ${API_CONFIG.maxFileSize / 1024 / 1024}MB`);
+      }
+
+      if (!API_CONFIG.allowedFileTypes.includes(file.type)) {
+        throw new Error(`File type ${file.type} not allowed for ${file.name}`);
+      }
+
+      const content = await readFileAsText(file);
+      processedFiles.push({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        content,
+        lastModified: file.lastModified
+      });
+    } catch (error) {
+      errors.push({ file: file.name, error: error.message });
+    }
+  }
+
+  return { processedFiles, errors };
+};
+
+export const readFileAsText = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => resolve(event.target.result);
+    reader.onerror = (error) => reject(error);
+    reader.readAsText(file);
+  });
+};// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 22:14:31
+// Current User's Login: NUbivek
+
+export function getTopVCAccounts() {
+    return [
+      // Add popular VC Twitter handles
+      '@a16z',
+      '@sequoia',
+      '@ycombinator',
+      '@benchmark',
+      '@foundercollective',
+      '@usv',
+      '@firstround',
+      '@greylock',
+      '@kleinerperkins',
+      '@khoslaventures'
+    ];
+  }
+  
+  export function generateSearchQueries(query) {
+    const vcAccounts = getTopVCAccounts();
+    const baseQuery = encodeURIComponent(query);
+    
+    return [
+      // General search
+      `${baseQuery} (from:${vcAccounts.join(' OR from:')})`,
+      
+      // Recent discussions
+      `${baseQuery} (from:${vcAccounts.join(' OR from:')}) min_faves:100`,
+      
+      // With media
+      `${baseQuery} (from:${vcAccounts.join(' OR from:')}) filter:images min_faves:50`,
+      
+      // Detailed threads
+      `${baseQuery} (from:${vcAccounts.join(' OR from:')}) filter:replies min_replies:5`
+    ];
+  }
+  
+  // Mock function since we can't actually fetch from Twitter without API access
+  export async function getTopVCContent(searchQueries) {
+    // In a real implementation, this would use Twitter's API
+    return [
+      {
+        id: '123456789',
+        username: 'a16z',
+        text: 'Example tweet about venture capital trends',
+        query: searchQueries[0]
+      },
+      // Add more mock data as needed
+    ];
+  }// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-18 00:24:40
+// Current User's Login: NUbivek
+
+const ROLES = {
+    INVESTOR: ['investor', 'vc', 'venture capital', 'angel', 'partner', 'investment'],
+    FOUNDER: ['founder', 'ceo', 'co-founder', 'cofounder', 'entrepreneur'],
+    EXPERT: ['expert', 'advisor', 'consultant', 'specialist', 'professional'],
+    RESEARCHER: ['researcher', 'scientist', 'analyst', 'research'],
+    ENGINEER: ['engineer', 'developer', 'architect', 'cto', 'technical'],
+    BUSINESS: ['business', 'sales', 'marketing', 'strategy', 'operations']
+  };
+  
+  export function detectRole(text) {
+    if (!text || typeof text !== 'string') return 'GENERAL';
+    
+    const lowercaseText = text.toLowerCase();
+    
+    for (const [role, keywords] of Object.entries(ROLES)) {
+      if (keywords.some(keyword => lowercaseText.includes(keyword))) {
+        return role;
+      }
+    }
+    
+    return 'GENERAL';
+  }
+  
+  export function getRoleBasedPrompt(role, query) {
+    const prompts = {
+      INVESTOR: `From a venture capital perspective, analyze: ${query}`,
+      FOUNDER: `From an entrepreneur's perspective, consider: ${query}`,
+      EXPERT: `Providing expert analysis on: ${query}`,
+      RESEARCHER: `From a research perspective, examine: ${query}`,
+      ENGINEER: `From a technical standpoint, analyze: ${query}`,
+      BUSINESS: `From a business strategy perspective, evaluate: ${query}`,
+      GENERAL: query
+    };
+    
+    return prompts[role] || query;
+  }
+  
+  export function enrichContentWithRoles(content) {
+    // Handle array input
+    if (Array.isArray(content)) {
+      return content.map(item => enrichContentWithRoles(item));
+    }
+    
+    // Handle object input
+    if (typeof content === 'object' && content !== null) {
+      const role = content.text ? detectRole(content.text) : 'GENERAL';
+      return {
+        ...content,
+        role,
+        text: typeof content.text === 'string' 
+          ? enrichTextWithRoles(content.text, content.vcMentions, content.founderMentions)
+          : content.text
+      };
+    }
+    
+    // Handle string input
+    if (typeof content === 'string') {
+      return enrichTextWithRoles(content);
+    }
+    
+    // Return as-is if none of the above
+    return content;
+  }
+  
+  function enrichTextWithRoles(text, vcMentions = [], founderMentions = []) {
+    if (!text || typeof text !== 'string') return text;
+    
+    let enriched = text;
+    
+    // Enrich VC mentions
+    if (vcMentions && vcMentions.length > 0) {
+      vcMentions.forEach(vc => {
+        if (vc.handles?.x) {
+          const pattern = new RegExp(`@${vc.handles.x.replace('@', '')}`, 'gi');
+          enriched = enriched.replace(pattern, `$& (Venture Capital)`);
+        }
+      });
+    }
+    
+    // Enrich founder mentions
+    if (founderMentions && founderMentions.length > 0) {
+      founderMentions.forEach(founder => {
+        if (founder.handles?.x) {
+          const pattern = new RegExp(`@${founder.handles.x.replace('@', '')}`, 'gi');
+          enriched = enriched.replace(pattern, `$& (Founder)`);
+        }
+      });
+    }
+    
+    // Enrich other handles with detected roles
+    enriched = enriched.replace(/(@[\w-]+)(?!\s*\([^)]+\))/g, (match) => {
+      const handleText = match.substring(1);
+      const role = detectRole(handleText);
+      return role === 'GENERAL' ? match : `${match} (${role})`;
+    });
+    
+    return enriched;
+  }
+  
+  // Export constants and types
+  export const ROLE_TYPES = Object.keys(ROLES);
+  
+  // Named export object instead of anonymous default export
+  const roleDetection = {
+    detectRole,
+    getRoleBasedPrompt,
+    enrichContentWithRoles,
+    ROLES,
+    ROLE_TYPES
+  };
+  
+  export default roleDetection;// Using DuckDuckGo scraping API as it's free and doesn't require API keys
+export async function searchWeb(query) {
+    try {
+      const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`);
+      const data = await response.json();
+      
+      return data.RelatedTopics
+        .filter(topic => topic.FirstURL && topic.Text)
+        .map(topic => ({
+          title: topic.Text.split(' - ')[0],
+          url: topic.FirstURL,
+          snippet: topic.Text
+        }))
+        .slice(0, 5); // Get top 5 results
+    } catch (error) {
+      console.error('Web search error:', error);
+      throw new Error('Failed to perform web search');
+    }
+  }
