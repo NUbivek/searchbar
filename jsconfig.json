@@ -4,17 +4,29 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "jsx": "preserve",
-    "target": "es6",
-    "module": "esnext",
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "target": "ES6",
     "moduleResolution": "node",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "esModuleInterop": true,
     "allowJs": true,
+    "checkJs": false,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": false,
-    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "incremental": true,
     "isolatedModules": true
   },
-  "include": ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src/**/*",
+    "pages/**/*",
+    "components/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "out"
+  ]
 }

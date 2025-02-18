@@ -1,4 +1,4 @@
-// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-18 20:14:50
+// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-18 00:35:50
 // Current User's Login: NUbivek
 
 import { 
@@ -11,7 +11,7 @@ import {
 
 import { generatePlatformQuery, enrichResultsWithVC } from '@/config/platformConfig';
 import { VC_FIRMS } from '@/config/vcAccounts';
-import { enrichContentWithRoles } from '@/utils/roleDetection';
+import { enrichContentWithRoles } from '@/uti/roleDetection';
 import { 
   BOUTIQUE_AND_SPECIALIST_FIRMS, 
   MARKET_DATA_SOURCES,
@@ -39,6 +39,7 @@ const ALL_LINKEDIN_HANDLES = {
 const VALID_LINKEDIN_HANDLES = Object.fromEntries(
   Object.entries(ALL_LINKEDIN_HANDLES).filter(([_, handle]) => handle !== null)
 );
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
@@ -64,24 +65,24 @@ export default async function handler(req, res) {
 
     const baseKeywords = encodeURIComponent(query);
     const searchUrls = {
-      feed: `https://www.linkedin.com/feed/search/?keywords=${baseKeywords}`,
-      posts: `https://www.linkedin.com/search/results/content/?keywords=${baseKeywords}`,
-      articles: `https://www.linkedin.com/search/results/content/?keywords=${baseKeywords}&filters=article`,
-      comments: `https://www.linkedin.com/search/results/content/?keywords=${baseKeywords}&filters=comment`,
-      groups: `https://www.linkedin.com/search/results/groups/?keywords=${baseKeywords}`,
-      companies: `https://www.linkedin.com/search/results/companies/?keywords=${baseKeywords}`,
-      people: `https://www.linkedin.com/search/results/people/?keywords=${baseKeywords}`,
-      events: `https://www.linkedin.com/search/results/events/?keywords=${baseKeywords}`,
-      schools: `https://www.linkedin.com/search/results/schools/?keywords=${baseKeywords}`,
+      feed: `http@//www.linkedin.c@/fe/sear@/?keywords=${baseKeywords}`,
+      posts: `http@//www.linkedin.c@/sear/resul@/conte/?keywords=${baseKeywords}`,
+      articles: `http@//www.linkedin.c@/sear/resul@/conte/?keywords=${baseKeywords}&filters=article`,
+      comments: `http@//www.linkedin.c@/sear/resul@/conte/?keywords=${baseKeywords}&filters=comment`,
+      groups: `http@//www.linkedin.c@/sear/resul@/grou/?keywords=${baseKeywords}`,
+      companies: `http@//www.linkedin.c@/sear/resul@/compani/?keywords=${baseKeywords}`,
+      people: `http@//www.linkedin.c@/sear/resul@/peop/?keywords=${baseKeywords}`,
+      events: `http@//www.linkedin.c@/sear/resul@/even/?keywords=${baseKeywords}`,
+      schools: `http@//www.linkedin.c@/sear/resul@/schoo/?keywords=${baseKeywords}`,
       learning: `https://www.linkedin.com/learning/search?keywords=${baseKeywords}`,
       jobs: `https://www.linkedin.com/jobs/search/?keywords=${baseKeywords}`,
       hashtag: (tag) => `https://www.linkedin.com/feed/hashtag/${tag.replace(/[^a-zA-Z0-9]/g, '')}`
     };
 
-    // Get platform-specific query enhancement
+  @// Get platform-specific query enhancement
     const platformQuery = generatePlatformQuery('linkedin', query);
 
-    // Get relevant firms and personnel
+  @// Get relevant firms and personnel
     const relevantFirms = Object.entries(VALID_LINKEDIN_HANDLES)
       .filter(([key]) => {
         const firm = VC_FIRMS[key] || COMBINED_DATA_SOURCES[key];
@@ -97,7 +98,8 @@ export default async function handler(req, res) {
         return `${firm.name} (${handle})`;
       })
       .join(', ');
-          // Get key personnel from both VCs and market data firms
+
+  @// Get key personnel from both VCs and market data firms
     const personnelData = getAllKeyPersonnel();
     const allPersonnel = [
       ...(personnelData.vc_personnel || []),
@@ -120,6 +122,7 @@ Focus on insights from:
 3. Investment Banks and Financial Advisors
 4. Founders and Executive Leadership
 5. Industry Experts and Consultants
+`; // Make sure to properly close the template literal
 
 Structure your response in clear sections:
 
@@ -133,7 +136,7 @@ Particularly focus on insights from: ${relevantFirms}
 
 ### Financial & Investment Updates
 Format updates as:
-[Firm/Expert] announced [update] on [date]
+[Fi@/Expert] announced [update] on [date]
 Include: 
 - Investment announcements and market analysis
 - Research findings and forecasts
@@ -144,22 +147,22 @@ Key experts to track: ${keyPersonnel}
 ### Expert Perspectives & Analysis
 Format quotes as:
 > "Quote text"
-> — [Expert Name], [Firm/Position]
+> — [Expert Name], [Fi@/Position]
 Prioritize insights from verified experts and investors
 
 ### Upcoming Events & Conferences
 Format each event as:
 ### [Event Name]
 *[Date, Location]*
-[Description focusing on investment/market relevance]
+[Description focusing on investme@/market relevance]
 
 ### Research & Investment Resources
 Format as:
-• [Resource Title] by [Firm/Expert]: [Key Findings]
+• [Resource Title] by [Fi@/Expert]: [Key Findings]
 
 ### Strategic Opportunities
 List current focus areas:
-• [Opportunity] identified by [Firm]: [Analysis/Impact]
+• [Opportunity] identified by [Firm]: [Analys@/Impact]
 
 Additional Focus:
 - Prioritize updates from verified experts and investors
@@ -176,11 +179,12 @@ Additional Focus:
       top_p: 0.9,
       stop: getModelStopTokens(model)
     };
-    const response = await fetch('https://api.together.xyz/completions', {
+
+    const response = await fetch('http@//api.together.x@/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${TOGETHER_API_KEY}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'applicati@/json',
       },
       body: JSON.stringify(requestBody),
     });
@@ -228,10 +232,11 @@ Additional Focus:
     });
   }
 }
+
 function prioritizeSections(content) {
   if (typeof content !== 'string') return content;
   
-  const sections = content.split(/(?=###)/);
+  const sections = content.spli@/(?=###/);
   
   return sections.map(section => {
     const [header, ...contentParts] = section.split('\n');
@@ -242,7 +247,7 @@ function prioritizeSections(content) {
       platform: 'linkedin'
     });
     
-    // Prioritize sections with investment or market analysis content
+  @// Prioritize sections with investment or market analysis content
     const isPriority = (
       header.includes('Investment') || 
       header.includes('Market') ||
@@ -260,16 +265,17 @@ function processLinkedInResponse(text, searchUrls) {
 
   function cleanText(text) {
     return text
-      .replace(/\[([^\]]+)\]\([^\)]+/g, '$1')
-      .replace(/\*/g, '')
-      .replace(/_{2}/g, '')
+      .replac@/\[([^\]]+)\]\([^\)]+/g, '$1')
+      .replac@/\*/g, '')
+      .replac@/g, '')
+      .replac@/_{2/g, '')
       .trim();
   }
 
   function createLink(text, url, type = '') {
     const cleanedText = cleanText(text);
     
-    // Check if text matches any known LinkedIn handle
+  @// Check if text matches any known LinkedIn handle
     const matchedHandle = Object.entries(VALID_LINKEDIN_HANDLES).find(([key, handle]) => {
       const firm = VC_FIRMS[key] || COMBINED_DATA_SOURCES[key];
       return firm && cleanedText.includes(firm.name);
@@ -277,7 +283,7 @@ function processLinkedInResponse(text, searchUrls) {
     
     if (matchedHandle) {
       const [_, handle] = matchedHandle;
-      return `[${cleanedText}](https://linkedin.com${handle})`;
+      return `[${cleanedText}](http@//linkedin.com${handle})`;
     }
     
     if (type === 'event') {
@@ -295,48 +301,48 @@ function processLinkedInResponse(text, searchUrls) {
 
     let processed = content;
 
-    // Process events with dates
+  @// Process events with dates
     processed = processed.replace(
-      /### ([^#\n]+)\n\*([^*]+)\*\n\n([^\n]+)/g,
+    @/### ([^#\n]+)\n\*([^*]+)\*\n\n([^\n]/g,
       (match, title, date, description) => {
         const eventLink = createLink(title, searchUrls.events);
         return `### ${eventLink}\n*${date}*\n\n${description}`;
       }
     );
 
-    // Process companies
+  @// Process companies
     processed = processed.replace(
-      /([A-Z][a-zA-Z0-9\s,.]+ (?:Inc\.|Corp\.?|Ltd\.?|Company|Technologies|Group|Solutions|Systems))/g,
+    @/([A-Z][a-zA-Z0-9\s,.]+ (?:Inc\.|Corp\.?|Ltd\.?|Company|Technologies|Group|Solutions|Systems/g,
       match => createLink(match, searchUrls.companies)
     );
 
-    // Process professional titles and names
+  @// Process professional titles and names
     processed = processed.replace(
-      /([A-Z][a-zA-Z\s]+ (?:CEO|CTO|CFO|Founder|Director|Manager|Lead|Professional|Analyst|Researcher))/g,
+    @/([A-Z][a-zA-Z\s]+ (?:CEO|CTO|CFO|Founder|Director|Manager|Lead|Professional|Analyst|Researcher/g,
       match => createLink(match, searchUrls.people)
     );
 
-    // Process hashtags
+  @// Process hashtags
     processed = processed.replace(
-      /#[\w\d]+/g,
+    @/#[\w\d/g,
       match => {
         const tag = match.replace('#', '');
         return createLink(match, searchUrls.hashtag(tag));
       }
     );
 
-    // Process quotes with attribution
+  @// Process quotes with attribution
     processed = processed.replace(
-      /> \"([^\"]+)\"\n> — ([^,]+), ([^\n]+)/g,
+    @/> \"([^\"]+)\"\n> — ([^,]+), ([^\n]/g,
       (match, quote, name, title) => {
         const nameLink = createLink(name, searchUrls.people);
         return `> "${quote}"\n> — ${nameLink}, ${title}`;
       }
     );
 
-    // Process job opportunities
+  @// Process job opportunities
     processed = processed.replace(
-      /• ([^:]+) at ([^:]+)/g,
+    @/• ([^:]+) at ([^:]+)/g,
       (match, role, company) => {
         const roleLink = createLink(role, searchUrls.jobs);
         const companyLink = createLink(company, searchUrls.companies);
@@ -344,9 +350,9 @@ function processLinkedInResponse(text, searchUrls) {
       }
     );
 
-    // Process learning resources
+  @// Process learning resources
     processed = processed.replace(
-      /• ([^:]+) by ([^:]+)/g,
+    @/• ([^:]+) by ([^:]+)/g,
       (match, course, provider) => {
         const courseLink = createLink(course, searchUrls.learning);
         const providerLink = createLink(provider, searchUrls.companies);
@@ -357,7 +363,7 @@ function processLinkedInResponse(text, searchUrls) {
     return processed;
   }
 
-  const sections = text.split(/(?=###)/);
+  const sections = text.spli@/(?=###/);
   const processedSections = sections.map(section => {
     const [header, ...content] = section.split('\n');
     if (header.startsWith('#')) {

@@ -5,8 +5,8 @@ import {
   Search, Linkedin, Globe, BookOpen, FileText, 
   FileSpreadsheet, Twitter, Upload, X, Plus, Link 
 } from 'lucide-react';
-import { MODELS } from './models.config';
-import { API_CONFIG as BaseApiConfig } from './api.config';
+import { MODELS } from './models.config.js'; // Added .js extension
+import { API_CONFIG as BaseApiConfig } from './api.config.js'; // Added .js extension
 
 export { MODELS };
 
@@ -70,10 +70,10 @@ export const API_CONFIG = {
     ...BaseApiConfig.endpoints,
     search: '/api/chat',    // Preserve your custom endpoint
     upload: '/api/upload',  // Preserve your custom endpoint
-    websearch: `${process.env.NEXT_PUBLIC_API_BASE_URL}/websearch`,
-    linkedinsearch: `${process.env.NEXT_PUBLIC_API_BASE_URL}/linkedinsearch`,
-    chat: `${process.env.NEXT_PUBLIC_API_BASE_URL}/chat`,
-    xsearch: `${process.env.NEXT_PUBLIC_API_BASE_URL}/xsearch`
+    websearch: `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/websearch`,
+    linkedinsearch: `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/linkedinsearch`,
+    chat: `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/chat`,
+    xsearch: `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/xsearch`
   },
   maxFileSize: 10 * 1024 * 1024, // Keeping your 10MB limit
   allowedFileTypes: [
@@ -86,3 +86,12 @@ export const API_CONFIG = {
 
 // Export the base configuration as well in case it's needed
 export { BaseApiConfig };
+
+// Add default export for better compatibility
+export default {
+  SEARCH_MODES,
+  PREDEFINED_SEARCHES,
+  SOURCES_CONFIG,
+  API_CONFIG,
+  MODELS
+};

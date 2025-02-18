@@ -7,7 +7,7 @@ import VC_FIRMS, {
   getCombinedHandles, 
   getVCsByFocus,
   getFoundersByFocus 
-} from '../config/vcAccounts';
+} from '@/config/vcAccounts';
 
 // Initialize VC data
 const VERIFIED_VCS = getVerifiedPartners();

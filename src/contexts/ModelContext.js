@@ -1,11 +1,9 @@
-// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-18 16:49:55
+// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-18 19:52:54
 // Current User's Login: NUbivek
 
 import { createContext, useContext, useState } from 'react';
-// Change the import path to use relative paths instead of alias
-import { MODELS, ModelUtils } from '../config/models.config';
+import { MODELS, ModelUtils } from '@/config/models.config';
 
-// Export the context so it can be imported elsewhere if needed
 export const ModelContext = createContext();
 
 export function ModelProvider({ children }) {
@@ -19,7 +17,12 @@ export function ModelProvider({ children }) {
     getCurrentModel: () => ModelUtils.getModelById(selectedModel),
     formatPrompt: (prompt) => ModelUtils.formatPrompt(selectedModel, prompt),
     modelOptions: ModelUtils.getModelOptions(),
-    config: MODELS.config
+    config: MODELS.config,
+    // Add these methods to fully utilize your ModelUtils
+    formatRequestBody: (prompt) => ModelUtils.formatRequestBody(selectedModel, prompt),
+    extractResponseText: (data) => ModelUtils.extractResponseText(data, selectedModel),
+    isValidModel: (id) => ModelUtils.isValidModel(id),
+    getApiModel: () => ModelUtils.getApiModel(selectedModel)
   };
 
   return (

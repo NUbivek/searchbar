@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { processFiles } from '../fileProcessing';
+import { processFiles } from '@/fileProcessing';
 
 export const useFileUpload = () => {
   const [files, setFiles] = useState([]);

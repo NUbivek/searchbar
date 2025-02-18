@@ -1,4 +1,4 @@
-// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-18 16:35:14
+// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-18 19:34:12
 // Current User's Login: NUbivek
 
 import React, { useState, useCallback } from 'react';
@@ -7,7 +7,7 @@ import SearchBar from '@/components/SearchBar';
 import SearchResults from '@/components/SearchResults';
 import LinkedInResults from '@/components/LinkedInResults';
 import { SEARCH_MODES, SOURCES_CONFIG, API_CONFIG } from '@/config/constants';
-import { PRODUCTION_CONFIG } from '@/config/production.config';
+import PRODUCTION_CONFIG from '@/config/production.config';
 import { useModel } from '@/contexts/ModelContext';
 import styles from '@/styles/Button.module.css';
 
@@ -15,6 +15,7 @@ const SearchApp = () => {
   const { selectedModel, setSelectedModel } = useModel();
   const isStaticBuild = PRODUCTION_CONFIG.isStaticBuild;
   
+  // State declarations
   const [searchMode, setSearchMode] = useState(SEARCH_MODES.VERIFIED);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
@@ -27,128 +28,23 @@ const SearchApp = () => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [urls, setUrls] = useState([]);
   const [newUrl, setNewUrl] = useState('');
-
-  // Replace your existing processSearch function with this:
-const processSearch = useCallback(async (query) => {
-  setIsLoading(true);
-  setError(null);
-
-  try {
-    if (isStaticBuild) {
-      setSearchResults(PRODUCTION_CONFIG.mockData.webSearch);
-      return;
+  // Utility functions
+  const isValidUrl = (string) => {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
     }
+  };
 
-    const response = await fetch(API_CONFIG.endpoints.search, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query,
-        filters,
-        searchMode,
-        model: selectedModel,  // This now contains just the model ID
-        sourceScope,
-        sources: {
-          files: uploadedFiles.map(f => f.name),
-          urls: urls
-        }
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Failed to process search: ${errorData}`);
+  // Handler functions
+  const handleUrlAdd = useCallback(() => {
+    if (newUrl && isValidUrl(newUrl)) {
+      setUrls(prev => [...prev, newUrl]);
+      setNewUrl('');
     }
-
-    const data = await response.json();
-    setSearchResults(data.result);
-  } catch (error) {
-    setError(error.message);
-    console.error('Search processing error:', error);
-  } finally {
-    setIsLoading(false);
-  }
-}, [filters, searchMode, selectedModel, sourceScope, uploadedFiles, urls, isStaticBuild]);
-
-// Replace your existing handleWebSearch function with this:
-const handleWebSearch = useCallback(async () => {
-  if (!searchQuery.trim() || !filters.web) return;
-  
-  setIsSearching(true);
-  setError(null);
-  
-  try {
-    if (isStaticBuild) {
-      setWebSearchResults(PRODUCTION_CONFIG.mockData.webSearch);
-      return;
-    }
-
-    const response = await fetch(API_CONFIG.endpoints.websearch, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: searchQuery,
-        model: selectedModel,  // This now contains just the model ID
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Failed to process web search: ${errorData}`);
-    }
-
-    const data = await response.json();
-    setWebSearchResults(data);
-  } catch (error) {
-    setError(error.message);
-    console.error('Web search error:', error);
-  } finally {
-    setIsSearching(false);
-  }
-}, [searchQuery, selectedModel, filters.web, isStaticBuild]);
-
-  // Replace your existing handleLinkedInSearch function with this:
-const handleLinkedInSearch = useCallback(async () => {
-  if (!searchQuery.trim() || !filters.linkedin) return;
-  
-  setIsSearching(true);
-  setError(null);
-  
-  try {
-    if (isStaticBuild) {
-      setWebSearchResults(PRODUCTION_CONFIG.mockData.linkedInSearch);
-      return;
-    }
-
-    const response = await fetch(API_CONFIG.endpoints.linkedinsearch, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: searchQuery,
-        model: selectedModel,  // This now contains just the model ID
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Failed to process LinkedIn search: ${errorData}`);
-    }
-
-    const data = await response.json();
-    setWebSearchResults(data);
-  } catch (error) {
-    setError(error.message);
-    console.error('LinkedIn search error:', error);
-  } finally {
-    setIsSearching(false);
-  }
-}, [searchQuery, selectedModel, filters.linkedin, isStaticBuild]);
+  }, [newUrl]);
 
   const handleFileUpload = useCallback((event) => {
     const files = Array.from(event.target.files);
@@ -161,89 +57,131 @@ const handleLinkedInSearch = useCallback(async () => {
     setUploadedFiles(prev => [...prev, ...validFiles]);
   }, []);
 
-  const handleUrlAdd = useCallback(() => {
-    if (newUrl && isValidUrl(newUrl)) {
-      setUrls(prev => [...prev, newUrl]);
-      setNewUrl('');
-    }
-  }, [newUrl]);
+  // Search handling functions
+  const processSearch = useCallback(async (query) => {
+    setIsLoading(true);
+    setError(null);
 
-  const isValidUrl = (string) => {
     try {
-      new URL(string);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  };
+      if (isStaticBuild) {
+        setSearchResults(PRODUCTION_CONFIG.mockData.webSearch);
+        return;
+      }
 
+      const response = await fetch(API_CONFIG.endpoints.search, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          filters,
+          searchMode,
+          model: selectedModel,
+          sourceScope,
+          sources: {
+            files: uploadedFiles.map(f => f.name),
+            urls: urls
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to process search: ${errorData}`);
+      }
+
+      const data = await response.json();
+      setSearchResults(data.result);
+    } catch (error) {
+      setError(error.message);
+      console.error('Search processing error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters, searchMode, selectedModel, sourceScope, uploadedFiles, urls, isStaticBuild]);
+
+  const handleWebSearch = useCallback(async () => {
+    if (!searchQuery.trim() || !filters.web) return;
+    
+    setIsSearching(true);
+    setError(null);
+    
+    try {
+      if (isStaticBuild) {
+        setWebSearchResults(PRODUCTION_CONFIG.mockData.webSearch);
+        return;
+      }
+
+      const response = await fetch(API_CONFIG.endpoints.websearch, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: searchQuery,
+          model: selectedModel,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to process web search: ${errorData}`);
+      }
+
+      const data = await response.json();
+      setWebSearchResults(data);
+    } catch (error) {
+      setError(error.message);
+      console.error('Web search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, selectedModel, filters.web, isStaticBuild]);
+
+  const handleLinkedInSearch = useCallback(async () => {
+    if (!searchQuery.trim() || !filters.linkedin) return;
+    
+    setIsSearching(true);
+    setError(null);
+    
+    try {
+      if (isStaticBuild) {
+        setWebSearchResults(PRODUCTION_CONFIG.mockData.linkedInSearch);
+        return;
+      }
+
+      const response = await fetch(API_CONFIG.endpoints.linkedinsearch, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: searchQuery,
+          model: selectedModel,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to process LinkedIn search: ${errorData}`);
+      }
+
+      const data = await response.json();
+      setWebSearchResults(data);
+    } catch (error) {
+      setError(error.message);
+      console.error('LinkedIn search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, selectedModel, filters.linkedin, isStaticBuild]);
+  // Component definitions
   const CustomSourcesPanel = () => (
     <div className="flex-1 bg-white rounded-xl p-6 shadow-lg border border-slate-100">
       <h2 className="text-lg font-semibold text-blue-800 mb-4">Your Custom Sources</h2>
       <div className="mb-6">
-        <h3 className="text-sm font-medium mb-3 text-slate-700">Upload Files & URL</h3>
-        <label className="flex items-center gap-2 px-4 py-3 bg-slate-50 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-50 border-2 border-dashed border-blue-200">
-          <Upload size={20} />
-          <span>Choose Files</span>
-          <input
-            type="file"
-            multiple
-            onChange={handleFileUpload}
-            accept={API_CONFIG.allowedFileTypes.join(',')}
-            className="hidden"
-          />
-        </label>
-        {uploadedFiles.length > 0 && (
-          <div className="mt-4 space-y-2">
-            {uploadedFiles.map((file, index) => (
-              <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <FileText size={16} className="text-blue-600" />
-                  <span className="text-sm text-slate-700 truncate">{file.name}</span>
-                </div>
-                <button
-                  onClick={() => setUploadedFiles(files => files.filter((_, i) => i !== index))}
-                  className="p-1 hover:bg-slate-200 rounded-full"
-                >
-                  <X size={16} className="text-slate-500" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <div>
-        <h3 className="text-sm font-medium mb-3 text-slate-700">Add URLs</h3>
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={newUrl}
-              onChange={(e) => setNewUrl(e.target.value)}
-              placeholder="Enter URL..."
-              className="flex-1 px-3 py-2 bg-slate-50 border border-slate- ▋
-
-  const handleUrlAdd = useCallback(() => {
-    if (newUrl && isValidUrl(newUrl)) {
-      setUrls(prev => [...prev, newUrl]);
-      setNewUrl('');
-    }
-  }, [newUrl]);
-
-  const isValidUrl = (string) => {
-    try {
-      new URL(string);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  };
-
-  const CustomSourcesPanel = () => (
-    <div className="flex-1 bg-white rounded-xl p-6 shadow-lg border border-slate-100">
-      <h2 className="text-lg font-semibold text-blue-800 mb-4">Your Custom Sources</h2>
-      <div className="mb-6">
-        <h3 className="text-sm font-medium mb-3 text-slate-700">Upload Files & URL</h3>
+        <h3 className="text-sm font-medium mb-3 text-slate-700">Upload Files & URLs</h3>
         <label className="flex items-center gap-2 px-4 py-3 bg-slate-50 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-50 border-2 border-dashed border-blue-200">
           <Upload size={20} />
           <span>Choose Files</span>
@@ -316,6 +254,7 @@ const handleLinkedInSearch = useCallback(async () => {
     </div>
   );
 
+  // Main render
   return (
     <div className="min-h-screen bg-white text-slate-800 p-6">
       <div className="max-w-6xl mx-auto">

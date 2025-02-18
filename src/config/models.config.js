@@ -19,7 +19,7 @@ const MODELS = {
     { 
       id: 'perplexity', 
       name: 'Perplexity', 
-      description: 'Advanced Reasoning',
+      description: 'Advanced',
       apiModel: 'mistral-7b-instruct',
       stopTokens: ['</s>'],
       promptFormat: (prompt) => `<|system|>You are a helpful AI assistant.\n<|user|>${prompt}<|assistant|>`,
