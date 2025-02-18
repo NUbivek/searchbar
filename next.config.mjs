@@ -6,7 +6,8 @@ const nextConfig = {
   },
   basePath: '/searchbar',
   assetPrefix: '/searchbar/',
-  trailingSlash: true,
+  // Remove the webpack config if it's not needed for other purposes
+  // The @/ aliases should work by default with the tsconfig.json setup
 }
 
-export default nextConfig;
+export default nextConfig

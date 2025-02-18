@@ -1,4 +1,4 @@
-// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-17 02:41:27
+// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-18 16:31:58
 // Current User's Login: NUbivek
 
 import { 
@@ -6,6 +6,7 @@ import {
   FileSpreadsheet, Twitter, Upload, X, Plus, Link 
 } from 'lucide-react';
 import { MODELS } from './models.config';
+import { API_CONFIG as BaseApiConfig } from './api.config';
 
 export { MODELS };
 
@@ -62,12 +63,19 @@ export const SOURCES_CONFIG = {
   ]
 };
 
+// Merge the base API config with your custom settings
 export const API_CONFIG = {
+  ...BaseApiConfig,
   endpoints: {
-    search: '/api/chat',
-    upload: '/api/upload'
+    ...BaseApiConfig.endpoints,
+    search: '/api/chat',    // Preserve your custom endpoint
+    upload: '/api/upload',  // Preserve your custom endpoint
+    websearch: `${process.env.NEXT_PUBLIC_API_BASE_URL}/websearch`,
+    linkedinsearch: `${process.env.NEXT_PUBLIC_API_BASE_URL}/linkedinsearch`,
+    chat: `${process.env.NEXT_PUBLIC_API_BASE_URL}/chat`,
+    xsearch: `${process.env.NEXT_PUBLIC_API_BASE_URL}/xsearch`
   },
-  maxFileSize: 10 * 1024 * 1024, // 10MB
+  maxFileSize: 10 * 1024 * 1024, // Keeping your 10MB limit
   allowedFileTypes: [
     'application/pdf',
     'text/plain',
@@ -75,3 +83,6 @@ export const API_CONFIG = {
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   ]
 };
+
+// Export the base configuration as well in case it's needed
+export { BaseApiConfig };
