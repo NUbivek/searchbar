@@ -6,6 +6,7 @@ const nextConfig = {
   },
   basePath: '/searchbar',
   assetPrefix: '/searchbar/',
+  trailingSlash: true,
 }
 
 module.exports = nextConfig
