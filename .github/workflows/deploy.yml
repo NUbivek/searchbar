@@ -35,6 +35,15 @@ jobs:
         env:
           NEXT_PUBLIC_BASE_PATH: '/searchbar'
 
+      - name: Verify Deployment Directory
+        run: |
+          if [ -d "out" ] && [ "$(ls -A out)" ]; then
+            echo "Output directory exists and is not empty"
+          else
+            echo "Output directory does not exist or is empty"
+            exit 1
+          fi
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
