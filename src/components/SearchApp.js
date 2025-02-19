@@ -332,7 +332,7 @@ const SearchApp = () => {
                   Select Sources
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                  {Object.entries(filters).map(([source, isActive]) => {
+                {Object.entries(filters).map(([source, isActive]) => {
                     const LogoIcon = SOURCES_CONFIG.logoMap[source];
                     const getSourceLabel = (source) => {
                       switch(source) {
@@ -352,33 +352,19 @@ const SearchApp = () => {
                             [source]: !prev[source]
                           }));
                         }}
-                        style={{
-                          backgroundColor: isActive ? '#0076B6' : 'white',
-                          color: isActive ? 'white' : '#4b5563',
-                          border: '2px solid',
-                          borderColor: isActive ? '#0076B6' : '#e5e7eb',
-                          padding: '0.75rem',
-                          borderRadius: '0.5rem',
-                          fontSize: '0.75rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '0.5rem',
-                          transition: 'all 0.2s',
-                          width: '100%',
-                          cursor: 'pointer'
-                        }}
+                        className={`
+                          flex items-center justify-center gap-2 py-3 px-3 rounded-lg text-xs
+                          border-2 w-full cursor-pointer transition-all duration-200
+                          ${isActive ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-gray-600 border-gray-200'}
+                        `}
                       >
                         {LogoIcon && (
                           <LogoIcon
                             size={16}
-                            style={{
-                              color: isActive ? 'white' : '#6b7280',
-                              transition: 'color 0.2s'
-                            }}
+                            className={`transition-colors duration-200 ${isActive ? 'text-white' : 'text-gray-500'}`}
                           />
                         )}
-                        <span style={{ whiteSpace: 'nowrap' }}>
+                        <span className="whitespace-nowrap">
                           {getSourceLabel(source)}
                         </span>
                       </button>
@@ -413,19 +399,25 @@ const SearchApp = () => {
               <div className="mt-6 overflow-y-auto max-h-[60vh] rounded-xl bg-white border border-slate-200 shadow-lg animate-fadeIn">
                 <div className="p-6">
                   <div className="prose max-w-none">
-                    {searchResults.content.split('\n').map((paragraph, idx) => (
-                      paragraph.trim() && (
+                    {searchResults.content.split('\n').map((paragraph, idx) => {
+                      // Calculate delay class based on index
+                      const delayClass = 
+                        idx === 0 ? 'delay-0' :
+                        idx === 1 ? 'delay-100' :
+                        idx === 2 ? 'delay-200' :
+                        idx === 3 ? 'delay-300' :
+                        idx === 4 ? 'delay-400' :
+                        'delay-500';
+                        
+                      return paragraph.trim() && (
                         <p
                           key={idx}
-                          className="text-slate-800 mb-4 last:mb-0 animate-slideUp"
-                          style={{
-                            animationDelay: `${idx * 100}ms`
-                          }}
+                          className={`text-slate-800 mb-4 last:mb-0 animate-slideUp ${delayClass}`}
                         >
                           {paragraph}
                         </p>
-                      )
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -433,6 +425,6 @@ const SearchApp = () => {
           </div>
         </div>
       );
-    };
+};
     
-    export default SearchApp;
+export default SearchApp;
