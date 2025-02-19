@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Search, Upload, X, Plus, Link, FileText } from 'lucide-react';
 import SearchBar from './SearchBar/index.jsx';
 import SearchResults from './SearchResults.js';
@@ -25,162 +25,195 @@ const SearchApp = () => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [urls, setUrls] = useState([]);
   const [newUrl, setNewUrl] = useState('');
-    // Utility functions
-    const isValidUrl = (string) => {
-        try {
-          new URL(string);
-          return true;
-        } catch (_) {
-          return false;
-        }
-      };
-    
-      // Handler functions
-      const handleUrlAdd = useCallback(() => {
-        if (newUrl && isValidUrl(newUrl)) {
-          setUrls(prev => [...prev, newUrl]);
-          setNewUrl('');
-        }
-      }, [newUrl]);
-    
-      const handleFileUpload = useCallback((event) => {
-        const files = Array.from(event.target.files);
-        const validFiles = files.filter(file => {
-          const isValidSize = file.size <= API_CONFIG.maxFileSize;
-          const isValidType = API_CONFIG.allowedFileTypes.includes(file.type);
-          return isValidSize && isValidType;
-        });
-    
-        setUploadedFiles(prev => [...prev, ...validFiles]);
-      }, []);
-    
-      // Search handling functions
-      const processSearch = useCallback(async (query) => {
-        setIsLoading(true);
-        setError(null);
-    
-        try {
-          if (isStaticBuild) {
-            setSearchResults(PRODUCTION_CONFIG.mockData.webSearch);
-            return;
-          }
-    
-          const response = await fetch(API_CONFIG.endpoints.search, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              query,
-              filters,
-              searchMode,
-              model: selectedModel,
-              sourceScope,
-              sources: {
-                files: uploadedFiles.map(f => f.name),
-                urls: urls
-              }
-            }),
-          });
-    
-          if (!response.ok) {
-            const errorData = await response.text();
-            throw new Error(`Failed to process search: ${errorData}`);
-          }
-    
-          const data = await response.json();
-          setSearchResults(data.result);
-        } catch (error) {
-          setError(error.message);
-          console.error('Search processing error:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      }, [filters, searchMode, selectedModel, sourceScope, uploadedFiles, urls, isStaticBuild]);
-    
-      const handleWebSearch = useCallback(async () => {
-        if (!searchQuery.trim() || !filters.web) return;
-        
-        setIsSearching(true);
-        setError(null);
-        
-        try {
-          if (isStaticBuild) {
-            setWebSearchResults(PRODUCTION_CONFIG.mockData.webSearch);
-            return;
-          }
-    
-          const response = await fetch(API_CONFIG.endpoints.websearch, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              query: searchQuery,
-              model: selectedModel,
-            }),
-          });
-    
-          if (!response.ok) {
-            const errorData = await response.text();
-            throw new Error(`Failed to process web search: ${errorData}`);
-          }
-    
-          const data = await response.json();
-          setWebSearchResults(data);
-        } catch (error) {
-          setError(error.message);
-          console.error('Web search error:', error);
-        } finally {
-          setIsSearching(false);
-        }
-      }, [searchQuery, selectedModel, filters.web, isStaticBuild]);
-    
-      const handleLinkedInSearch = useCallback(async () => {
-        if (!searchQuery.trim() || !filters.linkedin) return;
-        
-        setIsSearching(true);
-        setError(null);
-        
-        try {
-          if (isStaticBuild) {
-            setWebSearchResults(PRODUCTION_CONFIG.mockData.linkedInSearch);
-            return;
-          }
-    
-          const response = await fetch(API_CONFIG.endpoints.linkedinsearch, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              query: searchQuery,
-              model: selectedModel,
-            }),
-          });
-    
-          if (!response.ok) {
-            const errorData = await response.text();
-            throw new Error(`Failed to process LinkedIn search: ${errorData}`);
-          }
-    
-          const data = await response.json();
-          setWebSearchResults(data);
-        } catch (error) {
-          setError(error.message);
-          console.error('LinkedIn search error:', error);
-        } finally {
-          setIsSearching(false);
-        }
-      }, [searchQuery, selectedModel, filters.linkedin, isStaticBuild]);
 
-  // Add a specific handler for mode switching
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log('Search Mode Changed:', searchMode);
+    console.log('Current Filters:', filters);
+    console.log('Source Scope:', sourceScope);
+  }, [searchMode, filters, sourceScope]);
+
+  // Utility functions
+  const isValidUrl = (string) => {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  // Handler functions
+  const handleUrlAdd = useCallback(() => {
+    if (newUrl && isValidUrl(newUrl)) {
+      setUrls(prev => [...prev, newUrl]);
+      setNewUrl('');
+    }
+  }, [newUrl]);
+
+  const handleFileUpload = useCallback((event) => {
+    const files = Array.from(event.target.files);
+    const validFiles = files.filter(file => {
+      const isValidSize = file.size <= API_CONFIG.maxFileSize;
+      const isValidType = API_CONFIG.allowedFileTypes.includes(file.type);
+      return isValidSize && isValidType;
+    });
+
+    setUploadedFiles(prev => [...prev, ...validFiles]);
+  }, []);
+
+  // Search handling functions
+  const processSearch = useCallback(async (query) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (isStaticBuild) {
+        setSearchResults(PRODUCTION_CONFIG.mockData.webSearch);
+        return;
+      }
+
+      const response = await fetch(API_CONFIG.endpoints.search, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          filters,
+          searchMode,
+          model: selectedModel,
+          sourceScope,
+          sources: {
+            files: uploadedFiles.map(f => f.name),
+            urls: urls
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to process search: ${errorData}`);
+      }
+
+      const data = await response.json();
+      setSearchResults(data.result);
+    } catch (error) {
+      setError(error.message);
+      console.error('Search processing error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters, searchMode, selectedModel, sourceScope, uploadedFiles, urls, isStaticBuild]);
+
+  const handleWebSearch = useCallback(async () => {
+    if (!searchQuery.trim() || !filters.web) return;
+    
+    setIsSearching(true);
+    setError(null);
+    
+    try {
+      if (isStaticBuild) {
+        setWebSearchResults(PRODUCTION_CONFIG.mockData.webSearch);
+        return;
+      }
+
+      const response = await fetch(API_CONFIG.endpoints.websearch, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: searchQuery,
+          model: selectedModel,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to process web search: ${errorData}`);
+      }
+
+      const data = await response.json();
+      setWebSearchResults(data);
+    } catch (error) {
+      setError(error.message);
+      console.error('Web search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, selectedModel, filters.web, isStaticBuild]);
+
+  const handleLinkedInSearch = useCallback(async () => {
+    if (!searchQuery.trim() || !filters.linkedin) return;
+    
+    setIsSearching(true);
+    setError(null);
+    
+    try {
+      if (isStaticBuild) {
+        setWebSearchResults(PRODUCTION_CONFIG.mockData.linkedInSearch);
+        return;
+      }
+
+      const response = await fetch(API_CONFIG.endpoints.linkedinsearch, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: searchQuery,
+          model: selectedModel,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to process LinkedIn search: ${errorData}`);
+      }
+
+      const data = await response.json();
+      setWebSearchResults(data);
+    } catch (error) {
+      setError(error.message);
+      console.error('LinkedIn search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, selectedModel, filters.linkedin, isStaticBuild]);
+
+  // Mode switching handler with debugging
   const handleModeSwitch = (e, mode) => {
-    e.preventDefault(); // Prevent any default behavior
-    e.stopPropagation(); // Stop event propagation
-    console.log('Current mode:', searchMode);
-    console.log('Switching to:', mode);
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Attempting mode switch:', mode);
+    
+    // Reset relevant states when switching modes
+    setSearchResults(null);
+    setWebSearchResults(null);
+    setError(null);
+    
+    // Update mode with verification
     setSearchMode(mode);
+    
+    // Reset filters based on mode
+    if (mode === SEARCH_MODES.VERIFIED) {
+      setFilters(SOURCES_CONFIG.initialFilters);
+      setSourceScope('only-user');
+    } else {
+      setFilters({
+        web: true,
+        linkedin: false,
+        x: false,
+        crunchbase: false,
+        pitchbook: false,
+        reddit: false,
+        ycombinator: false,
+        substack: false,
+        medium: false,
+        upload: false
+      });
+    }
   };
 
   // Component definitions
