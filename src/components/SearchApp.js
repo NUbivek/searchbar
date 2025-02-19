@@ -175,10 +175,12 @@ const SearchApp = () => {
       }, [searchQuery, selectedModel, filters.linkedin, isStaticBuild]);
 
   // Add a specific handler for mode switching
-  const handleModeSwitch = (mode) => {
-    console.log('Previous mode:', searchMode);
+  const handleModeSwitch = (e, mode) => {
+    e.preventDefault(); // Prevent any default behavior
+    e.stopPropagation(); // Stop event propagation
+    console.log('Current mode:', searchMode);
+    console.log('Switching to:', mode);
     setSearchMode(mode);
-    console.log('Switching to mode:', mode);
   };
 
   // Component definitions
@@ -272,9 +274,10 @@ const SearchApp = () => {
           </p>
         </header>
         <div className="flex justify-center mb-8">
-          <div className="inline-flex bg-slate-100 rounded-full p-1">
+          <div className="inline-flex bg-slate-100 rounded-full p-1" style={{ zIndex: 50 }}>
             <button
-              onClick={() => handleModeSwitch(SEARCH_MODES.VERIFIED)}
+              type="button"
+              onClick={(e) => handleModeSwitch(e, SEARCH_MODES.VERIFIED)}
               className={`
                 px-6 py-2 rounded-full transition-all duration-200 cursor-pointer
                 ${searchMode === SEARCH_MODES.VERIFIED 
@@ -286,7 +289,8 @@ const SearchApp = () => {
               Verified Sources
             </button>
             <button
-              onClick={() => handleModeSwitch(SEARCH_MODES.OPEN)}
+              type="button"
+              onClick={(e) => handleModeSwitch(e, SEARCH_MODES.OPEN)}
               className={`
                 px-6 py-2 rounded-full transition-all duration-200 cursor-pointer
                 ${searchMode === SEARCH_MODES.OPEN 
