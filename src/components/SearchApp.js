@@ -59,6 +59,84 @@ const SearchApp = () => {
     }
   };
 
+  // Define CustomSourcesPanel component inside SearchApp
+  const CustomSourcesPanel = () => (
+    <div className="flex-1 bg-white rounded-xl p-6 shadow-lg border border-slate-100">
+      <h2 className="text-lg font-semibold text-blue-800 mb-4">Your Custom Sources</h2>
+      <div className="mb-6">
+        <h3 className="text-sm font-medium mb-3 text-slate-700">Upload Files & URLs</h3>
+        <label className="flex items-center gap-2 px-4 py-3 bg-slate-50 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-50 border-2 border-dashed border-blue-200">
+          <Upload size={20} />
+          <span>Choose Files</span>
+          <input
+            type="file"
+            multiple
+            onChange={handleFileUpload}
+            accept={API_CONFIG.allowedFileTypes.join(',')}
+            className="hidden"
+          />
+        </label>
+        {uploadedFiles.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {uploadedFiles.map((file, index) => (
+              <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <FileText size={16} className="text-blue-600" />
+                  <span className="text-sm text-slate-700 truncate">{file.name}</span>
+                </div>
+                <button
+                  onClick={() => setUploadedFiles(files => files.filter((_, i) => i !== index))}
+                  className="p-1 hover:bg-slate-200 rounded-full"
+                >
+                  <X size={16} className="text-slate-500" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div>
+        <h3 className="text-sm font-medium mb-3 text-slate-700">Add URLs</h3>
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              placeholder="Enter URL..."
+              className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={handleUrlAdd}
+              disabled={!newUrl || !isValidUrl(newUrl)}
+              className="button-primary"
+            >
+              <Plus size={20} />
+            </button>
+          </div>
+          {urls.length > 0 && (
+            <div className="space-y-2">
+              {urls.map((url, index) => (
+                <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Link size={16} className="text-blue-600" />
+                    <span className="text-sm text-slate-700 truncate">{url}</span>
+                  </div>
+                  <button
+                    onClick={() => setUrls(urls => urls.filter((_, i) => i !== index))}
+                    className="p-1 hover:bg-slate-200 rounded-full"
+                  >
+                    <X size={16} className="text-slate-500" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-white text-slate-800 p-6">
       <div className="max-w-6xl mx-auto">
