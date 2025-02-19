@@ -4,11 +4,17 @@ module.exports = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/contexts/**/*.{js,ts,jsx,tsx,mdx}", // Added contexts directory
+    "./src/lib/**/*.{js,ts,jsx,tsx,mdx}", // Added lib directory
   ],
+  darkMode: 'class', // Enable dark mode support
   theme: {
     extend: {
       colors: {
         'primary-blue': 'var(--primary-blue)',
+        'secondary-blue': 'var(--secondary-blue)', // Added from root variables
+        'light-slate': 'var(--light-slate)', // Added from root variables
+        'dark-slate': 'var(--dark-slate)', // Added from root variables
         linkedin: {
           blue: '#0077B5',
           lighter: '#00A0DC'
@@ -42,12 +48,12 @@ module.exports = {
         DEFAULT: {
           css: {
             maxWidth: 'none',
-            color: '#475569', // slate-600
+            color: 'var(--foreground)', // Use CSS variable instead of hardcoded color
             fontSize: '0.9375rem',
             lineHeight: '1.75',
             
             a: {
-              color: '#2563eb', // blue-600
+              color: 'var(--primary-blue)', // Use CSS variable
               textDecoration: 'none',
               fontWeight: '500',
               transition: 'all 0.2s ease-in-out',
@@ -57,26 +63,22 @@ module.exports = {
               padding: '0.125rem 0.375rem',
               borderRadius: '0.25rem',
               '&:hover': {
-                color: '#1d4ed8', // blue-700
-                backgroundColor: '#eff6ff', // blue-50
+                color: 'var(--secondary-blue)', // Use CSS variable
+                backgroundColor: '#eff6ff',
               }
             },
 
             p: {
-              color: '#475569', // slate-600
+              color: 'var(--foreground)', // Use CSS variable
               marginTop: '0.75rem',
               marginBottom: '0.75rem',
               lineHeight: '1.75',
-              '&:first-child': {
-                marginTop: '0'
-              },
-              '&:last-child': {
-                marginBottom: '0'
-              }
+              '&:first-child': { marginTop: '0' },
+              '&:last-child': { marginBottom: '0' }
             },
 
             'ul > li': {
-              color: '#475569', // slate-600
+              color: 'var(--foreground)', // Use CSS variable
               marginTop: '0.5rem',
               marginBottom: '0.5rem',
               paddingLeft: '1.5rem',
@@ -84,7 +86,7 @@ module.exports = {
               '&::before': {
                 content: '""',
                 position: 'absolute',
-                backgroundColor: '#3b82f6', // blue-500
+                backgroundColor: 'var(--primary-blue)', // Use CSS variable
                 borderRadius: '50%',
                 width: '0.375rem',
                 height: '0.375rem',
@@ -95,36 +97,34 @@ module.exports = {
             },
 
             strong: {
-              color: '#1e293b', // slate-800
+              color: 'var(--foreground)', // Use CSS variable
               fontWeight: '600'
             },
 
             blockquote: {
               fontStyle: 'italic',
-              color: '#475569', // slate-600
+              color: 'var(--foreground)', // Use CSS variable
               borderLeftWidth: '4px',
-              borderLeftColor: '#3b82f6', // blue-500
-              backgroundColor: '#f8fafc', // slate-50
+              borderLeftColor: 'var(--primary-blue)', // Use CSS variable
+              backgroundColor: 'var(--light-slate)', // Use CSS variable
               borderRadius: '0.5rem',
               padding: '1rem 1.5rem',
               margin: '1.5rem 0',
-              '& p': {
-                margin: '0'
-              }
+              '& p': { margin: '0' }
             },
 
             code: {
-              color: '#1e293b', // slate-800
+              color: 'var(--foreground)', // Use CSS variable
               fontWeight: '500',
-              backgroundColor: '#f1f5f9', // slate-100
+              backgroundColor: 'var(--light-slate)', // Use CSS variable
               padding: '0.2em 0.4em',
               borderRadius: '0.25rem',
               fontSize: '0.875em'
             },
 
             pre: {
-              backgroundColor: '#f8fafc', // slate-50
-              color: '#1e293b', // slate-800
+              backgroundColor: 'var(--light-slate)', // Use CSS variable
+              color: 'var(--foreground)', // Use CSS variable
               fontSize: '0.875em',
               lineHeight: '1.7142857',
               margin: '1.5rem 0',

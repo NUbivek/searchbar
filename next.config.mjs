@@ -1,98 +1,63 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Required for static export
   output: 'export',
+
+  // Image optimization disabled for static export
   images: {
     unoptimized: true,
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
-    ],
   },
-  // Use absolute URLs for assets when in production
-  basePath: '/searchbar',
-  assetPrefix: 'https://research.bivek.ai/searchbar', // Full domain with no trailing slash
-  
-  // This ensures all URLs end with a trailing slash (helps with static hosting)
+
+  // Base path and asset prefix for GitHub Pages
+  basePath: '/searchbar', // Ensure this matches your GitHub Pages repo name or custom domain path
+  assetPrefix: '/searchbar/', // Prefix for assets
+
+  // Ensure all paths end with a trailing slash
   trailingSlash: true,
 
-  // Webpack configuration 
-  webpack: (config, { isServer, dev }) => {
-    // Fix alias configuration for proper module resolution
+  // Webpack configuration
+  webpack: (config) => {
     config.resolve = {
       ...config.resolve,
       alias: {
         ...config.resolve.alias,
-        '@': `${process.cwd()}/src`,
+        '@': `${process.cwd()}/src`, // Alias for cleaner imports
       },
       fallback: {
         ...config.resolve.fallback,
-        fs: false,
+        fs: false, // Prevent Node.js-specific modules from breaking in the browser
         path: false,
       },
-      extensions: ['.js', '.jsx', '.ts', '.tsx', '.json', ...(config.resolve.extensions || [])]
     };
-
-    // JavaScript-specific optimizations
-    config.optimization = {
-      ...config.optimization,
-      splitChunks: {
-        chunks: 'all',
-        minSize: 20000,
-        maxSize: 70000,
-        cacheGroups: {
-          commons: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-          },
-          default: {
-            minChunks: 2,
-            priority: -20,
-            reuseExistingChunk: true,
-          },
-        },
-      },
-    };
-
-    if (dev) {
-      config.devtool = 'source-map';
-    }
-
     return config;
   },
 
-  // Other configuration
-  experimental: {
-    typedRoutes: true,
-  },
-  reactStrictMode: true,
-  swcMinify: true,
-  poweredByHeader: false,
-  compress: true,
-  staticPageGenerationTimeout: 180,
-  optimizeFonts: true,
-  onDemandEntries: {
-    maxInactiveAge: 60 * 60 * 1000,
-    pagesBufferLength: 5,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-    tsconfigPath: 'tsconfig.json',
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-    dirs: ['pages', 'components', 'lib', 'src'],
-  },
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' ? {
-      exclude: ['error', 'warn'],
-    } : false,
-  },
-  generateBuildId: async () => {
-    return 'build-' + Date.now();
-  },
-}
+  // Core configuration
+  reactStrictMode: true, // Enable strict mode for React
+  swcMinify: true, // Use SWC for faster builds and smaller bundles
+  poweredByHeader: false, // Remove "X-Powered-By" header
+  compress: true, // Enable Gzip compression
+  staticPageGenerationTimeout: 180, // Increase timeout for large builds
+  optimizeFonts: true, // Optimize font loading
 
-export default nextConfig
+  // TypeScript configuration
+  typescript: {
+    ignoreBuildErrors: true, // Ignore TypeScript errors during build (if any)
+  },
+
+  // ESLint configuration
+  eslint: {
+    ignoreDuringBuilds: true, // Ignore ESLint errors during build
+    dirs: ['pages', 'components', 'lib', 'src'], // Directories to lint
+  },
+
+  // Production optimizations
+  compiler: {
+    removeConsole:
+      process.env.NODE_ENV === 'production'
+        ? { exclude: ['error', 'warn'] }
+        : false, // Remove console logs in production except errors/warnings
+  },
+};
+
+export default nextConfig;

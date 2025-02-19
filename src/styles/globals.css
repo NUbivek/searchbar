@@ -11,93 +11,126 @@
   --secondary-blue: #003087;
   --light-slate: #F8FAFC;
   --dark-slate: #1E293B;
+  
+  /* Add fallback values for better browser compatibility */
+  --scrollbar-thumb: #E2E8F0;
+  --scrollbar-thumb-hover: #CBD5E1;
+  --button-hover-opacity: 0.9;
+  --transition-duration: 200ms;
 }
 
-/* Dark Mode Theme Settings */
+/* Dark Mode Theme Settings with smoother transition */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --scrollbar-thumb: #374151;
+    --scrollbar-thumb-hover: #4B5563;
   }
 }
 
-/* Base Styles */
+/* Base Styles with improved performance */
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: system-ui, -apple-system, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
-/* Custom Scrollbar Styles */
+/* Optimized Scrollbar Styles */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
+  background-color: transparent;
 }
 
 ::-webkit-scrollbar-track {
   background: transparent;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #E2E8F0;
+  background-color: var(--scrollbar-thumb);
   border-radius: 4px;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--transition-duration) ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #CBD5E1;
+  background-color: var(--scrollbar-thumb-hover);
 }
 
+/* Firefox scrollbar compatibility */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #E2E8F0 transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
-/* Custom Utility Classes */
+/* Enhanced Custom Utility Classes */
 @layer components {
   .input-focus {
-    @apply focus:ring-2 focus:ring-[#0076B6] focus:border-transparent focus:outline-none;
+    @apply focus:ring-2 focus:ring-[#0076B6] focus:border-transparent focus:outline-none 
+           focus:ring-opacity-50 transition-all duration-200;
   }
   
   .button-primary {
     @apply bg-[#0076B6] text-white px-4 py-2 rounded-lg 
-           hover:opacity-90 transition-opacity disabled:opacity-50 
-           disabled:cursor-not-allowed;
+           hover:opacity-[var(--button-hover-opacity)] transition-all duration-200 
+           disabled:opacity-50 disabled:cursor-not-allowed
+           active:transform active:scale-[0.98];
   }
   
   .card-shadow {
-    @apply shadow-lg hover:shadow-xl transition-shadow duration-200;
+    @apply shadow-lg hover:shadow-xl transition-all duration-200
+           backdrop-blur-sm bg-opacity-95;
   }
 
-  /* Source Button Styles */
+  /* Responsive Source Button Styles */
   .source-button-container {
-    @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3;
+    @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3
+           w-full max-w-7xl mx-auto px-4;
   }
 
   .source-button {
     @apply px-4 py-3 
            rounded-lg
-           text-xs
+           text-xs md:text-sm
            transition-all duration-200
            flex items-center justify-center
            gap-2
            border border-gray-200
            bg-white text-gray-600
            hover:border-[#0076B6]
-           hover:bg-gray-50;
+           hover:bg-gray-50
+           focus:outline-none focus:ring-2 focus:ring-[#0076B6] focus:ring-opacity-50;
   }
   
   .source-button-active {
     @apply border-[#0076B6]
            bg-[#0076B6]
            text-white
-           hover:bg-[#0076B6]
-           hover:border-[#0076B6];
+           hover:bg-[#0076B6]/90
+           hover:border-[#0076B6]
+           transform-gpu;
   }
 
   .source-button-icon {
-    @apply transition-colors duration-200;
+    @apply transition-all duration-200
+           w-4 h-4 md:w-5 md:h-5;
+  }
+}
+
+/* Print styles for better documentation */
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  
+  .source-button-container {
+    display: none;
   }
 }
