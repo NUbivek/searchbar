@@ -4,9 +4,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Remove basePath and assetPrefix if you're using a custom domain
-  // basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
-  // assetPrefix: process.env.NEXT_PUBLIC_BASE_PATH || '',
+  // Remove basePath since you're using a custom domain
+  trailingSlash: true,
 };
 
 export default nextConfig;
