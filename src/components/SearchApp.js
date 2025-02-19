@@ -268,10 +268,16 @@ const SearchApp = () => {
                 {Object.values(SEARCH_MODES).map((mode) => (
                   <button
                     key={mode}
-                    onClick={() => setSearchMode(mode)}
+                    onClick={() => {
+                      setSearchMode(mode);
+                      console.log('Switching to mode:', mode);
+                    }}
                     className={`
-                      px-6 py-2 rounded-full
-                      ${searchMode === mode ? 'bg-blue-800 text-white' : 'text-slate-600 hover:bg-slate-200'}
+                      px-6 py-2 rounded-full transition-all duration-200 cursor-pointer
+                      ${searchMode === mode 
+                        ? 'bg-blue-800 text-white' 
+                        : 'text-slate-600 hover:bg-slate-200'
+                      }
                     `}
                   >
                     {mode === SEARCH_MODES.VERIFIED ? 'Verified Sources' : 'Open Research'}
