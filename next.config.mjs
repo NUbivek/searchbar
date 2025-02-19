@@ -1,8 +1,3 @@
-// Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2025-02-18 21:06:11
-// Current User's Login: NUbivek
-// Repository: NUbivek/searchbar (ID: 933464635)
-// Language Distribution: JavaScript (97.7%), CSS (1.8%), TypeScript (0.5%)
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
@@ -15,9 +10,10 @@ const nextConfig = {
       },
     ],
   },
+  // Configure base path and asset prefix for the custom domain
   basePath: '/searchbar',
-  assetPrefix: '/searchbar/',
-  
+  assetPrefix: '/searchbar',
+
   // Webpack configuration optimized for JavaScript-heavy codebase
   webpack: (config, { isServer, dev }) => {
     // Fix alias configuration for proper module resolution
@@ -35,7 +31,7 @@ const nextConfig = {
       // Add explicit extensions to resolve
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json', ...(config.resolve.extensions || [])]
     };
-    
+
     // JavaScript-specific optimizations
     config.optimization = {
       ...config.optimization,
@@ -62,7 +58,7 @@ const nextConfig = {
     if (dev) {
       config.devtool = 'source-map';
     }
-    
+
     return config;
   },
 

@@ -35,9 +35,13 @@ jobs:
         env:
           NEXT_PUBLIC_BASE_PATH: '/searchbar'
 
-      - name: Create .nojekyll file
-        run: touch out/.nojekyll
-
+      - name: Prepare deployment files
+        run: |
+          touch out/.nojekyll
+          # Copy CNAME file if it exists in the repository root
+          [ -f CNAME ] && cp CNAME out/ || echo "No CNAME file found"
+          echo "Deployment files prepared successfully"
+          
       - name: Verify Deployment Directory
         run: |
           if [ -d "out" ] && [ "$(ls -A out)" ]; then
