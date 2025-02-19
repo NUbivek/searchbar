@@ -35,10 +35,17 @@ jobs:
         env:
           NEXT_PUBLIC_BASE_PATH: '/searchbar'
 
+      - name: Create .nojekyll file
+        run: touch out/.nojekyll
+
       - name: Verify Deployment Directory
         run: |
           if [ -d "out" ] && [ "$(ls -A out)" ]; then
             echo "Output directory exists and is not empty"
+            echo "Contents of out directory:"
+            ls -la out/
+            echo "Checking for _next directory:"
+            ls -la out/_next/ || echo "_next directory not found"
           else
             echo "Output directory does not exist or is empty"
             exit 1
