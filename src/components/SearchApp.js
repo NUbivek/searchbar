@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Search, Upload, X, Plus, Link, FileText } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import SearchResults from '@/components/SearchResults';
@@ -26,12 +26,154 @@ const SearchApp = () => {
   const [urls, setUrls] = useState([]);
   const [newUrl, setNewUrl] = useState('');
 
-  // Debug logging
-  useEffect(() => {
-    console.log('Current Mode:', searchMode);
-  }, [searchMode]);
+  // Utility functions
+  const isValidUrl = (string) => {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
 
-  // Updated handleModeSwitch with proper state management
+  // Handler functions
+  const handleFileUpload = useCallback((event) => {
+    const files = Array.from(event.target.files);
+    const validFiles = files.filter(file => {
+      const isValidSize = file.size <= API_CONFIG.maxFileSize;
+      const isValidType = API_CONFIG.allowedFileTypes.includes(file.type);
+      return isValidSize && isValidType;
+    });
+
+    setUploadedFiles(prev => [...prev, ...validFiles]);
+  }, []);
+
+  const handleUrlAdd = useCallback(() => {
+    if (newUrl && isValidUrl(newUrl)) {
+      setUrls(prev => [...prev, newUrl]);
+      setNewUrl('');
+    }
+  }, [newUrl]);
+
+  // Search handling functions
+  const processSearch = useCallback(async (query) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (isStaticBuild) {
+        setSearchResults(PRODUCTION_CONFIG.mockData.webSearch);
+        return;
+      }
+
+      const response = await fetch(API_CONFIG.endpoints.search, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          filters,
+          searchMode,
+          model: selectedModel,
+          sourceScope,
+          sources: {
+            files: uploadedFiles.map(f => f.name),
+            urls: urls
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Failed to process search: ${errorData}`);
+      }
+
+      const data = await response.json();
+      setSearchResults(data.result);
+    } catch (error) {
+      setError(error.message);
+      console.error('Search processing error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters, searchMode, selectedModel, sourceScope, uploadedFiles, urls, isStaticBuild]);
+
+  const handleWebSearch = useCallback(async () => {
+    if (!searchQuery.trim() || !filters.web) return;
+    
+    setIsSearching(true);
+    setError(null);
+    
+    try {
+      if (isStaticBuild) {
+        setWebSearchResults(PRODUCTION_CONFIG.mockData.webSearch);
+        return;
+      }
+
+      const response = await fetch(API_CONFIG.endpoints.websearch, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: searchQuery,
+          model: selectedModel,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch web search results');
+      }
+
+      const data = await response.json();
+      setWebSearchResults(data);
+    } catch (error) {
+      setError('Failed to perform web search');
+      console.error('Web search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, filters.web, selectedModel, isStaticBuild]);
+
+  const handleLinkedInSearch = useCallback(async () => {
+    if (!searchQuery.trim() || !filters.linkedin) return;
+    
+    setIsSearching(true);
+    setError(null);
+    
+    try {
+      if (isStaticBuild) {
+        setWebSearchResults(PRODUCTION_CONFIG.mockData.linkedinSearch);
+        return;
+      }
+
+      const response = await fetch(API_CONFIG.endpoints.linkedinsearch, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: searchQuery,
+          model: selectedModel,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch LinkedIn results');
+      }
+
+      const data = await response.json();
+      setWebSearchResults(data);
+    } catch (error) {
+      setError('Failed to perform LinkedIn search');
+      console.error('LinkedIn search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, filters.linkedin, selectedModel, isStaticBuild]);
+
+  // Mode switching handler
   const handleModeSwitch = (mode) => {
     console.log('Current mode:', searchMode, 'Switching to:', mode);
     setSearchMode(mode);
@@ -59,7 +201,7 @@ const SearchApp = () => {
     }
   };
 
-  // Define CustomSourcesPanel component inside SearchApp
+  // Define CustomSourcesPanel component
   const CustomSourcesPanel = () => (
     <div className="flex-1 bg-white rounded-xl p-6 shadow-lg border border-slate-100">
       <h2 className="text-lg font-semibold text-blue-800 mb-4">Your Custom Sources</h2>
@@ -109,7 +251,7 @@ const SearchApp = () => {
             <button
               onClick={handleUrlAdd}
               disabled={!newUrl || !isValidUrl(newUrl)}
-              className="button-primary"
+              className={styles.button}
             >
               <Plus size={20} />
             </button>
@@ -149,7 +291,7 @@ const SearchApp = () => {
           </p>
         </header>
 
-        {/* Updated tab switching section */}
+        {/* Tab switching section */}
         <div className="flex justify-center mb-8">
           <div className="inline-flex bg-slate-100 rounded-full p-1">
             <button
@@ -238,6 +380,15 @@ const SearchApp = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
               {Object.entries(filters).map(([source, isActive]) => {
                 const LogoIcon = SOURCES_CONFIG.logoMap[source];
+                const getSourceLabel = (source) => {
+                  switch(source) {
+                    case 'ycombinator': return 'YC+VC websites';
+                    case 'upload': return 'Upload Files & URL';
+                    case 'x': return 'Twitter/X';
+                    default: return source.charAt(0).toUpperCase() + source.slice(1);
+                  }
+                };
+                
                 return (
                   <button
                     key={source}
@@ -258,7 +409,7 @@ const SearchApp = () => {
                   >
                     {LogoIcon && <LogoIcon size={16} />}
                     <span className="whitespace-nowrap">
-                      {source.charAt(0).toUpperCase() + source.slice(1)}
+                      {getSourceLabel(source)}
                     </span>
                   </button>
                 );
