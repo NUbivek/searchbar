@@ -1,5 +1,4 @@
 // FILE: ./src/pages/_app.js
-// Last Updated: 2025-02-18 20:34:06 UTC by NUbivek
 
 import PropTypes from 'prop-types';
 import { ModelProvider } from '@/contexts/ModelContext';
@@ -34,10 +33,6 @@ export default function MyApp({ Component, pageProps }) {
     <>
       <Head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link 
-          rel="stylesheet" 
-          href={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/styles/globals.css`}
-        />
         <title>Founder's Research Hub</title>
       </Head>
       <ModelProvider>

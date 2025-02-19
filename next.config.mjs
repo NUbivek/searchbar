@@ -1,9 +1,11 @@
+// FILE: ./next.config.mjs
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
   images: { unoptimized: true },
-  basePath: '/searchbar',
-  assetPrefix: '/searchbar',  // Remove trailing slash
+  basePath: process.env.NODE_ENV === 'production' ? '/searchbar' : '',
+  assetPrefix: process.env.NODE_ENV === 'production' ? '/searchbar' : '',
   trailingSlash: true,
 
   // Simplified webpack config

@@ -1,17 +1,15 @@
-/* Tailwind Directives */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Root Variables for Theme Colors */
+/* Base path for assets */
 :root {
+  --asset-path: var(--base-path, '');
+  
+  /* Root Variables for Theme Colors */ 
   --background: #ffffff;
   --foreground: #171717;
   --primary-blue: #0076B6;
   --secondary-blue: #003087;
   --light-slate: #F8FAFC;
   --dark-slate: #1E293B;
-  
+   
   /* Add fallback values for better browser compatibility */
   --scrollbar-thumb: #E2E8F0;
   --scrollbar-thumb-hover: #CBD5E1;
@@ -19,17 +17,29 @@
   --transition-duration: 200ms;
 }
 
-/* Dark Mode Theme Settings with smoother transition */
+/* Set the base path for production environments */
+@media (min-width: 1px) {
+  :root {
+    --base-path: attr(data-base-path);
+  }
+}
+
+/* Tailwind Directives */ 
+@tailwind base; 
+@tailwind components; 
+@tailwind utilities;
+
+/* Dark Mode Theme Settings with smoother transition */ 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
     --scrollbar-thumb: #374151;
     --scrollbar-thumb-hover: #4B5563;
-  }
+  } 
 }
 
-/* Base Styles with improved performance */
+/* Base Styles with improved performance */ 
 body {
   color: var(--foreground);
   background: var(--background);
@@ -41,7 +51,7 @@ body {
   overflow-x: hidden;
 }
 
-/* Optimized Scrollbar Styles */
+/* Optimized Scrollbar Styles */ 
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -63,73 +73,73 @@ body {
   background-color: var(--scrollbar-thumb-hover);
 }
 
-/* Firefox scrollbar compatibility */
+/* Firefox scrollbar compatibility */ 
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
-/* Enhanced Custom Utility Classes */
+/* Enhanced Custom Utility Classes */ 
 @layer components {
   .input-focus {
-    @apply focus:ring-2 focus:ring-[#0076B6] focus:border-transparent focus:outline-none 
-           focus:ring-opacity-50 transition-all duration-200;
+    @apply focus:ring-2 focus:ring-[#0076B6] focus:border-transparent focus:outline-none
+          focus:ring-opacity-50 transition-all duration-200;
   }
-  
+    
   .button-primary {
-    @apply bg-[#0076B6] text-white px-4 py-2 rounded-lg 
-           hover:opacity-[var(--button-hover-opacity)] transition-all duration-200 
-           disabled:opacity-50 disabled:cursor-not-allowed
-           active:transform active:scale-[0.98];
+    @apply bg-[#0076B6] text-white px-4 py-2 rounded-lg
+          hover:opacity-[var(--button-hover-opacity)] transition-all duration-200
+          disabled:opacity-50 disabled:cursor-not-allowed
+          active:transform active:scale-[0.98];
   }
-  
+    
   .card-shadow {
     @apply shadow-lg hover:shadow-xl transition-all duration-200
-           backdrop-blur-sm bg-opacity-95;
+          backdrop-blur-sm bg-opacity-95;
   }
 
   /* Responsive Source Button Styles */
   .source-button-container {
     @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3
-           w-full max-w-7xl mx-auto px-4;
+          w-full max-w-7xl mx-auto px-4;
   }
 
   .source-button {
-    @apply px-4 py-3 
-           rounded-lg
-           text-xs md:text-sm
-           transition-all duration-200
-           flex items-center justify-center
-           gap-2
-           border border-gray-200
-           bg-white text-gray-600
-           hover:border-[#0076B6]
-           hover:bg-gray-50
-           focus:outline-none focus:ring-2 focus:ring-[#0076B6] focus:ring-opacity-50;
+    @apply px-4 py-3
+          rounded-lg
+          text-xs md:text-sm
+          transition-all duration-200
+          flex items-center justify-center
+          gap-2
+          border border-gray-200
+          bg-white text-gray-600
+          hover:border-[#0076B6]
+          hover:bg-gray-50
+          focus:outline-none focus:ring-2 focus:ring-[#0076B6] focus:ring-opacity-50;
   }
-  
+    
   .source-button-active {
     @apply border-[#0076B6]
-           bg-[#0076B6]
-           text-white
-           hover:bg-[#0076B6]/90
-           hover:border-[#0076B6]
-           transform-gpu;
+          bg-[#0076B6]
+          text-white
+          hover:bg-[#0076B6]/90
+          hover:border-[#0076B6]
+          transform-gpu;
   }
 
   .source-button-icon {
     @apply transition-all duration-200
-           w-4 h-4 md:w-5 md:h-5;
+          w-4 h-4 md:w-5 md:h-5;
   }
 }
 
-/* Print styles for better documentation */
+/* Print styles for better documentation */ 
 @media print {
   body {
     background: white;
     color: black;
   }
-  
+    
   .source-button-container {
     display: none;
   }
