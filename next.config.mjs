@@ -1,17 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
-  basePath: '/searchbar',
-  assetPrefix: '/searchbar/',
-  trailingSlash: true,
-  images: { unoptimized: true },
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@': `${process.cwd()}/src`,
-    };
-    return config;
+  images: {
+    unoptimized: true,
   },
-}
+  // Remove basePath and assetPrefix if you're using a custom domain
+  // basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+  // assetPrefix: process.env.NEXT_PUBLIC_BASE_PATH || '',
+};
 
 export default nextConfig;
