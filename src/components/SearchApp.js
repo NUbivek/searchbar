@@ -31,7 +31,7 @@ const SearchApp = () => {
     console.log('Current Mode:', searchMode);
   }, [searchMode]);
 
-  // Handle mode switching with proper state reset
+  // Updated handleModeSwitch with proper state management
   const handleModeSwitch = (mode) => {
     console.log('Current mode:', searchMode, 'Switching to:', mode);
     setSearchMode(mode);
@@ -59,7 +59,6 @@ const SearchApp = () => {
     }
   };
 
-  // Simplified tab switching section
   return (
     <div className="min-h-screen bg-white text-slate-800 p-6">
       <div className="max-w-6xl mx-auto">
@@ -72,7 +71,7 @@ const SearchApp = () => {
           </p>
         </header>
 
-        {/* Tab switching section with explicit buttons */}
+        {/* Updated tab switching section */}
         <div className="flex justify-center mb-8">
           <div className="inline-flex bg-slate-100 rounded-full p-1">
             <button
@@ -104,19 +103,134 @@ const SearchApp = () => {
           </div>
         </div>
 
-        {/* Rest of your component */}
         <SearchBar
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
-          handleSearch={() => console.log('Search triggered')}
-          isLoading={isLoading}
+          handleSearch={async () => {
+            if (filters.web) {
+              await handleWebSearch();
+            } else if (filters.linkedin) {
+              await handleLinkedInSearch();
+            } else {
+              await processSearch(searchQuery);
+            }
+          }}
+          isLoading={isLoading || isSearching}
         />
 
-        {/* Conditional content based on mode */}
-        {searchMode === SEARCH_MODES.VERIFIED ? (
-          <div>Verified Sources Content</div>
-        ) : (
-          <div>Open Research Content</div>
+        {/* Verified Sources Mode Content */}
+        {searchMode === SEARCH_MODES.VERIFIED && (
+          <div className="flex flex-col md:flex-row gap-6 mb-8">
+            <div className="flex-1 bg-white rounded-xl p-6 shadow-lg border border-slate-100">
+              <h2 className="text-lg font-semibold text-blue-800 mb-4">Select Source Scope</h2>
+              <div className="space-y-4">
+                {SOURCES_CONFIG.scopeOptions.map((scope) => (
+                  <label
+                    key={scope.id}
+                    className={`
+                      block p-4 rounded-lg cursor-pointer
+                      ${sourceScope === scope.id ? 'bg-blue-50 border-2 border-blue-500' : 'bg-slate-50 border border-slate-200'}
+                      hover:bg-blue-50 transition-colors
+                    `}
+                  >
+                    <input
+                      type="radio"
+                      name="sourceScope"
+                      value={scope.id}
+                      checked={sourceScope === scope.id}
+                      onChange={(e) => setSourceScope(e.target.value)}
+                      className="hidden"
+                    />
+                    <div className="font-medium text-slate-800">{scope.label}</div>
+                    <div className="text-sm text-slate-600 mt-1">{scope.desc}</div>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <CustomSourcesPanel />
+          </div>
+        )}
+
+        {/* Open Research Mode Content */}
+        {searchMode === SEARCH_MODES.OPEN && (
+          <div className="mb-8">
+            <h2 className="text-center text-sm mb-4 font-medium text-slate-900">
+              Select Sources
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              {Object.entries(filters).map(([source, isActive]) => {
+                const LogoIcon = SOURCES_CONFIG.logoMap[source];
+                return (
+                  <button
+                    key={source}
+                    onClick={() => {
+                      setFilters(prev => ({
+                        ...prev,
+                        [source]: !prev[source]
+                      }));
+                    }}
+                    className={`
+                      p-3 rounded-lg flex items-center justify-center gap-2
+                      transition-all duration-200
+                      ${isActive 
+                        ? 'bg-blue-800 text-white' 
+                        : 'bg-white text-slate-600 border border-slate-200'
+                      }
+                    `}
+                  >
+                    {LogoIcon && <LogoIcon size={16} />}
+                    <span className="whitespace-nowrap">
+                      {source.charAt(0).toUpperCase() + source.slice(1)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {filters.upload && <div className="mt-8"><CustomSourcesPanel /></div>}
+          </div>
+        )}
+
+        {/* Results Section */}
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+        
+        {filters.web && (
+          <SearchResults 
+            results={webSearchResults} 
+            isSearching={isSearching} 
+          />
+        )}
+        
+        {filters.linkedin && (
+          <LinkedInResults 
+            results={webSearchResults} 
+            isSearching={isSearching} 
+          />
+        )}
+        
+        {!filters.web && !filters.linkedin && searchResults && (
+          <div className="mt-6 overflow-y-auto max-h-[60vh] rounded-xl bg-white border border-slate-200 shadow-lg animate-fadeIn">
+            <div className="p-6">
+              <div className="prose max-w-none">
+                {searchResults.content.split('\n').map((paragraph, idx) => (
+                  paragraph.trim() && (
+                    <p
+                      key={idx}
+                      className="text-slate-800 mb-4 last:mb-0 animate-slideUp"
+                      style={{
+                        animationDelay: `${idx * 100}ms`
+                      }}
+                    >
+                      {paragraph}
+                    </p>
+                  )
+                ))}
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
