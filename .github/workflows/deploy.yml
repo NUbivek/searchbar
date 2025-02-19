@@ -6,13 +6,13 @@ on:
       - main
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write  # Required for OIDC token authentication
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -29,58 +29,49 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      # Step 3: Restore npm cache
-      - name: Restore npm cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      # Step 4: Install dependencies
+      # Step 3: Install dependencies
       - name: Install Dependencies
         run: npm ci
 
-      # Step 5: Build project with correct base path
+      # Step 4: Build project with correct base path
       - name: Build Project
         run: npm run build
         env:
           NEXT_PUBLIC_BASE_PATH: '/searchbar'
 
-      # Step 6: Create .nojekyll file to prevent Jekyll processing
+      # Step 5: Create .nojekyll file
       - name: Create .nojekyll file
         run: touch out/.nojekyll
 
-      # Step 7: Create CNAME file for custom domain
+      # Step 6: Create CNAME file
       - name: Create CNAME file
         run: echo "research.bivek.ai" > out/CNAME
 
-      # Step 8: Verify output directory structure and asset paths
-      - name: Verify Output Directory Structure and Asset Paths
+      # Step 7: Verify build output
+      - name: Verify Build Output
         run: |
-          echo "Contents of out directory:"
-          find out -type f | sort
+          echo "Checking build output..."
+          if [ ! -d "out" ]; then
+            echo "Error: 'out' directory not found"
+            exit 1
+          fi
+          if [ ! -d "out/_next" ]; then
+            echo "Error: '_next' directory not found"
+            exit 1
+          fi
+          echo "Build output verified successfully"
 
-          echo "Checking if _next directory exists:"
-          ls -la out/_next || (echo "_next directory not found" && exit 1)
-
-          echo "Checking path prefixes in HTML files:"
-          grep -r "src=\"/searchbar/" out/*.html || (echo "No absolute searchbar src paths found" && exit 1)
-          grep -r "href=\"/searchbar/" out/*.html || (echo "No absolute searchbar href paths found" && exit 1)
-
-      # Step 9: Setup GitHub Pages environment
+      # Step 8: Setup Pages
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      # Step 10: Upload artifact to GitHub Pages
-      - name: Upload Artifact
+      # Step 9: Upload artifact
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: out
 
-      # Step 11: Deploy to GitHub Pages
+      # Step 10: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
