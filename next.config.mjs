@@ -10,25 +10,27 @@ const nextConfig = {
       },
     ],
   },
-  // Configure base path and asset prefix for the custom domain
+  // Use absolute URLs for assets when in production
   basePath: '/searchbar',
-  assetPrefix: '/searchbar',
+  assetPrefix: 'https://research.bivek.ai/searchbar', // Full domain with no trailing slash
+  
+  // This ensures all URLs end with a trailing slash (helps with static hosting)
+  trailingSlash: true,
 
-  // Webpack configuration optimized for JavaScript-heavy codebase
+  // Webpack configuration 
   webpack: (config, { isServer, dev }) => {
     // Fix alias configuration for proper module resolution
     config.resolve = {
       ...config.resolve,
       alias: {
         ...config.resolve.alias,
-        '@': `${process.cwd()}/src`, // Use the same path for both server and client
+        '@': `${process.cwd()}/src`,
       },
       fallback: {
         ...config.resolve.fallback,
         fs: false,
         path: false,
       },
-      // Add explicit extensions to resolve
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json', ...(config.resolve.extensions || [])]
     };
 
@@ -54,7 +56,6 @@ const nextConfig = {
       },
     };
 
-    // Development-only configurations
     if (dev) {
       config.devtool = 'source-map';
     }
@@ -62,12 +63,11 @@ const nextConfig = {
     return config;
   },
 
-  // The rest of your configuration remains unchanged
+  // Other configuration
   experimental: {
     typedRoutes: true,
   },
   reactStrictMode: true,
-  trailingSlash: true,
   swcMinify: true,
   poweredByHeader: false,
   compress: true,

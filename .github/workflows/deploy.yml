@@ -35,25 +35,24 @@ jobs:
         env:
           NEXT_PUBLIC_BASE_PATH: '/searchbar'
 
-      - name: Prepare deployment files
+      - name: Create .nojekyll file
+        run: touch out/.nojekyll
+
+      - name: Create CNAME file
+        run: echo "research.bivek.ai" > out/CNAME
+
+      - name: List output directory structure
         run: |
-          touch out/.nojekyll
-          # Copy CNAME file if it exists in the repository root
-          [ -f CNAME ] && cp CNAME out/ || echo "No CNAME file found"
-          echo "Deployment files prepared successfully"
+          echo "Contents of out directory:"
+          find out -type f | sort
           
-      - name: Verify Deployment Directory
+      - name: Verify asset paths
         run: |
-          if [ -d "out" ] && [ "$(ls -A out)" ]; then
-            echo "Output directory exists and is not empty"
-            echo "Contents of out directory:"
-            ls -la out/
-            echo "Checking for _next directory:"
-            ls -la out/_next/ || echo "_next directory not found"
-          else
-            echo "Output directory does not exist or is empty"
-            exit 1
-          fi
+          echo "Checking if _next directory exists:"
+          ls -la out/_next || echo "_next directory not found"
+          echo "Checking path prefixes in HTML files:"
+          grep -r "src=\"/searchbar/" out/*.html || echo "No absolute searchbar paths found"
+          grep -r "href=\"/searchbar/" out/*.html || echo "No absolute searchbar href found"
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
