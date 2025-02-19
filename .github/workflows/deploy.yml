@@ -12,66 +12,62 @@ jobs:
     permissions:
       contents: read
       pages: write
-      id-token: write  # Required for OIDC token authentication
+      id-token: write
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      # Step 1: Checkout code
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Step 2: Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
 
-      # Step 3: Install dependencies
+      - name: Create Next.js config
+        run: |
+          cat > next.config.mjs << 'EOL'
+          /** @type {import('next').NextConfig} */
+          const nextConfig = {
+            output: 'export',
+            images: {
+              unoptimized: true,
+            },
+            basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+            assetPrefix: process.env.NEXT_PUBLIC_BASE_PATH || '',
+          };
+          export default nextConfig;
+          EOL
+
       - name: Install Dependencies
         run: npm ci
 
-      # Step 4: Build project with correct base path
       - name: Build Project
-        run: npm run build
         env:
           NEXT_PUBLIC_BASE_PATH: '/searchbar'
+        run: npm run build
 
-      # Step 5: Create .nojekyll file
       - name: Create .nojekyll file
         run: touch out/.nojekyll
 
-      # Step 6: Create CNAME file
       - name: Create CNAME file
         run: echo "research.bivek.ai" > out/CNAME
 
-      # Step 7: Verify build output
-      - name: Verify Build Output
-        run: |
-          echo "Checking build output..."
-          if [ ! -d "out" ]; then
-            echo "Error: 'out' directory not found"
-            exit 1
-          fi
-          if [ ! -d "out/_next" ]; then
-            echo "Error: '_next' directory not found"
-            exit 1
-          fi
-          echo "Build output verified successfully"
+      - name: Fix 404 routing
+        run: cp out/404.html out/index.html
 
-      # Step 8: Setup Pages
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      # Step 9: Upload artifact
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: out
 
-      # Step 10: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
