@@ -2,7 +2,7 @@
 // Current User's Login: NUbivek
 
 import { 
-  Search, LinkedinIcon, TwitterIcon, RedditIcon, BookOpen, Building2, LineChart, PenTool, Verified, Upload, Link 
+  Search, LinkedinIcon, TwitterIcon, MessageSquare as RedditIcon, BookOpen, Building2, LineChart, PenTool, Verified, Upload, Link, Twitter, Linkedin, FileText, Globe, MessageCircle 
 } from 'lucide-react';
 import { MODELS } from './models.config.js'; // Added .js extension
 import { API_CONFIG as BaseApiConfig } from './api.config.js'; // Added .js extension
