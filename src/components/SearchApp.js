@@ -69,7 +69,6 @@ const SearchApp = () => {
 
   // Fixed handleModeSwitch function
   const handleModeSwitch = useCallback((mode) => {
-    console.log('Switching mode to:', mode); // Debug log
     setSearchMode(mode);
     setSearchResults(null);
     setError(null);
