@@ -8,23 +8,21 @@ const ModelSelector = ({ selectedModel, setSelectedModel }) => {
   ];
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-lg">
-      <div className="max-w-xl mx-auto flex items-center gap-4">
-        <h2 className="text-lg font-semibold text-black whitespace-nowrap">
-          Select Model:
-        </h2>
-        <select
-          value={selectedModel}
-          onChange={(e) => setSelectedModel(e.target.value)}
-          className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-black"
-        >
-          {models.map(model => (
-            <option key={model.id} value={model.id}>
-              {model.name}
-            </option>
-          ))}
-        </select>
-      </div>
+    <div className="flex items-center gap-3 max-w-xl mx-auto py-2">
+      <label className="text-sm font-medium text-slate-600 whitespace-nowrap">
+        Select Model:
+      </label>
+      <select
+        value={selectedModel}
+        onChange={(e) => setSelectedModel(e.target.value)}
+        className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 text-slate-700"
+      >
+        {models.map(model => (
+          <option key={model.id} value={model.id}>
+            {model.name}
+          </option>
+        ))}
+      </select>
     </div>
   );
 };

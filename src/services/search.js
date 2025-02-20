@@ -1,21 +1,37 @@
 import { SOURCE_TYPES } from '@/config/constants';
 
-// Source-specific search functions
+// DuckDuckGo search implementation
 const searchWeb = async (query) => {
   try {
-    // For testing, return mock data
-    return {
-      content: `Web search results for: ${query}`,
-      sources: [
-        { 
-          url: 'https://example.com/result1',
-          title: 'Example Result 1',
-          snippet: 'This is a test result for web search.'
+    const response = await fetch(
+      `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`,
+      {
+        headers: {
+          'Accept': 'application/json'
         }
+      }
+    );
+    const data = await response.json();
+    
+    return {
+      content: data.AbstractText + '\n\n' + data.RelatedTopics.map(topic => topic.Text).join('\n\n'),
+      sources: [
+        {
+          url: data.AbstractURL,
+          title: data.Heading,
+          snippet: data.AbstractText
+        },
+        ...data.RelatedTopics
+          .filter(topic => topic.FirstURL && topic.Text)
+          .map(topic => ({
+            url: topic.FirstURL,
+            title: topic.Text.split(' - ')[0],
+            snippet: topic.Text
+          }))
       ]
     };
   } catch (error) {
-    console.error('Web search error:', error);
+    console.error('DuckDuckGo search error:', error);
     throw error;
   }
 };
@@ -32,19 +48,24 @@ const searchLinkedIn = async (query) => {
 
 export const performSearch = async (query, sources, model) => {
   try {
+    console.log('Performing search with:', { query, sources, model });
     const results = [];
 
-    // Only handle web search for now
+    // Handle web search
     if (sources[SOURCE_TYPES.WEB]) {
+      console.log('Executing web search...');
       const webResults = await searchWeb(query);
       results.push(webResults);
     }
 
-    // Combine results
-    return {
+    // Combine all results
+    const combinedResults = {
       content: results.map(r => r.content).join('\n\n'),
       sources: results.flatMap(r => r.sources)
     };
+
+    console.log('Search results:', combinedResults);
+    return combinedResults;
   } catch (error) {
     console.error('Search error:', error);
     throw error;
