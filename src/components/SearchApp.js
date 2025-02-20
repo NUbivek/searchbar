@@ -56,25 +56,23 @@ const SearchApp = () => {
     setError(null);
     
     try {
-      const searchConfig = {
+      console.log('Starting search with:', {
         query: searchQuery,
-        model: selectedModel,
-        sources: selectedSources,
-        customSources: {
-          files: uploadedFiles,
-          urls: urls
-        }
-      };
+        sources: selectedSources
+      });
 
       const response = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(searchConfig)
+        body: JSON.stringify({
+          query: searchQuery,
+          model: selectedModel,
+          sources: selectedSources
+        })
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Search failed');
+        throw new Error('Search failed');
       }
       
       const data = await response.json();
@@ -86,7 +84,7 @@ const SearchApp = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, selectedModel, selectedSources, uploadedFiles, urls]);
+  }, [searchQuery, selectedModel, selectedSources]);
 
   const handleFollowUp = useCallback(async (question) => {
     if (!question.trim()) return;

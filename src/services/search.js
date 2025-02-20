@@ -2,11 +2,22 @@ import { SOURCE_TYPES } from '@/config/constants';
 
 // Source-specific search functions
 const searchWeb = async (query) => {
-  // Implement web search
-  return {
-    content: `Web search results for: ${query}`,
-    sources: [{ url: 'https://example.com', title: 'Web Result' }]
-  };
+  try {
+    // For testing, return mock data
+    return {
+      content: `Web search results for: ${query}`,
+      sources: [
+        { 
+          url: 'https://example.com/result1',
+          title: 'Example Result 1',
+          snippet: 'This is a test result for web search.'
+        }
+      ]
+    };
+  } catch (error) {
+    console.error('Web search error:', error);
+    throw error;
+  }
 };
 
 const searchLinkedIn = async (query) => {
@@ -20,31 +31,24 @@ const searchLinkedIn = async (query) => {
 // Add other source search functions...
 
 export const performSearch = async (query, sources, model) => {
-  const activeSourceTypes = Object.entries(sources)
-    .filter(([_, isActive]) => isActive)
-    .map(([type]) => type);
+  try {
+    const results = [];
 
-  const searchResults = [];
-  
-  // Perform searches for each active source
-  for (const sourceType of activeSourceTypes) {
-    let result;
-    switch (sourceType) {
-      case SOURCE_TYPES.WEB:
-        result = await searchWeb(query);
-        break;
-      case SOURCE_TYPES.LINKEDIN:
-        result = await searchLinkedIn(query);
-        break;
-      // Add other cases...
+    // Only handle web search for now
+    if (sources[SOURCE_TYPES.WEB]) {
+      const webResults = await searchWeb(query);
+      results.push(webResults);
     }
-    if (result) searchResults.push(result);
-  }
 
-  // Process through selected LLM
-  const processedResults = await processWithLLM(searchResults, model);
-  
-  return processedResults;
+    // Combine results
+    return {
+      content: results.map(r => r.content).join('\n\n'),
+      sources: results.flatMap(r => r.sources)
+    };
+  } catch (error) {
+    console.error('Search error:', error);
+    throw error;
+  }
 };
 
 const processWithLLM = async (results, model) => {
