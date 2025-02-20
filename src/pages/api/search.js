@@ -2,37 +2,27 @@ import { handleApiError } from '@/middleware/errorHandler';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ message: 'Method not allowed' });
   }
 
   try {
-    const {
-      query,
-      filters,
-      searchMode,
-      model,
-      sourceScope,
-      sources
-    } = req.body;
+    const { query, model, sources } = req.body;
 
-    // Validate request
-    if (!query) {
-      return res.status(400).json({ error: 'Query is required' });
-    }
+    // Log the request
+    console.log('Search request:', { query, model, sources });
 
-    // Process search based on mode and filters
-    const result = await processSearch({
-      query,
-      filters,
-      searchMode,
-      model,
-      sourceScope,
-      sources
-    });
+    // Mock response for now
+    const response = {
+      content: `Search results for: ${query}\nUsing model: ${model}`,
+      sources: [
+        { url: 'https://example.com', title: 'Example Source' }
+      ]
+    };
 
-    return res.status(200).json({ result });
+    res.status(200).json(response);
   } catch (error) {
-    return handleApiError(error, res);
+    console.error('Search API error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 }
 

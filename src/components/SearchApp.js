@@ -30,25 +30,35 @@ const SearchApp = () => {
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
     setIsLoading(true);
+    setError(null);
     
     try {
-      const searchConfig = {
+      console.log('Searching with:', {
         query: searchQuery,
         model: selectedModel,
         sources: selectedSources
-      };
-
-      const response = await fetch(API_CONFIG.endpoints.search.web, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(searchConfig)
       });
 
-      if (!response.ok) throw new Error('Search failed');
+      const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: searchQuery,
+          model: selectedModel,
+          sources: selectedSources
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Search failed');
+      }
       
       const data = await response.json();
+      console.log('Search results:', data);
       setSearchResults(data);
     } catch (error) {
+      console.error('Search error:', error);
       setError(error.message);
     } finally {
       setIsLoading(false);
@@ -86,8 +96,8 @@ const SearchApp = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 p-8">
-      <div className="max-w-7xl mx-auto space-y-10">
-        <header className="text-center mb-12">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <header className="text-center mb-8">
           <h1 className="text-4xl font-bold text-blue-600 mb-4">
             Founder's Research Hub
           </h1>
@@ -96,12 +106,12 @@ const SearchApp = () => {
           </p>
         </header>
 
-        <ModelSelector
-          selectedModel={selectedModel}
-          setSelectedModel={setSelectedModel}
-        />
+        <div className="sticky top-0 bg-slate-50 pt-4 pb-6 z-10 space-y-6">
+          <ModelSelector
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+          />
 
-        <div className="space-y-8">
           <SearchBar
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
@@ -115,22 +125,26 @@ const SearchApp = () => {
           />
         </div>
 
-        {error && (
-          <div className="bg-red-50 text-red-700 p-4 rounded-lg">
-            {error}
-          </div>
-        )}
+        <div className="mt-8 space-y-6">
+          {error && (
+            <div className="bg-red-50 text-red-700 p-4 rounded-lg">
+              {error}
+            </div>
+          )}
 
-        {searchResults && (
-          <div className="space-y-8">
-            <SearchResults results={searchResults} />
-            
-            <FollowUpQuestion
-              onAsk={handleFollowUp}
-              isLoading={isLoading}
-            />
-          </div>
-        )}
+          {searchResults && (
+            <div className="space-y-6">
+              <SearchResults results={searchResults} />
+              
+              <div className="sticky bottom-0 bg-slate-50 pt-4">
+                <FollowUpQuestion
+                  onAsk={handleFollowUp}
+                  isLoading={isLoading}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -19,7 +19,7 @@ const SearchResults = ({ results }) => {
       </div>
 
       {/* Main Content */}
-      <div className="p-6">
+      <div className="p-6 max-h-[600px] overflow-y-auto">
         <div className="prose max-w-none">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
@@ -68,7 +68,7 @@ const SearchResults = ({ results }) => {
 
         {/* Source Citations */}
         {results.sources && results.sources.length > 0 && (
-          <div className="mt-8 pt-6 border-t border-slate-200">
+          <div className="mt-6 pt-6 border-t border-slate-200">
             <h3 className="text-lg font-semibold text-slate-800 mb-4">
               Sources
             </h3>
