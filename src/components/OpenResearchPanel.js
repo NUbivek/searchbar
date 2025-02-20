@@ -9,13 +9,16 @@ const OpenResearchPanel = ({ selectedSources, setSelectedSources }) => {
     }));
   };
 
+  // Filter out VERIFIED from source types
+  const availableSourceTypes = Object.values(SOURCE_TYPES).filter(type => type !== 'verified');
+
   return (
     <div className="bg-white rounded-xl p-6 shadow-lg">
       <h2 className="text-lg font-semibold text-blue-800 mb-4">
         Select Search Sources
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        {Object.values(SOURCE_TYPES).map((sourceType) => {
+        {availableSourceTypes.map((sourceType) => {
           const Icon = SOURCES_CONFIG.logoMap[sourceType];
           return (
             <button

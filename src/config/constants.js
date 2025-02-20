@@ -70,6 +70,7 @@ export const SOURCES_CONFIG = {
     [SOURCE_TYPES.CRUNCHBASE]: Building2,
     [SOURCE_TYPES.PITCHBOOK]: LineChart,
     [SOURCE_TYPES.MEDIUM]: PenTool,
+    [SOURCE_TYPES.VERIFIED]: Verified,
     [SOURCE_TYPES.CUSTOM]: Upload
   },
 
