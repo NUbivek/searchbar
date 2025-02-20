@@ -21,6 +21,18 @@ const OpenResearchPanel = ({
     }));
   }, [setSelectedSources]);
 
+  // Initialize selectedSources if empty
+  React.useEffect(() => {
+    if (Object.keys(selectedSources).length === 0) {
+      const initialSources = Object.keys(SOURCE_TYPES).reduce((acc, key) => {
+        acc[key] = false;
+        return acc;
+      }, {});
+      initialSources.upload = false;
+      setSelectedSources(initialSources);
+    }
+  }, [selectedSources, setSelectedSources]);
+
   // Add upload option to source types
   const allSourceTypes = {
     ...SOURCE_TYPES,
@@ -34,7 +46,7 @@ const OpenResearchPanel = ({
         <h2 className="text-lg font-semibold text-blue-800 mb-4">
           Select Search Sources
         </h2>
-        <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
           {Object.entries(allSourceTypes).map(([key, label]) => {
             const Icon = key === 'upload' ? Upload : SOURCES_CONFIG.logoMap[key];
             return (
@@ -47,7 +59,7 @@ const OpenResearchPanel = ({
                 }`}
               >
                 {Icon && <Icon size={18} />}
-                <span className="font-medium">{label}</span>
+                <span className="font-medium text-sm">{label}</span>
               </button>
             );
           })}
