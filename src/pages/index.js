@@ -24,10 +24,11 @@ export default function Home() {
       return;
     }
 
-    console.log('Starting search with:', {
-      query: searchQuery,
-      selectedSources
-    });
+    const activeSourceTypes = Object.entries(selectedSources)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([sourceType]) => sourceType);
+
+    console.log('Active sources:', activeSourceTypes);
 
     setError(null);
     setIsLoading(true);
@@ -40,7 +41,8 @@ export default function Home() {
         },
         body: JSON.stringify({
           query: searchQuery,
-          selectedSources
+          selectedSources: activeSourceTypes,
+          model: selectedModel
         }),
       });
 

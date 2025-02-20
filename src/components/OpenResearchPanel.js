@@ -1,9 +1,11 @@
-import React, { useCallback } from 'react';
+"use client";
+
+import React, { useCallback, useEffect } from 'react';
 import { SOURCE_TYPES, SOURCES_CONFIG } from '@/config/constants';
 import { Upload, X, Plus, Link, FileText } from 'lucide-react';
 
 const OpenResearchPanel = ({ 
-  selectedSources = {},
+  selectedSources,
   setSelectedSources,
   uploadedFiles = [],
   setUploadedFiles,
@@ -13,34 +15,37 @@ const OpenResearchPanel = ({
   setNewUrl,
   isValidUrl
 }) => {
-  const handleSourceToggle = useCallback((sourceType) => {
-    console.log('Toggling source:', sourceType, 'Current state:', selectedSources[sourceType]);
-    setSelectedSources(prev => ({
-      ...prev,
-      [sourceType]: !prev[sourceType]
-    }));
+  // Initialize sources with web selected by default
+  useEffect(() => {
+    setSelectedSources({
+      web: true,
+      linkedin: false,
+      x: false,
+      reddit: false,
+      substack: false,
+      crunchbase: false,
+      pitchbook: false,
+      medium: false,
+      upload: false
+    });
+  }, []); // Empty dependency array means this runs once on mount
+
+  const handleSourceToggle = useCallback((sourceType, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setSelectedSources(prev => {
+      // Create a copy of the current state
+      const newState = { ...prev };
+      // Toggle the clicked source
+      newState[sourceType] = !prev[sourceType];
+      console.log('Toggling source:', sourceType, 'New state:', newState);
+      return newState;
+    });
   }, [setSelectedSources]);
 
-  // Initialize sources on mount
-  React.useEffect(() => {
-    if (!selectedSources || Object.keys(selectedSources).length === 0) {
-      const initialSources = {
-        web: false,
-        linkedin: false,
-        x: false,
-        reddit: false,
-        substack: false,
-        crunchbase: false,
-        pitchbook: false,
-        medium: false,
-        upload: false
-      };
-      setSelectedSources(initialSources);
-    }
-  }, []);
-
   // Log source changes for debugging
-  React.useEffect(() => {
+  useEffect(() => {
     console.log('Selected sources updated:', selectedSources);
   }, [selectedSources]);
 
@@ -63,13 +68,13 @@ const OpenResearchPanel = ({
             return (
               <button
                 key={key}
-                onClick={() => handleSourceToggle(key)}
+                onClick={(e) => handleSourceToggle(key, e)}
                 className={`p-2.5 rounded-lg flex items-center justify-center gap-1.5
-                  transition-all duration-200 min-w-[120px] h-[40px]
+                  transition-all duration-200 min-w-[120px] h-[42px]
                   ${selectedSources[key] ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
               >
                 {Icon && <Icon size={16} />}
-                <span className="font-medium text-xs whitespace-nowrap overflow-hidden text-ellipsis">
+                <span className="font-medium text-sm truncate max-w-[80px]">
                   {label}
                 </span>
               </button>
@@ -87,14 +92,20 @@ const OpenResearchPanel = ({
           <div className="space-y-6">
             {/* File Upload Section */}
             <div>
-              <label className="flex items-center gap-2 px-4 py-3 bg-slate-50 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-50 border-2 border-dashed border-blue-200">
+              <label 
+                htmlFor="fileUpload" 
+                className="flex items-center gap-2 px-4 py-3 bg-slate-50 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-50 border-2 border-dashed border-blue-200"
+              >
                 <Upload size={20} />
                 <span>Choose Files</span>
                 <input
+                  id="fileUpload"
+                  name="files"
                   type="file"
                   multiple
                   onChange={(e) => setUploadedFiles(Array.from(e.target.files))}
                   className="hidden"
+                  accept=".txt,.pdf,.xlsx,.csv,.json"
                 />
               </label>
               {uploadedFiles.length > 0 && (
@@ -120,7 +131,12 @@ const OpenResearchPanel = ({
             {/* URL Input Section */}
             <div>
               <div className="flex gap-2">
+                <label htmlFor="urlInput" className="sr-only">
+                  Enter URL
+                </label>
                 <input
+                  id="urlInput"
+                  name="url"
                   type="url"
                   value={newUrl}
                   onChange={(e) => setNewUrl(e.target.value)}
