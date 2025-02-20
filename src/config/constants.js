@@ -9,13 +9,12 @@ import { API_CONFIG as BaseApiConfig } from './api.config.js'; // Added .js exte
 
 export { MODELS };
 
-export const SEARCH_MODES = {
+export const SEARCH_MODES = Object.freeze({
   VERIFIED: 'verified',
   OPEN: 'open'
-};
+});
 
-export const SOURCE_TYPES = {
-  VERIFIED: 'verified',
+export const SOURCE_TYPES = Object.freeze({
   WEB: 'web',
   LINKEDIN: 'linkedin',
   X: 'x',
@@ -24,8 +23,8 @@ export const SOURCE_TYPES = {
   CRUNCHBASE: 'crunchbase',
   PITCHBOOK: 'pitchbook',
   MEDIUM: 'medium',
-  CUSTOM: 'custom'
-};
+  VERIFIED: 'verified'
+});
 
 export const PREDEFINED_SEARCHES = [
   'Market size analysis',
@@ -46,7 +45,7 @@ export const SOURCES_CONFIG = {
     [SOURCE_TYPES.CRUNCHBASE]: false,
     [SOURCE_TYPES.PITCHBOOK]: false,
     [SOURCE_TYPES.MEDIUM]: false,
-    [SOURCE_TYPES.CUSTOM]: true
+    [SOURCE_TYPES.VERIFIED]: true
   },
   
   scopeOptions: [
