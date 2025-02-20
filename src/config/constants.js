@@ -10,7 +10,7 @@ import { API_CONFIG as BaseApiConfig } from './api.config.js'; // Added .js exte
 export { MODELS };
 
 export const SEARCH_MODES = Object.freeze({
-  VERIFIED: 'verified',
+  VERIFIED: 'verified',  // Keep for future use
   OPEN: 'open'
 });
 
@@ -23,7 +23,7 @@ export const SOURCE_TYPES = Object.freeze({
   CRUNCHBASE: 'crunchbase',
   PITCHBOOK: 'pitchbook',
   MEDIUM: 'medium',
-  VERIFIED: 'verified'
+  VERIFIED: 'verified'  // Keep for future use
 });
 
 export const PREDEFINED_SEARCHES = [
@@ -37,7 +37,7 @@ export const PREDEFINED_SEARCHES = [
 
 export const SOURCES_CONFIG = {
   initialFilters: {
-    [SOURCE_TYPES.WEB]: false,
+    [SOURCE_TYPES.WEB]: true,  // Set default to true
     [SOURCE_TYPES.LINKEDIN]: false,
     [SOURCE_TYPES.X]: false,
     [SOURCE_TYPES.REDDIT]: false,
@@ -45,7 +45,7 @@ export const SOURCES_CONFIG = {
     [SOURCE_TYPES.CRUNCHBASE]: false,
     [SOURCE_TYPES.PITCHBOOK]: false,
     [SOURCE_TYPES.MEDIUM]: false,
-    [SOURCE_TYPES.VERIFIED]: true
+    [SOURCE_TYPES.VERIFIED]: false  // Set to false for now
   },
   
   scopeOptions: [
@@ -70,7 +70,6 @@ export const SOURCES_CONFIG = {
     [SOURCE_TYPES.CRUNCHBASE]: Building2,
     [SOURCE_TYPES.PITCHBOOK]: LineChart,
     [SOURCE_TYPES.MEDIUM]: PenTool,
-    [SOURCE_TYPES.VERIFIED]: Verified,
     [SOURCE_TYPES.CUSTOM]: Upload
   },
 
