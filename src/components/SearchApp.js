@@ -31,6 +31,10 @@ const SearchApp = () => {
   const [urls, setUrls] = useState([]);
   const [newUrl, setNewUrl] = useState('');
 
+  useModel(() => {
+    setSelectedModel('gemma-2');
+  }, []);
+
   const isValidUrl = (string) => {
     try {
       new URL(string);
@@ -119,8 +123,8 @@ const SearchApp = () => {
     <div className="min-h-screen bg-slate-50 p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-600 mb-4">
-            Founder's Research Hub
+          <h1 className="text-4xl font-bold text-blue-900 mb-4">
+            Research Hub
           </h1>
           <p className="text-xl text-slate-600">
             Strategic insights powered by curated sources
