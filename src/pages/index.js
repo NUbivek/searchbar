@@ -5,52 +5,49 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('verified');
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-white">
       <Head>
-        <title>Founder's Research Hub</title>
+        <title>AI-Powered Research Assistant</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      {/* Header with Tabs */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-8">
-          <h1 className="text-4xl font-bold text-blue-900 text-center pt-8 mb-8">
-            Founder's Research Hub
-          </h1>
-          
-          {/* Tab Navigation */}
-          <div className="flex gap-1">
-            <button
-              onClick={() => setActiveTab('verified')}
-              className={`px-6 py-3 text-sm font-medium rounded-t-lg transition-colors
-                ${activeTab === 'verified'
-                  ? 'bg-slate-50 text-blue-600 border-t-2 border-blue-600'
-                  : 'text-slate-600 hover:text-slate-800'
-                }`}
-            >
-              Verified Source
-            </button>
-            <button
-              onClick={() => setActiveTab('open')}
-              className={`px-6 py-3 text-sm font-medium rounded-t-lg transition-colors
-                ${activeTab === 'open'
-                  ? 'bg-slate-50 text-blue-600 border-t-2 border-blue-600'
-                  : 'text-slate-600 hover:text-slate-800'
-                }`}
-            >
-              Open Research
-            </button>
-          </div>
-        </div>
-      </div>
+      <div className="max-w-3xl mx-auto pt-12 px-4">
+        {/* Header */}
+        <h1 className="text-4xl font-bold text-center text-[#2196F3] mb-3">
+          AI-Powered Research Assistant
+        </h1>
+        <p className="text-lg text-slate-600 text-center mb-8">
+          Search across curated, verified sources for reliable insights
+        </p>
 
-      {/* Content Area */}
-      <div className="max-w-7xl mx-auto p-8">
-        {activeTab === 'verified' ? (
-          <div>Verified Source Content</div>
-        ) : (
-          <div>Open Research Content</div>
-        )}
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('verified')}
+            className={`px-6 py-2 rounded-lg transition-colors
+              ${activeTab === 'verified'
+                ? 'bg-[#2196F3] text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+          >
+            Verified Sources
+          </button>
+          <button
+            onClick={() => setActiveTab('open')}
+            className={`px-6 py-2 rounded-lg transition-colors
+              ${activeTab === 'open'
+                ? 'bg-[#2196F3] text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+          >
+            Open Research
+          </button>
+        </div>
+
+        {/* Content Area */}
+        <div className="space-y-6">
+          {/* Model selector and search will go here */}
+        </div>
       </div>
     </div>
   );
