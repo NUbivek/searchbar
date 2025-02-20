@@ -3,13 +3,13 @@ import { SOURCE_TYPES, SOURCES_CONFIG } from '@/config/constants';
 import { Upload, X, Plus, Link, FileText } from 'lucide-react';
 
 const OpenResearchPanel = ({ 
-  selectedSources, 
+  selectedSources = {},
   setSelectedSources,
-  uploadedFiles,
+  uploadedFiles = [],
   setUploadedFiles,
-  urls,
+  urls = [],
   setUrls,
-  newUrl,
+  newUrl = '',
   setNewUrl,
   isValidUrl
 }) => {

@@ -10,17 +10,6 @@ const nextConfig = {
     config.optimization.splitChunks = false;
     config.optimization.runtimeChunk = false;
     return config;
-  },
-  // Enable API routes
-  rewrites: async () => {
-    return [
-      {
-        source: '/api/:path*',
-        destination: process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:3000/api/:path*'
-          : '/api/:path*'
-      }
-    ];
   }
 };
 

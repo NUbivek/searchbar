@@ -10,7 +10,7 @@ const SearchBar = ({ searchQuery, setSearchQuery, handleSearch, isLoading }) => 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Enter your research query..."
-          className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
           onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
         />
         <button

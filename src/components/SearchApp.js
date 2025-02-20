@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Search, Upload, X, Plus, Link, FileText } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import OpenResearchPanel from '@/components/OpenResearchPanel';
@@ -31,9 +31,9 @@ const SearchApp = () => {
   const [urls, setUrls] = useState([]);
   const [newUrl, setNewUrl] = useState('');
 
-  useModel(() => {
+  useEffect(() => {
     setSelectedModel('gemma-2');
-  }, []);
+  }, [setSelectedModel]);
 
   const isValidUrl = (string) => {
     try {
