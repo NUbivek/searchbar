@@ -29,19 +29,11 @@ jobs:
         run: yarn install --frozen-lockfile
       - name: Setup Pages
         uses: actions/configure-pages@v4
-        with:
-          static_site_generator: next
-      - name: Setup dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y tree
       - name: Build with Next.js
         run: |
           mkdir -p out
           yarn build
-          echo "=== Directory structure ==="
-          tree out/
-          echo "=== File contents ==="
+          ls -la out/
           cat out/index.html || echo "index.html not found"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

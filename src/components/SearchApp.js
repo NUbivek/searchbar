@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Search, Upload, X, Plus, Link, FileText } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import VerifiedSourcesPanel from '@/components/VerifiedSourcesPanel';
@@ -122,7 +122,14 @@ const SearchApp = () => {
 
   // Fixed handleSearch function
   const handleSearch = useCallback(async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() || process.env.NEXT_PUBLIC_STATIC_BUILD === 'true') {
+      // Handle static build case
+      setSearchResults({
+        results: [],
+        message: "Search is not available in static build"
+      });
+      return;
+    }
     
     setIsLoading(true);
     setError(null);

@@ -15,11 +15,6 @@ export default function MyApp({ Component, pageProps }) {
     if (jssStyles?.parentElement) {
       jssStyles.parentElement.removeChild(jssStyles);
     }
-
-    // Add base path configuration for assets
-    if (process.env.NEXT_PUBLIC_BASE_PATH) {
-      document.documentElement.dataset.basePath = process.env.NEXT_PUBLIC_BASE_PATH;
-    }
   }, []);
 
   // Enhanced error boundary for better error handling
@@ -38,7 +33,7 @@ export default function MyApp({ Component, pageProps }) {
         <title>Founder's Research Hub</title>
       </Head>
       <ModelProvider>
-        <div className="app-wrapper" data-base-path={process.env.NEXT_PUBLIC_BASE_PATH}>
+        <div className="app-wrapper">
           <Component {...pageProps} />
         </div>
       </ModelProvider>
@@ -49,18 +44,4 @@ export default function MyApp({ Component, pageProps }) {
 MyApp.propTypes = {
   Component: PropTypes.elementType.isRequired,
   pageProps: PropTypes.object.isRequired,
-};
-
-// Add static configuration to help with asset loading
-MyApp.getInitialProps = async ({ Component, ctx }) => {
-  let pageProps = {};
-
-  if (Component.getInitialProps) {
-    pageProps = await Component.getInitialProps(ctx);
-  }
-
-  return { 
-    pageProps,
-    basePath: process.env.NEXT_PUBLIC_BASE_PATH || '' 
-  };
 };

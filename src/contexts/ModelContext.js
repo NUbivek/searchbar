@@ -12,7 +12,7 @@ export function ModelProvider({ children }) {
   const value = {
     selectedModel,
     setSelectedModel,
-    models: MODELS.active,
+    models: process.env.NEXT_PUBLIC_STATIC_BUILD === 'true' ? MODELS.default : MODELS.active,
     getModelConfig: () => ModelUtils.getModelConfig(selectedModel),
     getCurrentModel: () => ModelUtils.getModelById(selectedModel),
     formatPrompt: (prompt) => ModelUtils.formatPrompt(selectedModel, prompt),
