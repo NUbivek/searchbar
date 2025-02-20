@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import Head from 'next/head';
 import SearchBar from '@/components/SearchBar';
@@ -14,11 +16,22 @@ export default function Home() {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [urls, setUrls] = useState([]);
   const [newUrl, setNewUrl] = useState('');
+  const [error, setError] = useState(null);
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim()) {
+      setError('Please enter a search query');
+      return;
+    }
 
+    console.log('Starting search with:', {
+      query: searchQuery,
+      selectedSources
+    });
+
+    setError(null);
     setIsLoading(true);
+
     try {
       const response = await fetch('/api/search', {
         method: 'POST',
@@ -27,21 +40,22 @@ export default function Home() {
         },
         body: JSON.stringify({
           query: searchQuery,
-          selectedSources,
-          model: selectedModel,
-          uploadedFiles,
-          urls
+          selectedSources
         }),
       });
 
+      const data = await response.json();
+      console.log('Search response:', data);
+
       if (!response.ok) {
-        throw new Error('Search failed');
+        throw new Error(data.error || 'Search failed');
       }
 
-      const data = await response.json();
       setSearchResults(data);
     } catch (error) {
       console.error('Search error:', error);
+      setError(error.message || 'Failed to perform search');
+      setSearchResults(null);
     } finally {
       setIsLoading(false);
     }
@@ -57,43 +71,56 @@ export default function Home() {
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-slate-50">
       <Head>
         <title>Founder's Research Hub</title>
         <meta name="description" content="Strategic insights powered by curated sources" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-      <div className="min-h-screen bg-slate-50 p-8">
-        <div className="max-w-7xl mx-auto space-y-6">
-          <ModelSelector 
-            selectedModel={selectedModel}
-            setSelectedModel={setSelectedModel}
-          />
-          
-          <SearchBar
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            handleSearch={handleSearch}
-            isLoading={isLoading}
-          />
 
-          <OpenResearchPanel
-            selectedSources={selectedSources}
-            setSelectedSources={setSelectedSources}
-            uploadedFiles={uploadedFiles}
-            setUploadedFiles={setUploadedFiles}
-            urls={urls}
-            setUrls={setUrls}
-            newUrl={newUrl}
-            setNewUrl={setNewUrl}
-            isValidUrl={isValidUrl}
-          />
-
-          {searchResults && (
-            <SearchResults results={searchResults} />
-          )}
+      {/* Header Section */}
+      <div className="bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto py-12 px-8">
+          <h1 className="text-4xl font-bold text-blue-900 text-center mb-3">
+            Founder's Research Hub
+          </h1>
+          <p className="text-lg text-slate-600 text-center">
+            Strategic insights powered by curated sources
+          </p>
         </div>
       </div>
-    </>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto p-8 space-y-6">
+        <ModelSelector 
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
+        />
+        
+        <SearchBar
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          handleSearch={handleSearch}
+          isLoading={isLoading}
+        />
+
+        <OpenResearchPanel
+          selectedSources={selectedSources}
+          setSelectedSources={setSelectedSources}
+          uploadedFiles={uploadedFiles}
+          setUploadedFiles={setUploadedFiles}
+          urls={urls}
+          setUrls={setUrls}
+          newUrl={newUrl}
+          setNewUrl={setNewUrl}
+          isValidUrl={isValidUrl}
+        />
+
+        <SearchResults 
+          results={searchResults} 
+          error={error}
+        />
+      </div>
+    </div>
   );
 }
