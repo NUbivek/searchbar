@@ -2,7 +2,9 @@
 const nextConfig = {
   output: 'export',
   trailingSlash: true,
-  distDir: 'out'
+  experimental: {
+    appDir: false
+  }
 };
 
 export default nextConfig;
