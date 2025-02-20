@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Upload, X, Plus, Link, FileText } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import VerifiedSourcesPanel from '@/components/VerifiedSourcesPanel';
 import OpenResearchPanel from '@/components/OpenResearchPanel';
