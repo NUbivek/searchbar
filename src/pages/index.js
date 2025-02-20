@@ -46,7 +46,11 @@ export default function Home() {
 
         {/* Content Area */}
         <div className="space-y-6">
-          {/* Model selector and search will go here */}
+          {activeTab === 'verified' ? (
+            <div className="text-2xl font-bold text-center">V</div>
+          ) : (
+            <div className="text-2xl font-bold text-center">O</div>
+          )}
         </div>
       </div>
     </div>
