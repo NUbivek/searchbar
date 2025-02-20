@@ -14,24 +14,35 @@ const OpenResearchPanel = ({
   isValidUrl
 }) => {
   const handleSourceToggle = useCallback((sourceType) => {
-    console.log('Toggling source:', sourceType);
+    console.log('Toggling source:', sourceType, 'Current state:', selectedSources[sourceType]);
     setSelectedSources(prev => ({
       ...prev,
       [sourceType]: !prev[sourceType]
     }));
   }, [setSelectedSources]);
 
-  // Initialize selectedSources if empty
+  // Initialize sources on mount
   React.useEffect(() => {
-    if (Object.keys(selectedSources).length === 0) {
-      const initialSources = Object.keys(SOURCE_TYPES).reduce((acc, key) => {
-        acc[key] = false;
-        return acc;
-      }, {});
-      initialSources.upload = false;
+    if (!selectedSources || Object.keys(selectedSources).length === 0) {
+      const initialSources = {
+        web: false,
+        linkedin: false,
+        x: false,
+        reddit: false,
+        substack: false,
+        crunchbase: false,
+        pitchbook: false,
+        medium: false,
+        upload: false
+      };
       setSelectedSources(initialSources);
     }
-  }, [selectedSources, setSelectedSources]);
+  }, []);
+
+  // Log source changes for debugging
+  React.useEffect(() => {
+    console.log('Selected sources updated:', selectedSources);
+  }, [selectedSources]);
 
   // Add upload option to source types
   const allSourceTypes = {
@@ -53,13 +64,14 @@ const OpenResearchPanel = ({
               <button
                 key={key}
                 onClick={() => handleSourceToggle(key)}
-                className={`p-3 rounded-lg flex items-center justify-center gap-2
-                  transition-all duration-200 ${
-                  selectedSources[key] ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                }`}
+                className={`p-2.5 rounded-lg flex items-center justify-center gap-1.5
+                  transition-all duration-200 min-w-[120px] h-[40px]
+                  ${selectedSources[key] ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
               >
-                {Icon && <Icon size={18} />}
-                <span className="font-medium text-sm">{label}</span>
+                {Icon && <Icon size={16} />}
+                <span className="font-medium text-xs whitespace-nowrap overflow-hidden text-ellipsis">
+                  {label}
+                </span>
               </button>
             );
           })}

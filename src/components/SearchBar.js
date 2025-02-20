@@ -7,9 +7,15 @@ const SearchBar = ({
   handleSearch, 
   isLoading
 }) => {
+  const onSubmit = async (e) => {
+    e.preventDefault(); // Prevent form submission
+    console.log('Search submitted:', searchQuery);
+    await handleSearch();
+  };
+
   return (
     <div className="bg-white rounded-xl p-6 shadow-lg">
-      <div className="flex gap-4">
+      <form onSubmit={onSubmit} className="flex gap-4">
         <input
           type="text"
           value={searchQuery}
@@ -18,7 +24,7 @@ const SearchBar = ({
           className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
         />
         <button
-          onClick={handleSearch}
+          type="submit"
           disabled={isLoading}
           className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
         >
@@ -34,7 +40,7 @@ const SearchBar = ({
             </span>
           )}
         </button>
-      </div>
+      </form>
     </div>
   );
 };
