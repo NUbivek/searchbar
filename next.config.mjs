@@ -4,7 +4,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Remove basePath since you're using a custom domain
   trailingSlash: true,
 };
 

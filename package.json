@@ -4,11 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && cp CNAME out/",
+    "build": "next build && cp CNAME out/ && touch out/.nojekyll",
     "start": "next start",
-    "lint": "next lint",
-    "export": "next export",
-    "deploy": "next build && touch out/.nojekyll"
+    "lint": "next lint"
   },
   "dependencies": {
     "formidable": "^3.5.2",
