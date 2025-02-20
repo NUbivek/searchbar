@@ -1,6 +1,5 @@
-import { IncomingForm } from 'formidable';
-import { promises as fs } from 'fs';
-import { API_CONFIG } from '@/config/constants';
+import formidable from 'formidable';
+import { processUploadedFile } from '@/lib/files/fileProcessor';
 
 export const config = {
   api: {
@@ -10,48 +9,23 @@ export const config = {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const form = new IncomingForm({
-      maxFileSize: API_CONFIG.maxFileSize,
-      filter: (part) => {
-        return API_CONFIG.allowedFileTypes.includes(part.mimetype);
-      },
+    const form = new formidable.IncomingForm();
+    form.parse(req, async (err, fields, files) => {
+      if (err) {
+        return res.status(500).json({ error: 'File upload failed' });
+      }
+
+      const processedFiles = await Promise.all(
+        Object.values(files).map(processUploadedFile)
+      );
+
+      return res.status(200).json({ files: processedFiles });
     });
-
-    const [fields, files] = await new Promise((resolve, reject) => {
-      form.parse(req, (err, fields, files) => {
-        if (err) reject(err);
-        resolve([fields, files]);
-      });
-    });
-
-    const processedFiles = await Promise.all(
-      Object.values(files).map(async (file) => {
-        const content = await fs.readFile(file.filepath);
-        const fileInfo = {
-          name: file.originalFilename,
-          type: file.mimetype,
-          size: file.size,
-          content: content.toString('base64'),
-        };
-        await fs.unlink(file.filepath);
-        return fileInfo;
-      })
-    );
-
-    return res.status(200).json({
-      message: 'Files uploaded successfully',
-      files: processedFiles,
-    });
-
   } catch (error) {
-    console.error('File upload error:', error);
-    return res.status(500).json({
-      message: 'Error processing file upload',
-      error: error.message,
-    });
+    return handleApiError(error, res);
   }
 }

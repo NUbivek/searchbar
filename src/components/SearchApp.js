@@ -1,9 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import { Search, Upload, X, Plus, Link, FileText } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
+import VerifiedSourcesPanel from '@/components/VerifiedSourcesPanel';
+import OpenResearchPanel from '@/components/OpenResearchPanel';
 import SearchResults from '@/components/SearchResults';
 import LinkedInResults from '@/components/LinkedInResults';
-import { SEARCH_MODES, SOURCES_CONFIG, API_CONFIG } from '@/config/constants';
+import { SEARCH_MODES, SOURCE_TYPES, SOURCES_CONFIG, API_CONFIG } from '@/config/constants';
 import PRODUCTION_CONFIG from '@/config/production.config';
 import { useModel } from '@/contexts/ModelContext';
 import styles from '@/styles/Button.module.css';
@@ -18,13 +20,21 @@ const SearchApp = () => {
   const [searchResults, setSearchResults] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState(SOURCES_CONFIG.initialFilters);
   const [sourceScope, setSourceScope] = useState('only-user');
-  const [isSearching, setIsSearching] = useState(false);
-  const [webSearchResults, setWebSearchResults] = useState(null);
+  const [selectedSources, setSelectedSources] = useState({
+    [SOURCE_TYPES.WEB]: true,
+    [SOURCE_TYPES.LINKEDIN]: false,
+    [SOURCE_TYPES.X]: false,
+    [SOURCE_TYPES.REDDIT]: false,
+    [SOURCE_TYPES.SUBSTACK]: false,
+    [SOURCE_TYPES.CRUNCHBASE]: false,
+    [SOURCE_TYPES.PITCHBOOK]: false,
+    [SOURCE_TYPES.MEDIUM]: false
+  });
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [urls, setUrls] = useState([]);
   const [newUrl, setNewUrl] = useState('');
+  const [followUpQuestion, setFollowUpQuestion] = useState('');
 
   // Utility functions
   const isValidUrl = (string) => {
@@ -36,7 +46,16 @@ const SearchApp = () => {
     }
   };
 
-  // Handler functions
+  // Fixed handleUrlAdd function
+  const handleUrlAdd = useCallback(() => {
+    console.log('Adding URL:', newUrl); // Debug log
+    if (newUrl && isValidUrl(newUrl)) {
+      setUrls(prevUrls => [...prevUrls, newUrl]);
+      setNewUrl('');
+    }
+  }, [newUrl]);
+
+  // Fixed handleFileUpload function
   const handleFileUpload = useCallback((event) => {
     const files = Array.from(event.target.files);
     const validFiles = files.filter(file => {
@@ -48,12 +67,17 @@ const SearchApp = () => {
     setUploadedFiles(prev => [...prev, ...validFiles]);
   }, []);
 
-  const handleUrlAdd = useCallback(() => {
-    if (newUrl && isValidUrl(newUrl)) {
-      setUrls(prev => [...prev, newUrl]);
-      setNewUrl('');
-    }
-  }, [newUrl]);
+  // Fixed handleModeSwitch function
+  const handleModeSwitch = useCallback((mode) => {
+    console.log('Switching mode to:', mode); // Debug log
+    setSearchMode(mode);
+    setSearchResults(null);
+    setError(null);
+    setSelectedSources(mode === SEARCH_MODES.VERIFIED ? 
+      { [SOURCE_TYPES.VERIFIED]: true } : 
+      { [SOURCE_TYPES.WEB]: true }
+    );
+  }, []);
 
   // Search handling functions
   const processSearch = useCallback(async (query) => {
@@ -66,140 +90,102 @@ const SearchApp = () => {
         return;
       }
 
-      const response = await fetch(API_CONFIG.endpoints.search, {
+      const searchConfig = {
+        query,
+        mode: searchMode,
+        model: selectedModel,
+        sources: selectedSources,
+        sourceScope: sourceScope,
+        customSources: {
+          files: uploadedFiles,
+          urls: urls
+        }
+      };
+
+      const response = await fetch(API_CONFIG.endpoints.search.verified, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query,
-          filters,
-          searchMode,
-          model: selectedModel,
-          sourceScope,
-          sources: {
-            files: uploadedFiles.map(f => f.name),
-            urls: urls
-          }
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(searchConfig)
       });
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Failed to process search: ${errorData}`);
-      }
-
+      if (!response.ok) throw new Error('Search failed');
+      
       const data = await response.json();
-      setSearchResults(data.result);
+      setSearchResults(data);
     } catch (error) {
       setError(error.message);
-      console.error('Search processing error:', error);
+      console.error('Search error:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [filters, searchMode, selectedModel, sourceScope, uploadedFiles, urls, isStaticBuild]);
+  }, [searchMode, selectedModel, selectedSources, sourceScope, uploadedFiles, urls, isStaticBuild]);
 
-  const handleWebSearch = useCallback(async () => {
-    if (!searchQuery.trim() || !filters.web) return;
+  // Fixed handleSearch function
+  const handleSearch = useCallback(async () => {
+    if (!searchQuery.trim()) return;
     
-    setIsSearching(true);
+    setIsLoading(true);
     setError(null);
-    
+
     try {
-      if (isStaticBuild) {
-        setWebSearchResults(PRODUCTION_CONFIG.mockData.webSearch);
-        return;
-      }
+      const searchConfig = {
+        query: searchQuery,
+        mode: searchMode,
+        model: selectedModel,
+        sources: selectedSources,
+        sourceScope: sourceScope,
+        customSources: {
+          files: uploadedFiles,
+          urls: urls
+        }
+      };
 
-      const response = await fetch(API_CONFIG.endpoints.websearch, {
+      const response = await fetch(API_CONFIG.endpoints.search.verified, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: searchQuery,
-          model: selectedModel,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(searchConfig)
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch web search results');
-      }
-
+      if (!response.ok) throw new Error('Search failed');
+      
       const data = await response.json();
-      setWebSearchResults(data);
+      setSearchResults(data);
     } catch (error) {
-      setError('Failed to perform web search');
-      console.error('Web search error:', error);
+      setError(error.message);
+      console.error('Search error:', error);
     } finally {
-      setIsSearching(false);
+      setIsLoading(false);
     }
-  }, [searchQuery, filters.web, selectedModel, isStaticBuild]);
+  }, [searchQuery, searchMode, selectedModel, selectedSources, sourceScope, uploadedFiles, urls]);
 
-  const handleLinkedInSearch = useCallback(async () => {
-    if (!searchQuery.trim() || !filters.linkedin) return;
+  const handleFollowUpQuestion = useCallback(async () => {
+    if (!followUpQuestion.trim()) return;
     
-    setIsSearching(true);
-    setError(null);
-    
+    setIsLoading(true);
     try {
-      if (isStaticBuild) {
-        setWebSearchResults(PRODUCTION_CONFIG.mockData.linkedinSearch);
-        return;
-      }
-
-      const response = await fetch(API_CONFIG.endpoints.linkedinsearch, {
+      const response = await fetch(API_CONFIG.endpoints.chat, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query: searchQuery,
-          model: selectedModel,
-        }),
+          question: followUpQuestion,
+          context: searchResults,
+          model: selectedModel
+        })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch LinkedIn results');
-      }
-
+      if (!response.ok) throw new Error('Failed to process follow-up question');
+      
       const data = await response.json();
-      setWebSearchResults(data);
+      setSearchResults(prev => ({
+        ...prev,
+        followUp: data.response
+      }));
     } catch (error) {
-      setError('Failed to perform LinkedIn search');
-      console.error('LinkedIn search error:', error);
+      setError(error.message);
     } finally {
-      setIsSearching(false);
+      setIsLoading(false);
     }
-  }, [searchQuery, filters.linkedin, selectedModel, isStaticBuild]);
-
-  // Mode switching handler
-  const handleModeSwitch = (mode) => {
-    console.log('Current mode:', searchMode, 'Switching to:', mode);
-    setSearchMode(mode);
-    setSearchResults(null);
-    setWebSearchResults(null);
-    setError(null);
-    
-    // Reset filters based on mode
-    if (mode === SEARCH_MODES.VERIFIED) {
-      setFilters(SOURCES_CONFIG.initialFilters);
-      setSourceScope('only-user');
-    } else {
-      setFilters({
-        web: true,
-        linkedin: false,
-        x: false,
-        crunchbase: false,
-        pitchbook: false,
-        reddit: false,
-        ycombinator: false,
-        substack: false,
-        medium: false,
-        upload: false
-      });
-    }
-  };
+  }, [followUpQuestion, searchResults, selectedModel]);
 
   // Define CustomSourcesPanel component
   const CustomSourcesPanel = () => (
@@ -251,7 +237,7 @@ const SearchApp = () => {
             <button
               onClick={handleUrlAdd}
               disabled={!newUrl || !isValidUrl(newUrl)}
-              className={styles.button}
+              className={`${styles.button} !px-4`}
             >
               <Plus size={20} />
             </button>
@@ -280,42 +266,39 @@ const SearchApp = () => {
   );
 
   return (
-    <div className="min-h-screen bg-white text-slate-800 p-6">
-      <div className="max-w-6xl mx-auto">
-        <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4 text-blue-600">
-            Founder&apos;s Research Hub
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <header className="text-center">
+          <h1 className="text-4xl font-bold text-blue-600 mb-4">
+            Founder's Research Hub
           </h1>
           <p className="text-xl text-slate-600">
             Strategic insights powered by curated sources
           </p>
         </header>
 
-        {/* Tab switching section */}
-        <div className="flex justify-center mb-8">
-          <div className="inline-flex bg-slate-100 rounded-full p-1">
+        {/* Search Mode Selector */}
+        <div className="flex justify-center">
+          <div className="inline-flex bg-white rounded-full p-1 shadow-lg">
             <button
-              type="button"
               onClick={() => handleModeSwitch(SEARCH_MODES.VERIFIED)}
               className={`
                 px-6 py-2 rounded-full transition-all duration-200
                 ${searchMode === SEARCH_MODES.VERIFIED 
-                  ? 'bg-blue-800 text-white' 
-                  : 'text-slate-600 hover:bg-slate-200'
-                }
+                  ? 'bg-blue-600 text-white' 
+                  : 'text-slate-600 hover:bg-slate-100'}
               `}
             >
               Verified Sources
             </button>
             <button
-              type="button"
               onClick={() => handleModeSwitch(SEARCH_MODES.OPEN)}
               className={`
                 px-6 py-2 rounded-full transition-all duration-200
                 ${searchMode === SEARCH_MODES.OPEN 
-                  ? 'bg-blue-800 text-white' 
-                  : 'text-slate-600 hover:bg-slate-200'
-                }
+                  ? 'bg-blue-600 text-white' 
+                  : 'text-slate-600 hover:bg-slate-100'}
               `}
             >
               Open Research
@@ -323,140 +306,65 @@ const SearchApp = () => {
           </div>
         </div>
 
+        {/* Search Bar */}
         <SearchBar
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
-          handleSearch={async () => {
-            if (filters.web) {
-              await handleWebSearch();
-            } else if (filters.linkedin) {
-              await handleLinkedInSearch();
-            } else {
-              await processSearch(searchQuery);
-            }
-          }}
-          isLoading={isLoading || isSearching}
+          handleSearch={handleSearch}
+          isLoading={isLoading}
         />
 
-        {/* Verified Sources Mode Content */}
-        {searchMode === SEARCH_MODES.VERIFIED && (
-          <div className="flex flex-col md:flex-row gap-6 mb-8">
-            <div className="flex-1 bg-white rounded-xl p-6 shadow-lg border border-slate-100">
-              <h2 className="text-lg font-semibold text-blue-800 mb-4">Select Source Scope</h2>
-              <div className="space-y-4">
-                {SOURCES_CONFIG.scopeOptions.map((scope) => (
-                  <label
-                    key={scope.id}
-                    className={`
-                      block p-4 rounded-lg cursor-pointer
-                      ${sourceScope === scope.id ? 'bg-blue-50 border-2 border-blue-500' : 'bg-slate-50 border border-slate-200'}
-                      hover:bg-blue-50 transition-colors
-                    `}
-                  >
-                    <input
-                      type="radio"
-                      name="sourceScope"
-                      value={scope.id}
-                      checked={sourceScope === scope.id}
-                      onChange={(e) => setSourceScope(e.target.value)}
-                      className="hidden"
-                    />
-                    <div className="font-medium text-slate-800">{scope.label}</div>
-                    <div className="text-sm text-slate-600 mt-1">{scope.desc}</div>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <CustomSourcesPanel />
-          </div>
+        {/* Source Selection */}
+        {searchMode === SEARCH_MODES.VERIFIED ? (
+          <VerifiedSourcesPanel
+            sourceScope={sourceScope}
+            setSourceScope={setSourceScope}
+            uploadedFiles={uploadedFiles}
+            setUploadedFiles={setUploadedFiles}
+            urls={urls}
+            setUrls={setUrls}
+            newUrl={newUrl}
+            setNewUrl={setNewUrl}
+          />
+        ) : (
+          <OpenResearchPanel
+            selectedSources={selectedSources}
+            setSelectedSources={setSelectedSources}
+          />
         )}
 
-        {/* Open Research Mode Content */}
-        {searchMode === SEARCH_MODES.OPEN && (
-          <div className="mb-8">
-            <h2 className="text-center text-sm mb-4 font-medium text-slate-900">
-              Select Sources
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-              {Object.entries(filters).map(([source, isActive]) => {
-                const LogoIcon = SOURCES_CONFIG.logoMap[source];
-                const getSourceLabel = (source) => {
-                  switch(source) {
-                    case 'ycombinator': return 'YC+VC websites';
-                    case 'upload': return 'Upload Files & URL';
-                    case 'x': return 'Twitter/X';
-                    default: return source.charAt(0).toUpperCase() + source.slice(1);
-                  }
-                };
-                
-                return (
-                  <button
-                    key={source}
-                    onClick={() => {
-                      setFilters(prev => ({
-                        ...prev,
-                        [source]: !prev[source]
-                      }));
-                    }}
-                    className={`
-                      p-3 rounded-lg flex items-center justify-center gap-2
-                      transition-all duration-200
-                      ${isActive 
-                        ? 'bg-blue-800 text-white' 
-                        : 'bg-white text-slate-600 border border-slate-200'
-                      }
-                    `}
-                  >
-                    {LogoIcon && <LogoIcon size={16} />}
-                    <span className="whitespace-nowrap">
-                      {getSourceLabel(source)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            {filters.upload && <div className="mt-8"><CustomSourcesPanel /></div>}
-          </div>
-        )}
-
-        {/* Results Section */}
+        {/* Error Display */}
         {error && (
-          <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg">
+          <div className="bg-red-50 text-red-700 p-4 rounded-lg">
             {error}
           </div>
         )}
-        
-        {filters.web && (
-          <SearchResults 
-            results={webSearchResults} 
-            isSearching={isSearching} 
-          />
-        )}
-        
-        {filters.linkedin && (
-          <LinkedInResults 
-            results={webSearchResults} 
-            isSearching={isSearching} 
-          />
-        )}
-        
-        {!filters.web && !filters.linkedin && searchResults && (
-          <div className="mt-6 overflow-y-auto max-h-[60vh] rounded-xl bg-white border border-slate-200 shadow-lg animate-fadeIn">
-            <div className="p-6">
-              <div className="prose max-w-none">
-                {searchResults.content.split('\n').map((paragraph, idx) => (
-                  paragraph.trim() && (
-                    <p
-                      key={idx}
-                      className="text-slate-800 mb-4 last:mb-0 animate-slideUp"
-                      style={{
-                        animationDelay: `${idx * 100}ms`
-                      }}
-                    >
-                      {paragraph}
-                    </p>
-                  )
-                ))}
+
+        {/* Search Results */}
+        {searchResults && (
+          <div className="space-y-6">
+            <SearchResults results={searchResults} />
+            
+            {/* Follow-up Question Section */}
+            <div className="bg-white rounded-xl p-6 shadow-lg">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">
+                Ask a follow-up question
+              </h3>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={followUpQuestion}
+                  onChange={(e) => setFollowUpQuestion(e.target.value)}
+                  placeholder="Ask for more details or clarification..."
+                  className="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={handleFollowUpQuestion}
+                  disabled={isLoading || !followUpQuestion.trim()}
+                  className={`${styles.button} !px-6`}
+                >
+                  Ask
+                </button>
               </div>
             </div>
           </div>

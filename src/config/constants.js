@@ -2,8 +2,7 @@
 // Current User's Login: NUbivek
 
 import { 
-  Search, Linkedin, Globe, BookOpen, FileText, 
-  FileSpreadsheet, Twitter, Upload, X, Plus, Link 
+  Search, LinkedinIcon, TwitterIcon, RedditIcon, BookOpen, Building2, LineChart, PenTool, Verified, Upload, Link 
 } from 'lucide-react';
 import { MODELS } from './models.config.js'; // Added .js extension
 import { API_CONFIG as BaseApiConfig } from './api.config.js'; // Added .js extension
@@ -15,51 +14,74 @@ export const SEARCH_MODES = {
   OPEN: 'open'
 };
 
+export const SOURCE_TYPES = {
+  VERIFIED: 'verified',
+  WEB: 'web',
+  LINKEDIN: 'linkedin',
+  X: 'x',
+  REDDIT: 'reddit',
+  SUBSTACK: 'substack',
+  CRUNCHBASE: 'crunchbase',
+  PITCHBOOK: 'pitchbook',
+  MEDIUM: 'medium',
+  CUSTOM: 'custom'
+};
+
 export const PREDEFINED_SEARCHES = [
-  "AI Strategies",
-  "Growth Frameworks",
-  "Enterprise Optimization",
-  "Tech Innovation",
-  "Market Expansion",
-  "Scaling Techniques"
+  'Market size analysis',
+  'Competitor landscape',
+  'Industry trends',
+  'Growth strategies',
+  'Investment thesis',
+  'Tech stack comparison'
 ];
 
 export const SOURCES_CONFIG = {
-  logoMap: {
-    web: Search,
-    linkedin: Linkedin,
-    x: Twitter,
-    crunchbase: Globe,
-    pitchbook: BookOpen,
-    reddit: Globe,
-    ycombinator: Globe,
-    substack: FileText,
-    medium: FileSpreadsheet,
-    upload: Upload
-  },
   initialFilters: {
-    web: true,          // Only web search is active by default
-    linkedin: false,    // All other sources inactive by default
-    x: false,
-    crunchbase: false,
-    pitchbook: false,
-    reddit: false,
-    ycombinator: false,
-    substack: false,
-    medium: false,
-    upload: false
+    [SOURCE_TYPES.WEB]: false,
+    [SOURCE_TYPES.LINKEDIN]: false,
+    [SOURCE_TYPES.X]: false,
+    [SOURCE_TYPES.REDDIT]: false,
+    [SOURCE_TYPES.SUBSTACK]: false,
+    [SOURCE_TYPES.CRUNCHBASE]: false,
+    [SOURCE_TYPES.PITCHBOOK]: false,
+    [SOURCE_TYPES.MEDIUM]: false,
+    [SOURCE_TYPES.CUSTOM]: true
   },
+  
   scopeOptions: [
-    { 
-      id: 'only-user', 
-      label: 'Only Your Sources', 
-      desc: 'Search using only your uploaded files and URLs' 
+    {
+      id: 'only-user',
+      label: 'Your Sources Only',
+      desc: 'Search through your uploaded files and URLs'
     },
-    { 
-      id: 'combined', 
-      label: 'Combined Sources', 
-      desc: 'Search using both your sources and our verified database' 
+    {
+      id: 'combined',
+      label: 'Combined Sources',
+      desc: 'Include both your sources and our verified database'
     }
+  ],
+
+  logoMap: {
+    [SOURCE_TYPES.WEB]: Search,
+    [SOURCE_TYPES.LINKEDIN]: LinkedinIcon,
+    [SOURCE_TYPES.X]: TwitterIcon,
+    [SOURCE_TYPES.REDDIT]: RedditIcon,
+    [SOURCE_TYPES.SUBSTACK]: BookOpen,
+    [SOURCE_TYPES.CRUNCHBASE]: Building2,
+    [SOURCE_TYPES.PITCHBOOK]: LineChart,
+    [SOURCE_TYPES.MEDIUM]: PenTool,
+    [SOURCE_TYPES.VERIFIED]: Verified,
+    [SOURCE_TYPES.CUSTOM]: Upload
+  },
+
+  allowedFileTypes: [
+    'application/pdf',
+    'text/plain',
+    'text/csv',
+    'application/json',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel'
   ]
 };
 
@@ -68,20 +90,21 @@ export const API_CONFIG = {
   ...BaseApiConfig,
   endpoints: {
     ...BaseApiConfig.endpoints,
-    search: '/api/chat',    // Preserve your custom endpoint
-    upload: '/api/upload',  // Preserve your custom endpoint
-    websearch: `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/websearch`,
-    linkedinsearch: `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/linkedinsearch`,
-    chat: `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/chat`,
-    xsearch: `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/xsearch`
+    search: {
+      verified: '/api/search/verified',
+      web: '/api/search/web',
+      linkedin: '/api/search/linkedin',
+      x: '/api/search/x',
+      reddit: '/api/search/reddit',
+      substack: '/api/search/substack',
+      crunchbase: '/api/search/crunchbase',
+      pitchbook: '/api/search/pitchbook',
+      medium: '/api/search/medium'
+    },
+    upload: '/api/upload',
+    chat: '/api/chat'
   },
-  maxFileSize: 10 * 1024 * 1024, // Keeping your 10MB limit
-  allowedFileTypes: [
-    'application/pdf',
-    'text/plain',
-    'text/csv',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  ]
+  maxFileSize: 25 * 1024 * 1024, // 25MB
 };
 
 // Export the base configuration as well in case it's needed
@@ -94,4 +117,50 @@ export default {
   SOURCES_CONFIG,
   API_CONFIG,
   MODELS
+};
+
+// Add to existing constants
+export const PLATFORM_CONFIG = {
+  LINKEDIN: {
+    apiEndpoint: '/api/search/linkedin',
+    rateLimit: 100,
+    maxResults: 50,
+    requiredFields: ['title', 'content', 'author', 'date']
+  },
+  TWITTER: {
+    apiEndpoint: '/api/search/twitter',
+    rateLimit: 150,
+    maxResults: 100,
+    requiredFields: ['text', 'author', 'date', 'metrics']
+  },
+  REDDIT: {
+    apiEndpoint: '/api/search/reddit',
+    rateLimit: 120,
+    maxResults: 75,
+    requiredFields: ['title', 'selftext', 'author', 'created_utc']
+  },
+  SUBSTACK: {
+    apiEndpoint: '/api/search/substack',
+    rateLimit: 80,
+    maxResults: 30,
+    requiredFields: ['title', 'content', 'author', 'date']
+  },
+  MEDIUM: {
+    apiEndpoint: '/api/search/medium',
+    rateLimit: 90,
+    maxResults: 40,
+    requiredFields: ['title', 'content', 'author', 'date']
+  },
+  CRUNCHBASE: {
+    apiEndpoint: '/api/search/crunchbase',
+    rateLimit: 70,
+    maxResults: 25,
+    requiredFields: ['name', 'description', 'funding', 'metrics']
+  },
+  PITCHBOOK: {
+    apiEndpoint: '/api/search/pitchbook',
+    rateLimit: 60,
+    maxResults: 25,
+    requiredFields: ['name', 'details', 'financials', 'metrics']
+  }
 };

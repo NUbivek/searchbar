@@ -2,6 +2,8 @@
 
 import PropTypes from 'prop-types';
 import { ModelProvider } from '@/contexts/ModelContext';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import '@/styles/animations.css';
 import '@/styles/globals.css';
 import { useEffect } from 'react';
 import Head from 'next/head';
@@ -30,7 +32,7 @@ export default function MyApp({ Component, pageProps }) {
   }
 
   return (
-    <>
+    <ErrorBoundary>
       <Head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Founder's Research Hub</title>
@@ -40,7 +42,7 @@ export default function MyApp({ Component, pageProps }) {
           <Component {...pageProps} />
         </div>
       </ModelProvider>
-    </>
+    </ErrorBoundary>
   );
 }
 
