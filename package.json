@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "rm -rf .next out && next build && mkdir -p out && cp -p CNAME out/ && touch out/.nojekyll",
+    "prebuild": "rm -rf .next out && mkdir -p out",
+    "build": "next build && cp -r .next/static out/ && cp CNAME out/ && touch out/.nojekyll",
     "start": "next start",
     "lint": "next lint"
   },
