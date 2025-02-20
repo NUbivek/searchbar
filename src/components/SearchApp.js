@@ -67,8 +67,10 @@ const SearchApp = () => {
     setUploadedFiles(prev => [...prev, ...validFiles]);
   }, []);
 
-  // Fixed handleModeSwitch function
-  const handleModeSwitch = useCallback((mode) => {
+  // Simplified tab switch handler
+  const handleModeSwitch = (mode) => {
+    if (mode === searchMode) return;
+    
     setSearchMode(mode);
     setSearchResults(null);
     setError(null);
@@ -76,7 +78,7 @@ const SearchApp = () => {
       { [SOURCE_TYPES.VERIFIED]: true } : 
       { [SOURCE_TYPES.WEB]: true }
     );
-  }, []);
+  };
 
   // Search handling functions
   const processSearch = useCallback(async (query) => {
@@ -288,24 +290,24 @@ const SearchApp = () => {
         <div className="flex justify-center">
           <div className="inline-flex bg-white rounded-full p-1 shadow-lg">
             <button
+              type="button"
               onClick={() => handleModeSwitch(SEARCH_MODES.VERIFIED)}
-              className={`
-                px-6 py-2 rounded-full transition-all duration-200
-                ${searchMode === SEARCH_MODES.VERIFIED 
+              className={`px-6 py-2 rounded-full transition-all duration-200 ${
+                searchMode === SEARCH_MODES.VERIFIED 
                   ? 'bg-blue-600 text-white' 
-                  : 'text-slate-600 hover:bg-slate-100'}
-              `}
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
             >
               Verified Sources
             </button>
             <button
+              type="button"
               onClick={() => handleModeSwitch(SEARCH_MODES.OPEN)}
-              className={`
-                px-6 py-2 rounded-full transition-all duration-200
-                ${searchMode === SEARCH_MODES.OPEN 
+              className={`px-6 py-2 rounded-full transition-all duration-200 ${
+                searchMode === SEARCH_MODES.OPEN 
                   ? 'bg-blue-600 text-white' 
-                  : 'text-slate-600 hover:bg-slate-100'}
-              `}
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
             >
               Open Research
             </button>
