@@ -10,6 +10,15 @@ const nextConfig = {
     config.optimization.splitChunks = false;
     config.optimization.runtimeChunk = false;
     return config;
+  },
+  // Enable API routes
+  rewrites: async () => {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:3000/api/:path*'
+      }
+    ];
   }
 };
 
