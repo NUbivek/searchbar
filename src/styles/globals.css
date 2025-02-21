@@ -14,7 +14,7 @@
   }
 
   body {
-    @apply text-[--text] bg-[--surface] antialiased;
+    @apply text-gray-900 bg-white antialiased;
   }
 
   /* Modern Scrollbar */
@@ -120,5 +120,10 @@
            before:bg-gradient-to-r before:from-transparent 
            before:via-white/20 before:to-transparent
            before:animate-shimmer;
+  }
+
+  /* Add a test class */
+  .test-component {
+    @apply bg-blue-500 text-white p-4 rounded-lg;
   }
 }
