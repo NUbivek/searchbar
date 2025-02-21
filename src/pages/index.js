@@ -380,8 +380,48 @@ export default function Home() {
             )}
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* Enhanced Search Section */}
+          <div className="space-y-6">
+            {/* Add Model Selector at the top */}
+            <div className="flex justify-center mb-6">
+              <div className="w-[240px] relative">
+                <button
+                  onClick={() => setShowModelDropdown(!showModelDropdown)}
+                  className="w-full px-4 py-1.5 text-[16px] border border-gray-300 rounded-lg
+                            bg-white text-center group hover:border-[#4BA3F5] 
+                            focus:ring-2 focus:ring-[#4BA3F5]/20 transition-all
+                            flex items-center justify-between"
+                >
+                  <span className="flex-1 text-center">{selectedModel}</span>
+                  <ChevronDown 
+                    className={`transition-transform duration-200 text-gray-900 mr-1
+                      ${showModelDropdown ? 'rotate-180' : ''}`}
+                    size={16}
+                  />
+                </button>
+
+                {showModelDropdown && (
+                  <div className="absolute top-full left-0 w-full mt-1 bg-white border 
+                                border-gray-300 rounded-lg shadow-lg overflow-hidden
+                                animate-slideDown z-10">
+                    {['Perplexity', 'Model A', 'Model B'].map((model) => (
+                      <button
+                        key={model}
+                        onClick={() => {
+                          setSelectedModel(model);
+                          setShowModelDropdown(false);
+                        }}
+                        className="w-full px-4 py-2 text-[16px] text-left hover:bg-gray-50
+                                 transition-colors"
+                      >
+                        {model}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Existing Search Section */}
             <div className="space-y-6">
               {/* Search Input with History */}
               <div className="relative">
