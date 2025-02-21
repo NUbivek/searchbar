@@ -101,12 +101,12 @@ export default function Home() {
       </Head>
 
       <main className="container mx-auto max-w-[800px] px-6 py-16">
-        {/* Header */}
+        {/* Header - Updated styling */}
         <div className="text-center mb-12">
-          <h1 className="text-[64px] font-bold mb-4">
+          <h1 className="text-[56px] font-bold mb-3 text-[#1E3A8A]">
             Research Hub
           </h1>
-          <p className="text-[24px] text-gray-600">
+          <p className="text-[20px] text-gray-500">
             Search across curated, verified sources for reliable insights
           </p>
         </div>
@@ -139,12 +139,13 @@ export default function Home() {
 
         {activeTab === 'verified' ? (
           <div className="space-y-8">
-            {/* Custom Model Selector Dropdown */}
-            <div className="flex justify-center mb-8">
-              <div className="w-[200px] relative">
+            {/* Search - Enhanced and Centered */}
+            <div className="flex flex-col items-center mb-12">
+              {/* Model Selector - Made more compact */}
+              <div className="w-[180px] mb-4">
                 <button
                   onClick={() => setShowModelDropdown(!showModelDropdown)}
-                  className="w-full px-4 py-2.5 text-[18px] border border-gray-300 rounded-lg 
+                  className="w-full px-4 py-2 text-[16px] border border-gray-300 rounded-lg 
                             bg-white text-center group hover:border-[#4BA3F5] 
                             focus:ring-2 focus:ring-[#4BA3F5]/20 transition-all
                             flex items-center justify-between"
@@ -153,7 +154,7 @@ export default function Home() {
                   <ChevronDown 
                     className={`transition-transform duration-200 text-gray-900 mr-1
                       ${showModelDropdown ? 'rotate-180' : ''}`}
-                    size={18}
+                    size={16}
                   />
                 </button>
 
@@ -178,20 +179,24 @@ export default function Home() {
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Search */}
-            <div className="flex gap-3 mb-12">
-              <input
-                type="text"
-                placeholder="Search verified sources"
-                className="flex-1 px-4 py-2.5 text-[18px] border border-gray-300 rounded-lg"
-              />
-              <button className="px-8 py-2.5 bg-[#4BA3F5] text-white rounded-lg text-[18px]
-                              hover:bg-[#3994e8] active:bg-[#2d87db] 
-                              transform active:scale-[0.98] transition-all">
-                Search
-              </button>
+              {/* Search Bar - Made larger and centered */}
+              <div className="w-full max-w-2xl flex gap-3">
+                <input
+                  type="text"
+                  placeholder="Search verified sources"
+                  className="flex-1 px-6 py-3.5 text-[18px] border border-gray-300 rounded-lg
+                           hover:border-[#4BA3F5] focus:border-[#4BA3F5] 
+                           focus:ring-2 focus:ring-[#4BA3F5]/20 transition-all
+                           placeholder:text-gray-400"
+                />
+                <button className="px-8 py-3.5 bg-[#4BA3F5] text-white rounded-lg text-[18px]
+                                hover:bg-[#3994e8] active:bg-[#2d87db] 
+                                transform active:scale-[0.98] transition-all
+                                shadow-sm hover:shadow-md">
+                  Search
+                </button>
+              </div>
             </div>
 
             {/* Two Panel Options */}
