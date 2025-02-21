@@ -7,6 +7,7 @@ export default function Home() {
   const [selectedModel, setSelectedModel] = useState('Perplexity');
   const [selectedSources, setSelectedSources] = useState(['Deep Web']);
   const [showUploadPanel, setShowUploadPanel] = useState(false);
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
 
   const toggleSource = (source) => {
     if (selectedSources.includes(source)) {
@@ -27,7 +28,7 @@ export default function Home() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-[64px] font-bold mb-4">
-            AI-Powered Research Assistant
+            Research Hub
           </h1>
           <p className="text-[24px] text-gray-600">
             Search across curated, verified sources for reliable insights
@@ -62,21 +63,44 @@ export default function Home() {
 
         {activeTab === 'verified' ? (
           <div className="space-y-8">
-            {/* Enhanced Model Selector with Hover */}
+            {/* Custom Model Selector Dropdown */}
             <div className="flex justify-center mb-8">
-              <div className="w-[200px]">
-                <select
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
+              <div className="w-[200px] relative">
+                <button
+                  onClick={() => setShowModelDropdown(!showModelDropdown)}
                   className="w-full px-4 py-2.5 text-[18px] border border-gray-300 rounded-lg 
-                           bg-white text-center appearance-none cursor-pointer
-                           hover:border-gray-400 focus:border-gray-500 focus:ring-2 
-                           focus:ring-gray-200 transition-all"
+                            bg-white text-center group hover:border-gray-400 
+                            focus:ring-2 focus:ring-gray-200 transition-all
+                            flex items-center justify-center gap-2"
                 >
-                  <option>Perplexity ▼</option>
-                  <option>Model A ▼</option>
-                  <option>Model B ▼</option>
-                </select>
+                  {selectedModel}
+                  <ChevronDown 
+                    className={`transition-transform duration-200 
+                      ${showModelDropdown ? 'rotate-180' : ''}`}
+                    size={18}
+                  />
+                </button>
+
+                {/* Dropdown Menu */}
+                {showModelDropdown && (
+                  <div className="absolute top-full left-0 w-full mt-1 bg-white border 
+                                border-gray-300 rounded-lg shadow-lg overflow-hidden
+                                animate-slideDown z-10">
+                    {['Perplexity', 'Model A', 'Model B'].map((model) => (
+                      <button
+                        key={model}
+                        onClick={() => {
+                          setSelectedModel(model);
+                          setShowModelDropdown(false);
+                        }}
+                        className="w-full px-4 py-2.5 text-[18px] text-left hover:bg-gray-50
+                                 transition-colors"
+                      >
+                        {model}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -96,7 +120,9 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
               {/* Left Panel */}
               <div className="space-y-4">
-                <h2 className="text-[32px] font-bold">Custom Sources Only</h2>
+                <h2 className="text-[24px] md:text-[28px] font-bold whitespace-nowrap">
+                  Custom Sources Only
+                </h2>
                 <p className="text-[18px] text-gray-600">
                   Upload your own files or add custom URLs
                 </p>
@@ -114,7 +140,9 @@ export default function Home() {
 
               {/* Right Panel */}
               <div className="space-y-4">
-                <h2 className="text-[32px] font-bold">Custom + Verified Sources</h2>
+                <h2 className="text-[24px] md:text-[28px] font-bold whitespace-nowrap">
+                  Custom + Verified Sources
+                </h2>
                 <p className="text-[18px] text-gray-600">
                   Combine your sources with our curated collection
                 </p>
