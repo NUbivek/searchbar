@@ -2,65 +2,76 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Root Variables */
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --primary: #111827;
-  --border-color: #DDDDDD;
-  --gray-text: #666666;
-  --light-bg: #F5F5F5;
-}
-
 /* Base Styles */
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: system-ui, -apple-system, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  body {
+    @apply text-gray-900 bg-white antialiased;
+  }
 }
 
-/* Custom Component Classes */
+/* Component Styles */
 @layer components {
+  /* Tab Buttons */
+  .tab-container {
+    @apply inline-flex border border-border rounded-lg overflow-hidden;
+  }
+
   .tab-button {
-    @apply px-5 py-2.5 text-[16px] rounded-lg transition-colors;
+    @apply px-6 py-2.5 text-[16px] transition-colors;
   }
 
   .tab-button-active {
-    @apply bg-[--primary] text-white;
+    @apply bg-primary text-white;
   }
 
   .tab-button-inactive {
-    @apply bg-[--light-bg] text-[--gray-text] hover:bg-[--light-bg]/80;
+    @apply bg-light-bg text-gray-text hover:bg-light-bg/80;
+  }
+
+  /* Form Elements */
+  .select-field {
+    @apply w-full px-4 py-2.5 text-[16px] border border-border rounded-lg 
+           bg-white appearance-none focus:outline-none focus:border-primary/30;
   }
 
   .input-field {
-    @apply flex-1 px-4 py-2.5 text-[16px] border border-[--border-color] 
-           rounded-lg focus:outline-none focus:ring-1 focus:ring-[--primary]/20 
-           focus:border-[--primary]/30;
+    @apply flex-1 px-4 py-2.5 text-[16px] border border-border rounded-lg
+           focus:outline-none focus:border-primary/30;
   }
 
   .search-button {
-    @apply px-6 py-2.5 bg-[--primary] text-white text-[16px] rounded-lg
+    @apply px-6 py-2.5 bg-primary text-white text-[16px] rounded-lg
            hover:opacity-90 transition-colors;
   }
 
+  /* Source Buttons */
+  .source-button-container {
+    @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3;
+  }
+
   .source-button {
-    @apply p-3 text-[14px] rounded-lg border border-[--border-color] 
-           transition-colors flex items-center justify-center;
+    @apply p-3 text-[14px] rounded-lg border border-border
+           transition-all duration-200 flex items-center justify-center
+           hover:border-primary/30;
   }
 
   .source-button-active {
-    @apply bg-[--primary] text-white border-[--primary];
+    @apply bg-primary text-white border-primary;
   }
 
-  .source-button-inactive {
-    @apply bg-[--light-bg] text-[--foreground] hover:bg-[--light-bg]/80;
-  }
-
+  /* Upload Buttons */
   .upload-button {
-    @apply flex-1 px-4 py-2.5 border border-[--border-color] rounded-lg text-[16px]
-           flex items-center justify-center gap-2 hover:bg-[--light-bg]/50 transition-colors;
+    @apply flex-1 px-4 py-2.5 border border-border rounded-lg text-[16px]
+           flex items-center justify-center gap-2 hover:bg-light-bg/50
+           transition-all duration-200;
+  }
+
+  /* Animations */
+  .animate-fade-in {
+    @apply animate-fadeIn;
+  }
+
+  .animate-slide-up {
+    @apply animate-slideUp;
   }
 }
