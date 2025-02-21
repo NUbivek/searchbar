@@ -17,24 +17,46 @@ export default function VerifiedSearch({ selectedModel }) {
     setLoading(true);
     setError(null);
 
+    console.log('Starting search with:', {
+      query,
+      model: selectedModel,
+      customMode,
+      customUrls,
+      uploadedFiles
+    });
+
     try {
       const response = await fetch('/api/verifiedSearch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           query,
           model: selectedModel,
           customMode,
-          customUrls,
-          uploadedFiles
-        }),
+          customUrls: customUrls || [],
+          uploadedFiles: uploadedFiles || []
+        })
       });
 
+      // First check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response');
+      }
+
       const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Search failed');
+      }
+
       setResults(data);
     } catch (err) {
-      setError('Search failed. Please try again.');
       console.error('Search error:', err);
+      setError(err.message || 'Search failed. Please try again.');
     } finally {
       setLoading(false);
     }
