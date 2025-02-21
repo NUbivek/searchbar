@@ -1,1 +1,5 @@
-module.exports = { output: "export" }
+module.exports = {
+  images: {
+    unoptimized: true
+  }
+}
