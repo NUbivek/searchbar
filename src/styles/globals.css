@@ -4,8 +4,17 @@
 
 /* Base Styles */
 @layer base {
+  :root {
+    --primary: #2563eb;     /* Bright blue for primary actions */
+    --surface: #ffffff;     /* Clean white surface */
+    --text: #111827;       /* Dark text for contrast */
+    --text-light: #6b7280; /* Lighter text for subtitles */
+    --border: #e5e7eb;     /* Subtle borders */
+    --hover: #f3f4f6;      /* Hover state background */
+  }
+
   body {
-    @apply text-gray-900 bg-white antialiased;
+    @apply text-[--text] bg-[--surface] antialiased;
   }
 
   /* Modern Scrollbar */
@@ -24,87 +33,85 @@
 
 /* Component Styles */
 @layer components {
-  /* Tab Buttons */
+  /* Tab Navigation */
   .tab-container {
-    @apply inline-flex border border-border rounded-lg overflow-hidden
-           shadow-sm backdrop-blur-sm;
+    @apply flex p-1.5 bg-[--hover] rounded-2xl
+           border border-[--border] shadow-sm
+           mx-auto;
   }
 
   .tab-button {
-    @apply px-6 py-2.5 text-[16px] transition-all duration-200
+    @apply flex-1 px-8 py-3 text-[15px] rounded-xl
+           transition-all duration-200 font-medium
            relative overflow-hidden;
   }
 
   .tab-button-active {
-    @apply bg-primary text-white shadow-sm
-           transform scale-[1.02] z-10;
+    @apply bg-[--surface] text-[--text]
+           shadow-[0_2px_4px_rgba(0,0,0,0.04)]
+           transform scale-[1.01];
   }
 
   .tab-button-inactive {
-    @apply bg-light-bg text-gray-text
-           hover:bg-light-bg/80 hover:text-primary/80;
+    @apply text-[--text-light] hover:text-[--text]
+           hover:bg-white/50;
   }
 
-  /* Form Elements */
+  /* Form Controls */
   .select-field {
-    @apply w-full px-4 py-2.5 text-[16px] border border-border rounded-lg 
-           bg-white appearance-none cursor-pointer
-           focus:outline-none focus:border-primary/30 focus:ring-2 focus:ring-primary/5
-           hover:border-primary/20 transition-all duration-200
-           shadow-sm;
+    @apply w-full px-4 py-2.5 text-[16px] bg-[--surface] 
+           border border-[--border] rounded-lg
+           focus:outline-none focus:ring-2 focus:ring-[--primary]/10
+           hover:border-[--primary]/30 transition-all;
   }
 
   .input-field {
-    @apply flex-1 px-4 py-2.5 text-[16px] border border-border rounded-lg
-           focus:outline-none focus:border-primary/30 focus:ring-2 focus:ring-primary/5
-           hover:border-primary/20 transition-all duration-200
-           placeholder:text-gray-400 shadow-sm;
+    @apply flex-1 px-4 py-2.5 text-[16px] bg-[--surface]
+           border border-[--border] rounded-lg
+           focus:outline-none focus:ring-2 focus:ring-[--primary]/10
+           hover:border-[--primary]/30 transition-all
+           placeholder:text-[--text-light];
   }
 
   .search-button {
-    @apply px-6 py-2.5 bg-primary text-white text-[16px] rounded-lg
-           hover:opacity-90 active:scale-[0.98] transition-all duration-200
-           focus:outline-none focus:ring-2 focus:ring-primary/20
-           shadow-sm hover:shadow relative overflow-hidden
-           after:absolute after:inset-0 after:bg-gradient-to-r 
-           after:from-transparent after:via-white/10 after:to-transparent
-           after:translate-x-[-100%] hover:after:translate-x-[100%]
-           after:transition-transform after:duration-500;
+    @apply px-6 py-2.5 bg-[--primary] text-white text-[16px] rounded-lg
+           font-medium hover:opacity-90 active:scale-[0.98] 
+           transition-all shadow-sm;
   }
 
   /* Source Buttons */
   .source-button-container {
-    @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3;
+    @apply grid grid-cols-2 sm:grid-cols-4 gap-2;
   }
 
   .source-button {
-    @apply p-3 text-[14px] rounded-lg border border-border
-           transition-all duration-200 flex items-center justify-center gap-2
-           hover:border-primary/30 hover:shadow-md hover:scale-[1.02]
-           active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary/10;
+    @apply p-3 text-[14px] rounded-lg border border-[--border]
+           transition-all flex items-center justify-center gap-2
+           hover:border-[--primary]/30 hover:bg-[--hover]
+           active:scale-[0.98];
   }
 
   .source-button-active {
-    @apply bg-primary text-white border-primary shadow-md
-           hover:bg-primary/90;
+    @apply bg-[--primary] text-white border-[--primary]
+           hover:bg-[--primary]/90 hover:border-[--primary];
   }
 
-  /* Upload Buttons */
+  /* Upload Button */
   .upload-button {
-    @apply flex-1 px-4 py-2.5 border border-border rounded-lg text-[16px]
-           flex items-center justify-center gap-2 
-           hover:bg-light-bg/50 hover:border-primary/30 hover:shadow-md
-           active:scale-[0.98] transition-all duration-200
-           focus:outline-none focus:ring-2 focus:ring-primary/10;
+    @apply flex-1 px-4 py-2.5 text-[16px] bg-[--surface]
+           border border-[--border] rounded-lg
+           flex items-center justify-center gap-2
+           hover:bg-[--hover] hover:border-[--primary]/30
+           active:scale-[0.98] transition-all;
   }
 
   /* Animations */
   .animate-fade-in {
-    @apply animate-fadeIn;
+    @apply animate-[fadeIn_0.3s_ease-out];
   }
 
   .animate-slide-up {
-    @apply animate-slideUp;
+    @apply animate-[slideUp_0.3s_ease-out];
   }
 
   /* Loading States */

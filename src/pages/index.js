@@ -7,23 +7,25 @@ export default function Home() {
   const [selectedModel, setSelectedModel] = useState('Perplexity');
 
   return (
-    <div className="min-h-screen bg-white px-6 py-12">
+    <div className="min-h-screen bg-[--surface] flex flex-col items-center">
       <Head>
         <title>AI-Powered Research Assistant</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <div className="max-w-[720px] mx-auto animate-fade-in">
-        {/* Header */}
-        <h1 className="text-[48px] font-bold mb-3">
-          AI-Powered Research Assistant
-        </h1>
-        <p className="text-[20px] text-gray-text mb-8">
-          Search across curated, verified sources for reliable insights
-        </p>
+      <div className="w-full max-w-[720px] px-6 py-16 animate-fade-in">
+        {/* Header - centered */}
+        <div className="text-center mb-12">
+          <h1 className="text-[48px] font-bold mb-4 tracking-tight">
+            AI-Powered Research Assistant
+          </h1>
+          <p className="text-[20px] text-[--text-light]">
+            Search across curated, verified sources for reliable insights
+          </p>
+        </div>
 
-        {/* Tab Navigation */}
-        <div className="tab-container mb-4">
+        {/* Tab Navigation - refined */}
+        <div className="tab-container mb-8">
           <button
             onClick={() => setActiveTab('verified')}
             className={`tab-button ${activeTab === 'verified' ? 'tab-button-active' : 'tab-button-inactive'}`}
@@ -65,7 +67,7 @@ export default function Home() {
             <div className="space-y-8">
               <div>
                 <h2 className="text-[24px] font-bold mb-2">Custom Sources Only</h2>
-                <p className="text-[16px] text-gray-text mb-4">
+                <p className="text-[16px] text-[--text-light] mb-4">
                   Upload your own files or add custom URLs
                 </p>
                 <div className="flex gap-2">
@@ -81,7 +83,7 @@ export default function Home() {
 
               <div>
                 <h2 className="text-[24px] font-bold mb-2">Custom + Verified Sources</h2>
-                <p className="text-[16px] text-gray-text mb-4">
+                <p className="text-[16px] text-[--text-light] mb-4">
                   Combine your sources with our curated collection
                 </p>
                 <div className="flex gap-2">
