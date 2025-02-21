@@ -29,6 +29,8 @@ export default function Home() {
   const [leftUrls, setLeftUrls] = useState(['']);
   const [rightUrls, setRightUrls] = useState(['']);
   const [activePanel, setActivePanel] = useState(null); // 'left' or 'right' or null
+  const [searchResults, setSearchResults] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   const toggleSource = (source) => {
     if (selectedSources.includes(source)) {
@@ -90,6 +92,34 @@ export default function Home() {
     } catch (error) {
       console.error('Upload error:', error);
       // Add error UI feedback here
+    }
+  };
+
+  // Update the search handler function
+  const handleOpenSearch = async (searchQuery) => {
+    if (searchQuery.trim() === '') return;
+    
+    setIsSearching(true);
+    
+    try {
+      // DuckDuckGo search parameters
+      const searchParams = {
+        q: searchQuery,
+        format: 'json',
+        t: 'ResearchHub',
+        ia: 'web',
+        kl: 'wt-wt',
+      };
+
+      // Fetch results
+      const response = await fetch(`https://api.duckduckgo.com/?${new URLSearchParams(searchParams).toString()}`);
+      const data = await response.json();
+      
+      setSearchResults(data);
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -355,12 +385,25 @@ export default function Home() {
                 type="text"
                 placeholder="Search across the web..."
                 className="flex-1 px-4 py-2.5 text-[18px] border border-gray-300 rounded-lg
-                         hover:border-gray-400 focus:border-gray-500 
-                         focus:ring-2 focus:ring-gray-200 transition-all"
+                         hover:border-gray-400 focus:border-[#4BA3F5] 
+                         focus:ring-2 focus:ring-[#4BA3F5]/20 transition-all
+                         placeholder:text-gray-400"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleOpenSearch(e.target.value);
+                  }
+                }}
               />
-              <button className="px-8 py-2.5 bg-[#4BA3F5] text-white rounded-lg text-[18px]
-                              hover:bg-[#3994e8] active:bg-[#2d87db] 
-                              transform active:scale-[0.98] transition-all">
+              <button 
+                onClick={() => {
+                  const searchInput = document.querySelector('input[type="text"]');
+                  handleOpenSearch(searchInput.value);
+                }}
+                className="px-8 py-2.5 bg-[#4BA3F5] text-white rounded-lg text-[18px]
+                         hover:bg-[#3994e8] active:bg-[#2d87db] 
+                         transform active:scale-[0.98] transition-all
+                         shadow-sm hover:shadow-md"
+              >
                 Search
               </button>
             </div>
@@ -521,6 +564,49 @@ export default function Home() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Search Results Section */}
+            {(isSearching || searchResults) && (
+              <div className="mt-8 border border-gray-300 rounded-lg bg-white">
+                <div className="p-4 border-b border-gray-300">
+                  <h3 className="font-medium text-[16px] text-gray-700">
+                    {isSearching ? 'Searching...' : 'Search Results'}
+                  </h3>
+                </div>
+                
+                <div className="max-h-[500px] overflow-y-auto">
+                  {isSearching ? (
+                    <div className="p-8 text-center text-gray-500">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4BA3F5] mx-auto mb-4" />
+                      Searching across selected sources...
+                    </div>
+                  ) : searchResults ? (
+                    <div className="divide-y divide-gray-200">
+                      {searchResults.RelatedTopics?.map((result, index) => (
+                        <div key={index} className="p-4 hover:bg-gray-50 transition-colors">
+                          <a 
+                            href={result.FirstURL} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="block"
+                          >
+                            <h4 className="font-medium text-[15px] text-[#1E3A8A] mb-1 hover:text-[#4BA3F5]">
+                              {result.Text.split(' - ')[0]}
+                            </h4>
+                            <p className="text-[14px] text-gray-600">
+                              {result.Text.split(' - ')[1]}
+                            </p>
+                            <span className="text-[13px] text-green-700">
+                              {result.FirstURL}
+                            </span>
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             )}
           </div>
