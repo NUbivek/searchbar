@@ -1,45 +1,45 @@
 import Head from 'next/head';
 import { useState } from 'react';
-import { Search, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown, Upload } from 'lucide-react';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('verified');
   const [selectedModel, setSelectedModel] = useState('Perplexity');
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#FAFAFA]">
       <Head>
         <title>AI-Powered Research Assistant</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <div className="max-w-[600px] mx-auto pt-16 px-4">
+      <div className="max-w-[720px] mx-auto pt-12 px-6">
         {/* Header */}
-        <h1 className="text-[40px] font-bold text-center text-[#2196F3] mb-2">
+        <h1 className="text-[32px] font-bold text-center text-[#2196F3] mb-2">
           AI-Powered Research Assistant
         </h1>
-        <p className="text-[18px] text-slate-600 text-center mb-10">
+        <p className="text-[16px] text-[#666666] text-center mb-8">
           Search across curated, verified sources for reliable insights
         </p>
 
         {/* Tab Navigation */}
-        <div className="flex justify-center gap-1 mb-8">
+        <div className="flex mb-6 bg-[#F0F0F0] p-1 rounded-lg w-fit mx-auto">
           <button
             onClick={() => setActiveTab('verified')}
-            className={`px-8 py-2.5 rounded-lg transition-colors font-medium
+            className={`px-5 py-2 rounded-md transition-colors text-[14px] font-medium
               ${activeTab === 'verified'
-                ? 'bg-[#2196F3] text-white'
-                : 'bg-[#F8F9FA] text-slate-600 hover:bg-slate-100'
+                ? 'bg-white text-[#2196F3] shadow-sm'
+                : 'text-[#666666]'
               }`}
           >
             Verified Sources
           </button>
           <button
             onClick={() => setActiveTab('open')}
-            className={`px-8 py-2.5 rounded-lg transition-colors font-medium
+            className={`px-5 py-2 rounded-md transition-colors text-[14px] font-medium
               ${activeTab === 'open'
-                ? 'bg-[#2196F3] text-white'
-                : 'bg-[#F8F9FA] text-slate-600 hover:bg-slate-100'
+                ? 'bg-white text-[#2196F3] shadow-sm'
+                : 'text-[#666666]'
               }`}
           >
             Open Research
@@ -49,90 +49,58 @@ export default function Home() {
         {/* Content Area */}
         <div className="space-y-4">
           {/* Model Selector */}
-          <div className="relative">
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-[15px] appearance-none cursor-pointer hover:border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="Perplexity">Perplexity</option>
-              <option value="Gemma">Gemma 2.0 (9B)</option>
-              <option value="Mixtral">Mixtral 8x7B</option>
-            </select>
-            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
-          </div>
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="w-full px-4 py-2.5 bg-white border border-[#E5E5E5] rounded-lg text-[14px] appearance-none cursor-pointer focus:outline-none focus:border-[#2196F3]"
+          >
+            <option value="Perplexity">Perplexity</option>
+          </select>
 
           {/* Search Bar */}
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <input
               type="text"
-              placeholder={`Search ${activeTab === 'verified' ? 'verified' : 'all'} sources...`}
-              className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-lg text-[15px] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Search verified sources..."
+              className="flex-1 px-4 py-2.5 bg-white border border-[#E5E5E5] rounded-lg text-[14px] placeholder:text-[#999999] focus:outline-none focus:border-[#2196F3]"
             />
-            <button
-              className="px-6 py-3 bg-[#2196F3] text-white rounded-lg hover:bg-blue-500 transition-colors flex items-center gap-2 font-medium"
-            >
-              <Search size={20} />
+            <button className="px-5 py-2.5 bg-[#2196F3] text-white rounded-lg text-[14px] font-medium hover:bg-[#1E88E5] transition-colors">
               Search
             </button>
           </div>
 
-          {/* Test Letters */}
-          <div className="text-2xl font-bold text-center mt-8">
-            {activeTab === 'verified' ? 'V' : 'O'}
-          </div>
-
           {/* Verified Sources Content */}
           {activeTab === 'verified' && (
-            <div className="grid grid-cols-1 gap-6 mt-8">
+            <div className="grid grid-cols-2 gap-4 mt-6">
               {/* Custom Sources Only */}
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-                <h3 className="text-lg font-semibold mb-2">Custom Sources Only</h3>
-                <p className="text-slate-600 text-[15px] mb-4">Upload your own files or add custom URLs</p>
+              <div className="bg-white rounded-lg p-5 border border-[#E5E5E5]">
+                <h3 className="text-[16px] font-semibold mb-1">Custom Sources Only</h3>
+                <p className="text-[14px] text-[#666666] mb-4">Upload your own files or add custom URLs</p>
                 
-                <button className="w-full py-3 mb-4 border border-dashed border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2 font-medium">
-                  Choose Files
+                <button className="w-full py-2.5 border border-[#E5E5E5] rounded-lg text-[14px] text-[#666666] hover:bg-[#F8F8F8] mb-3 flex items-center justify-center gap-2">
+                  <Upload size={16} />
+                  Upload Files
                 </button>
 
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter URL"
-                    className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-[15px] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <button className="px-4 py-2.5 bg-[#2196F3] text-white rounded-lg font-medium hover:bg-blue-500 transition-colors">
-                    Add
-                  </button>
-                </div>
+                <button className="w-full py-2.5 border border-[#E5E5E5] rounded-lg text-[14px] text-[#666666] hover:bg-[#F8F8F8]">
+                  Add URLs
+                </button>
               </div>
 
               {/* Custom + Verified Sources */}
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-                <h3 className="text-lg font-semibold mb-2">Custom + Verified Sources</h3>
-                <p className="text-slate-600 text-[15px] mb-4">Combine your sources with our curated collection</p>
+              <div className="bg-white rounded-lg p-5 border border-[#E5E5E5]">
+                <h3 className="text-[16px] font-semibold mb-1">Custom + Verified Sources</h3>
+                <p className="text-[14px] text-[#666666] mb-4">Combine your sources with our curated collection</p>
                 
-                <button className="w-full py-3 mb-4 border border-dashed border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2 font-medium">
-                  Choose Files
+                <button className="w-full py-2.5 border border-[#E5E5E5] rounded-lg text-[14px] text-[#666666] hover:bg-[#F8F8F8] mb-3 flex items-center justify-center gap-2">
+                  <Upload size={16} />
+                  Upload Files
                 </button>
 
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter URL"
-                    className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-[15px] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <button className="px-4 py-2.5 bg-[#2196F3] text-white rounded-lg font-medium hover:bg-blue-500 transition-colors">
-                    Add
-                  </button>
-                </div>
+                <button className="w-full py-2.5 border border-[#E5E5E5] rounded-lg text-[14px] text-[#666666] hover:bg-[#F8F8F8]">
+                  Add URLs
+                </button>
               </div>
-            </div>
-          )}
-
-          {/* Open Research Content */}
-          {activeTab === 'open' && (
-            <div>
-              {/* We'll add Open Research content later */}
             </div>
           )}
         </div>
