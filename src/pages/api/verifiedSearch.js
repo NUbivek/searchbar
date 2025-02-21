@@ -11,15 +11,23 @@ export default async function handler(req, res) {
 
   try {
     const { query, model, customMode, customUrls, uploadedFiles } = req.body;
+    
+    // Add logging to debug
+    console.log('Search request:', { query, model, customMode });
+
     const results = await searchVerifiedSources(query, {
       model,
       mode: customMode,
       customUrls,
       uploadedFiles
     });
+
+    // Add logging for results
+    console.log('Search results:', results);
+
     res.status(200).json(results);
   } catch (error) {
     console.error('Verified search error:', error);
-    res.status(500).json({ error: 'Search failed' });
+    res.status(500).json({ error: 'Search failed: ' + error.message });
   }
 } 

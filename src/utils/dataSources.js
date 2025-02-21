@@ -53,11 +53,10 @@ export const VC_FIRMS = {
     },
     'sequoia': {
         name: 'Sequoia Capital',
-        tier: 1,
-        focus: ['Enterprise', 'Consumer', 'Deep Tech'],
+        focus: ['Technology', 'Healthcare', 'Consumer'],
         handles: {
-            substack: 'https://www.sequoiacap.com/feed/',
-            linkedin: 'https://www.linkedin.com/company/sequoia-capital'
+            linkedin: 'https://www.linkedin.com/company/sequoia-capital/',
+            x: 'https://twitter.com/sequoia'
         }
     }
     // Add more VC firms as needed
@@ -306,4 +305,14 @@ async function fetchDataFromSource(source, query) {
     // Implementation depends on source type and API
     // This is a placeholder for the actual implementation
     return null;
-} 
+}
+
+export const MARKET_DATA_SOURCES = [
+    {
+        name: 'Market Research Report',
+        specialty: ['Industry Analysis', 'Market Trends'],
+        description: 'Comprehensive market research and industry analysis',
+        url: 'https://example.com/market-research'
+    },
+    // Add more market data sources...
+]; 
