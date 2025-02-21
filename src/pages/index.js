@@ -15,7 +15,7 @@ const theme = {
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('verified');
-  const [selectedModel, setSelectedModel] = useState('Perplexity');
+  const [selectedModel, setSelectedModel] = useState('Model B');
   const [selectedSources, setSelectedSources] = useState(['Deep Web']);
   const [showUploadPanel, setShowUploadPanel] = useState(false);
   const [showModelDropdown, setShowModelDropdown] = useState(false);
@@ -147,11 +147,11 @@ export default function Home() {
                   className="w-full px-4 py-2.5 text-[18px] border border-gray-300 rounded-lg 
                             bg-white text-center group hover:border-[#4BA3F5] 
                             focus:ring-2 focus:ring-[#4BA3F5]/20 transition-all
-                            flex items-center justify-center gap-2"
+                            flex items-center justify-between"
                 >
-                  {selectedModel}
+                  <span className="flex-1 text-center">{selectedModel}</span>
                   <ChevronDown 
-                    className={`transition-transform duration-200 text-[#4BA3F5]
+                    className={`transition-transform duration-200 text-gray-900 mr-1
                       ${showModelDropdown ? 'rotate-180' : ''}`}
                     size={18}
                   />
