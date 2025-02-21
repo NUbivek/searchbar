@@ -46,20 +46,22 @@ export default function Home() {
           </button>
         </div>
 
-        {activeTab === 'verified' && (
+        {activeTab === 'verified' ? (
           <>
-            {/* Model Selector - Matching screenshot */}
-            <div className="mb-4">
+            {/* Verified Sources Content */}
+            <div className="mb-4 max-w-[200px] mx-auto">
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="w-full px-4 py-2 text-[18px] border border-gray-300 rounded-lg bg-white"
+                className="w-full px-4 py-2 text-[18px] border border-gray-300 rounded-lg bg-white text-center appearance-none cursor-pointer"
               >
                 <option>Perplexity ▼</option>
+                <option>Model A ▼</option>
+                <option>Model B ▼</option>
               </select>
             </div>
 
-            {/* Search Bar - Matching screenshot */}
+            {/* Search Bar */}
             <div className="flex gap-2 mb-8">
               <input
                 type="text"
@@ -108,6 +110,57 @@ export default function Home() {
               </div>
             </div>
           </>
+        ) : (
+          // Open Research Content
+          <div className="space-y-4">
+            {/* Search */}
+            <div className="flex gap-2 mb-8">
+              <input
+                type="text"
+                placeholder="Search across the web..."
+                className="flex-1 px-4 py-2 text-[18px] border border-gray-300 rounded-lg"
+              />
+              <button className="px-6 py-2 bg-gray-900 text-white rounded-lg text-[18px]">
+                Search
+              </button>
+            </div>
+
+            {/* Source Buttons */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button className="p-3 bg-gray-900 text-white rounded-lg text-[14px]">
+                Deep Web
+              </button>
+              <button className="p-3 border border-gray-300 rounded-lg text-[14px] hover:bg-gray-50">
+                LinkedIn
+              </button>
+              <button className="p-3 border border-gray-300 rounded-lg text-[14px] hover:bg-gray-50">
+                X
+              </button>
+              <button className="p-3 border border-gray-300 rounded-lg text-[14px] hover:bg-gray-50">
+                Reddit
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button className="p-3 border border-gray-300 rounded-lg text-[14px] hover:bg-gray-50">
+                Crunchbase
+              </button>
+              <button className="p-3 border border-gray-300 rounded-lg text-[14px] hover:bg-gray-50">
+                Pitchbook
+              </button>
+              <button className="p-3 border border-gray-300 rounded-lg text-[14px] hover:bg-gray-50">
+                Medium
+              </button>
+              <button className="p-3 border border-gray-300 rounded-lg text-[14px] hover:bg-gray-50">
+                Substack
+              </button>
+            </div>
+
+            <button className="w-full p-3 border border-gray-300 rounded-lg text-[14px] hover:bg-gray-50 flex items-center justify-center gap-2">
+              <Upload size={18} />
+              Upload Files + ...
+            </button>
+          </div>
         )}
       </main>
     </div>
