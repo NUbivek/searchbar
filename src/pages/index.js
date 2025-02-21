@@ -82,15 +82,15 @@ export default function Home() {
             {activeTab === 'verified' ? 'V' : 'O'}
           </div>
 
-          {/* Source Panels - Only show in Verified tab */}
+          {/* Verified Sources Content */}
           {activeTab === 'verified' && (
-            <div className="grid md:grid-cols-2 gap-6 mt-8">
-              {/* Custom Sources Only Panel */}
+            <div className="grid grid-cols-1 gap-6 mt-8">
+              {/* Custom Sources Only */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-                <h3 className="text-lg font-semibold mb-3">Custom Sources Only</h3>
-                <p className="text-slate-600 mb-4">Upload your own files or add custom URLs</p>
+                <h3 className="text-lg font-semibold mb-2">Custom Sources Only</h3>
+                <p className="text-slate-600 text-[15px] mb-4">Upload your own files or add custom URLs</p>
                 
-                <button className="w-full py-2 mb-3 border-2 border-dashed border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
+                <button className="w-full py-3 mb-4 border border-dashed border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2 font-medium">
                   Choose Files
                 </button>
 
@@ -98,20 +98,20 @@ export default function Home() {
                   <input
                     type="text"
                     placeholder="Enter URL"
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg"
+                    className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-[15px] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
-                  <button className="px-4 py-2 bg-[#2196F3] text-white rounded-lg">
+                  <button className="px-4 py-2.5 bg-[#2196F3] text-white rounded-lg font-medium hover:bg-blue-500 transition-colors">
                     Add
                   </button>
                 </div>
               </div>
 
-              {/* Custom + Verified Sources Panel */}
+              {/* Custom + Verified Sources */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-                <h3 className="text-lg font-semibold mb-3">Custom + Verified Sources</h3>
-                <p className="text-slate-600 mb-4">Combine your sources with our curated collection</p>
+                <h3 className="text-lg font-semibold mb-2">Custom + Verified Sources</h3>
+                <p className="text-slate-600 text-[15px] mb-4">Combine your sources with our curated collection</p>
                 
-                <button className="w-full py-2 mb-3 border-2 border-dashed border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
+                <button className="w-full py-3 mb-4 border border-dashed border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2 font-medium">
                   Choose Files
                 </button>
 
@@ -119,13 +119,20 @@ export default function Home() {
                   <input
                     type="text"
                     placeholder="Enter URL"
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg"
+                    className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-[15px] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
-                  <button className="px-4 py-2 bg-[#2196F3] text-white rounded-lg">
+                  <button className="px-4 py-2.5 bg-[#2196F3] text-white rounded-lg font-medium hover:bg-blue-500 transition-colors">
                     Add
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Open Research Content */}
+          {activeTab === 'open' && (
+            <div>
+              {/* We'll add Open Research content later */}
             </div>
           )}
         </div>
