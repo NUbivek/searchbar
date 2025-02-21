@@ -102,8 +102,8 @@ export default function Home() {
 
       <main className="container mx-auto max-w-[800px] px-6 py-16">
         {/* Header - Updated styling */}
-        <div className="text-center mb-12">
-          <h1 className="text-[56px] font-bold mb-3 text-[#1E3A8A]">
+        <div className="text-center mb-8">
+          <h1 className="text-[56px] font-bold mb-2 text-[#1E3A8A]">
             Research Hub
           </h1>
           <p className="text-[20px] text-gray-500">
@@ -112,7 +112,7 @@ export default function Home() {
         </div>
 
         {/* Enhanced Tabs with Better Shadow */}
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-16">
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             <button
               onClick={() => setActiveTab('verified')}
@@ -141,11 +141,11 @@ export default function Home() {
           <div className="space-y-8">
             {/* Search - Enhanced and Centered */}
             <div className="flex flex-col items-center mb-12">
-              {/* Model Selector - Made more compact */}
-              <div className="w-[180px] mb-4">
+              {/* Model Selector - Made wider and shorter */}
+              <div className="w-[240px] mb-6">
                 <button
                   onClick={() => setShowModelDropdown(!showModelDropdown)}
-                  className="w-full px-4 py-2 text-[16px] border border-gray-300 rounded-lg 
+                  className="w-full px-4 py-1.5 text-[16px] border border-gray-300 rounded-lg
                             bg-white text-center group hover:border-[#4BA3F5] 
                             focus:ring-2 focus:ring-[#4BA3F5]/20 transition-all
                             flex items-center justify-between"
@@ -158,7 +158,7 @@ export default function Home() {
                   />
                 </button>
 
-                {/* Dropdown Menu */}
+                {/* Dropdown Menu - Match parent width */}
                 {showModelDropdown && (
                   <div className="absolute top-full left-0 w-full mt-1 bg-white border 
                                 border-gray-300 rounded-lg shadow-lg overflow-hidden
@@ -170,7 +170,7 @@ export default function Home() {
                           setSelectedModel(model);
                           setShowModelDropdown(false);
                         }}
-                        className="w-full px-4 py-2.5 text-[18px] text-left hover:bg-gray-50
+                        className="w-full px-4 py-2 text-[16px] text-left hover:bg-gray-50
                                  transition-colors"
                       >
                         {model}
