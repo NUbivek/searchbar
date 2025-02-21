@@ -63,8 +63,8 @@ export default function VerifiedSearch({ selectedModel }) {
   };
 
   return (
-    <div className="space-y-6">
-      <SearchErrorBoundary>
+    <SearchErrorBoundary>
+      <div className="space-y-6">
         <form onSubmit={handleSearch} className="space-y-4">
           <div className="flex gap-4">
             <input
@@ -125,37 +125,37 @@ export default function VerifiedSearch({ selectedModel }) {
             </div>
           )}
         </form>
-      </SearchErrorBoundary>
 
-      {error && (
-        <div className="text-red-600 text-center">{error}</div>
-      )}
+        {error && (
+          <div className="text-red-600 text-center">{error}</div>
+        )}
 
-      {results && (
-        <div className="mt-8 space-y-8">
-          {results.sources?.map((result, index) => (
-            <div
-              key={index}
-              className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow"
-            >
-              <h3 className="text-lg font-semibold text-gray-900">
-                {result.source}
-              </h3>
-              <p className="mt-2 text-gray-600">{result.content}</p>
-              {result.url && (
-                <a
-                  href={result.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-4 inline-block text-blue-600 hover:text-blue-800"
-                >
-                  View Source →
-                </a>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+        {results && (
+          <div className="mt-8 space-y-8">
+            {results.sources?.map((result, index) => (
+              <div
+                key={index}
+                className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow"
+              >
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {result.source}
+                </h3>
+                <p className="mt-2 text-gray-600">{result.content}</p>
+                {result.url && (
+                  <a
+                    href={result.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-block text-blue-600 hover:text-blue-800"
+                  >
+                    View Source →
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </SearchErrorBoundary>
   );
 } 

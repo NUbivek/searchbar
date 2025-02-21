@@ -1,26 +1,48 @@
 import { VC_FIRMS, MARKET_DATA_SOURCES, searchAcrossDataSources } from './dataSources';
 import { processWithLLM } from './llmProcessing';
+import { logger } from './logger';
 
 export async function searchVerifiedSources(query, options = {}) {
-  console.log('Starting search with:', { query, options });
+  const searchId = Math.random().toString(36).substring(7);
+  logger.debug(`[${searchId}] Starting search`, { query, options });
 
   const { model, mode = 'verified', customUrls = [], uploadedFiles = [] } = options;
 
   try {
-    let results = [];
+    // Track each step
+    const steps = {
+      start: Date.now(),
+      dataSourcesLoaded: false,
+      searchStarted: false,
+      resultsProcessed: false,
+      end: null
+    };
 
-    // Verify data sources are loaded
-    console.log('Data sources check:', {
+    // Verify data sources
+    const dataSourcesCheck = {
       hasVCFirms: !!VC_FIRMS,
-      vcFirmsType: typeof VC_FIRMS,
+      vcFirmsCount: Object.keys(VC_FIRMS || {}).length,
       hasMarketData: !!MARKET_DATA_SOURCES,
-      marketDataType: typeof MARKET_DATA_SOURCES
-    });
+      marketDataCount: Object.keys(MARKET_DATA_SOURCES || {}).length
+    };
+    steps.dataSourcesLoaded = true;
+    logger.debug(`[${searchId}] Data sources check:`, dataSourcesCheck);
+
+    // Start search
+    steps.searchStarted = true;
+    const results = [];
+    
+    // Track each search operation
+    const searchOperations = [];
 
     // Search based on mode
     if (mode === 'verified' || mode === 'combined') {
       console.log('Searching verified sources...');
       
+      const verifiedOp = {
+        type: 'verified',
+        startTime: Date.now()
+      };
       try {
         const verifiedResults = await searchAcrossDataSources(query, {
           verifiedOnly: true,
@@ -28,21 +50,15 @@ export async function searchVerifiedSources(query, options = {}) {
         });
         console.log('Verified results:', verifiedResults);
         results.push(...verifiedResults);
-
-        const vcResults = Object.values(VC_FIRMS)
-          .filter(firm => matchesQuery(firm, query))
-          .map(firm => ({
-            source: firm.name,
-            type: 'VC Firm',
-            content: `${firm.name} - ${firm.focus?.join(', ') || 'No focus specified'}`,
-            url: firm.handles?.linkedin || firm.handles?.x || '#',
-            verified: true
-          }));
-        console.log('VC results:', vcResults);
-        results.push(...vcResults);
+        verifiedOp.success = true;
+        verifiedOp.resultCount = verifiedResults.length;
       } catch (e) {
         console.error('Error in verified search:', e);
+        verifiedOp.success = false;
+        verifiedOp.error = e.message;
       }
+      verifiedOp.endTime = Date.now();
+      searchOperations.push(verifiedOp);
     }
 
     // Handle custom sources
@@ -85,15 +101,31 @@ export async function searchVerifiedSources(query, options = {}) {
     const processedResults = await processWithLLM(results, model);
     console.log('Post-LLM results:', processedResults);
 
+    // Process results
+    steps.resultsProcessed = true;
+    steps.end = Date.now();
+
+    // Log performance
+    logger.debug(`[${searchId}] Search completed`, {
+      duration: steps.end - steps.start,
+      steps,
+      operations: searchOperations,
+      resultCount: results.length
+    });
+
     return {
-      summary: processedResults.summary,
-      sources: results.map(result => ({
+      searchId,
+      timing: {
+        total: steps.end - steps.start,
+        steps
+      },
+      results: results.map(result => ({
         ...result,
         content: processedResults.contentMap[result.url] || result.content
       }))
     };
   } catch (error) {
-    console.error('Search failed with error:', error);
+    logger.error(`[${searchId}] Search failed:`, error);
     throw new Error(`Search failed: ${error.message}`);
   }
 }

@@ -1,13 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { SearchModes } from '../utils/constants';
 import ModelSelector from '../components/ModelSelector';
 import VerifiedSearch from '../components/VerifiedSearch';
 import OpenSearch from '../components/OpenSearch';
+import DebugPanel from '../components/DebugPanel';
 
 export default function Home() {
   const [mode, setMode] = useState(SearchModes.VERIFIED);
   const [selectedModel, setSelectedModel] = useState('Gemma-7B');
+  const [debugMode, setDebugMode] = useState(false);
+
+  // Enable debug with Ctrl+Shift+D
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+        setDebugMode(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -62,6 +75,8 @@ export default function Home() {
         ) : (
           <OpenSearch selectedModel={selectedModel} />
         )}
+
+        {debugMode && <DebugPanel />}
       </div>
     </div>
   );

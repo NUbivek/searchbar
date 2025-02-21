@@ -1,35 +1,35 @@
 import React from 'react';
 
-export class SearchErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+export default function SearchErrorBoundary({ children }) {
+  const [hasError, setHasError] = React.useState(false);
+  const [error, setError] = React.useState(null);
 
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, info) {
-    console.error('Search error:', error, info);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="text-center py-8">
-          <h2 className="text-xl font-semibold text-red-600">Search failed</h2>
-          <p className="mt-2 text-gray-600">{this.state.error?.message}</p>
-          <button
-            onClick={() => this.setState({ hasError: false })}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Try Again
-          </button>
-        </div>
-      );
+  React.useEffect(() => {
+    if (hasError) {
+      // Log error to monitoring service
+      console.error('Search error:', error);
     }
+  }, [hasError, error]);
 
-    return this.props.children;
+  if (hasError) {
+    return (
+      <div className="text-center py-8">
+        <h2 className="text-xl font-semibold text-red-600">Search failed</h2>
+        <p className="mt-2 text-gray-600">{error?.message}</p>
+        <button
+          onClick={() => setHasError(false)}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Try Again
+        </button>
+      </div>
+    );
   }
+
+  return (
+    <React.Fragment>
+      {children}
+      <div id="search-error-container" />
+    </React.Fragment>
+  );
 } 
