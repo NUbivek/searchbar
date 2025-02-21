@@ -2,7 +2,7 @@ import { PLATFORMS } from './marketDataTypes';
 import { ROLES, detectRole } from './roles';
 
 // Platform-specific handle prefixes and URL generators
-export const PLATFORMS = {
+export const PLATFORM_CONFIG = {
     x: {
         prefix: '@',
         urlPrefix: 'https://twitter.com/',
@@ -123,12 +123,16 @@ export const getVCsByTier = (tier) => {
 
 // ... rest of the utility functions
 
+// Single default export
 export default {
+    PLATFORM_CONFIG,
     VC_FIRMS,
     MARKET_DATA_SOURCES,
-    PLATFORMS,
+    DATA_PROVIDERS,
     getVCsByTier,
-    // ... other exports
+    getVerifiedSources,
+    getFreeTierAPIs,
+    searchAcrossDataSources
 };
 
 // Add new data source categories
@@ -302,11 +306,4 @@ async function fetchDataFromSource(source, query) {
     // Implementation depends on source type and API
     // This is a placeholder for the actual implementation
     return null;
-}
-
-export default {
-    ...DATA_PROVIDERS,
-    getVerifiedSources,
-    getFreeTierAPIs,
-    searchAcrossDataSources
-}; 
+} 
