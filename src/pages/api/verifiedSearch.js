@@ -12,8 +12,9 @@ export default async function handler(req, res) {
   try {
     const { query, model, customMode, customUrls, uploadedFiles } = req.body;
     
-    // Add logging to debug
-    console.log('Search request:', { query, model, customMode });
+    if (!query) {
+      return res.status(400).json({ error: 'Query is required' });
+    }
 
     const results = await searchVerifiedSources(query, {
       model,
@@ -22,12 +23,12 @@ export default async function handler(req, res) {
       uploadedFiles
     });
 
-    // Add logging for results
-    console.log('Search results:', results);
-
     res.status(200).json(results);
   } catch (error) {
-    console.error('Verified search error:', error);
-    res.status(500).json({ error: 'Search failed: ' + error.message });
+    console.error('Search error:', error);
+    res.status(500).json({ 
+      error: 'Search failed', 
+      message: error.message 
+    });
   }
 } 

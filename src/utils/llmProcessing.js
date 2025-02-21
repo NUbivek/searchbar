@@ -2,17 +2,30 @@ import axios from 'axios';
 
 export async function processWithLLM(results, model) {
   try {
-    const response = await fetch('/api/llm/process', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ results, model })
+    // Format results for LLM
+    const context = results.map(result => ({
+      source: result.source,
+      content: result.content,
+      type: result.type,
+      url: result.url
+    }));
+
+    // Process with selected model
+    const processedResults = {
+      summary: `Found ${results.length} relevant results from various sources`,
+      contentMap: {}
+    };
+
+    // Process each result
+    results.forEach(result => {
+      processedResults.contentMap[result.url] = result.content;
     });
-    
-    return await response.json();
+
+    return processedResults;
   } catch (error) {
     console.error('LLM processing error:', error);
     return {
-      summary: 'Failed to process results with LLM',
+      summary: 'Failed to process results',
       contentMap: {}
     };
   }

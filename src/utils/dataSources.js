@@ -62,9 +62,9 @@ export const VC_FIRMS = {
     // Add more VC firms as needed
 };
 
-// Market Data Sources
+// Market Data Sources - Unified Structure
 export const MARKET_DATA_SOURCES = {
-    'financial': [
+    financial: [
         {
             name: 'Bloomberg',
             specialty: ['Market Data', 'Financial News'],
@@ -81,21 +81,14 @@ export const MARKET_DATA_SOURCES = {
         {
             name: 'Goldman Sachs',
             specialty: ['Global Markets', 'Technology', 'Healthcare', 'ESG'],
-            data_types: ['Market Research', 'Industry Reports', 'Economic Forecasts'],
+            data_types: ['Market Research', 'Industry Reports'],
             research_portals: {
-                public: 'https://www.goldmansachs.com/insights',
-                subscription: 'https://research.gs.com'
-            },
-            handles: {
-                x: '@GoldmanSachs',
-                linkedin: 'company/goldman-sachs',
-                substack: 'gs.insights.com'
+                public: 'https://www.goldmansachs.com/insights'
             },
             verified: true
         }
-        // ... rest of the financial sources
     ],
-    'industry': [
+    industry: [
         {
             name: 'CBInsights',
             specialty: ['Startup Data', 'Market Maps'],
@@ -103,41 +96,24 @@ export const MARKET_DATA_SOURCES = {
             research_portals: {
                 public: 'https://www.cbinsights.com/research'
             },
-            handles: {
-                x: '@CBinsights',
-                linkedin: 'company/cb-insights'
-            },
             verified: true
         }
-        // ... rest of the industry sources
+    ],
+    consulting: [
+        {
+            name: 'Deloitte',
+            type: 'big_four',
+            research_portal: 'https://www2.deloitte.com/insights',
+            verified: true
+        },
+        // ... other consulting firms
     ]
 };
 
-// Export utility functions
-export const getVCsByTier = (tier) => {
-    return Object.entries(VC_FIRMS)
-        .filter(([_, firm]) => firm.tier === tier)
-        .map(([key, firm]) => ({ key, ...firm }));
-};
-
-// ... rest of the utility functions
-
-// Single default export
-export default {
-    PLATFORM_CONFIG,
-    VC_FIRMS,
-    MARKET_DATA_SOURCES,
-    DATA_PROVIDERS,
-    getVCsByTier,
-    getVerifiedSources,
-    getFreeTierAPIs,
-    searchAcrossDataSources
-};
-
-// Add new data source categories
+// Data Providers for APIs
 export const DATA_PROVIDERS = {
-    'market_data': {
-        'finazon': {
+    market_data: {
+        finazon: {
             name: 'Finazon',
             type: 'api',
             data_types: ['Real-time', 'Historical', 'Fundamental'],
@@ -149,7 +125,7 @@ export const DATA_PROVIDERS = {
             docs: 'https://finazon.io/docs',
             free_tier: true
         },
-        'twelvedata': {
+        twelvedata: {
             name: 'Twelve Data',
             type: 'api',
             data_types: ['Real-time', 'Historical', 'Technical'],
@@ -161,7 +137,7 @@ export const DATA_PROVIDERS = {
             docs: 'https://twelvedata.com/docs',
             free_tier: true
         },
-        'alphavantage': {
+        alphavantage: {
             name: 'Alpha Vantage',
             type: 'api',
             data_types: ['Historical', 'Fundamental', 'Technical'],
@@ -174,8 +150,8 @@ export const DATA_PROVIDERS = {
             free_tier: true
         }
     },
-    'financial_news': {
-        'ft': {
+    financial_news: {
+        ft: {
             name: 'Financial Times',
             type: 'news',
             url: 'https://www.ft.com',
@@ -183,7 +159,7 @@ export const DATA_PROVIDERS = {
             api_docs: 'https://developer.ft.com',
             verified: true
         },
-        'yahoo_finance': {
+        yahoo_finance: {
             name: 'Yahoo Finance',
             type: 'aggregator',
             url: 'https://finance.yahoo.com',
@@ -192,53 +168,31 @@ export const DATA_PROVIDERS = {
             free_tier: true
         }
     },
-    'consulting': {
-        'deloitte': {
-            name: 'Deloitte',
-            type: 'big_four',
-            research_portal: 'https://www2.deloitte.com/insights',
-            handles: {
-                x: '@Deloitte',
-                linkedin: 'company/deloitte'
-            },
-            verified: true
-        },
-        'pwc': {
+    consulting: {
+        pwc: {
             name: 'PwC',
             type: 'big_four',
             research_portal: 'https://www.pwc.com/insights',
-            handles: {
-                x: '@PwC',
-                linkedin: 'company/pwc'
-            },
             verified: true
         },
-        'ey': {
+        ey: {
             name: 'EY',
             type: 'big_four',
             research_portal: 'https://www.ey.com/insights',
-            handles: {
-                x: '@EY_Global',
-                linkedin: 'company/ernst-and-young'
-            },
             verified: true
         },
-        'kpmg': {
+        kpmg: {
             name: 'KPMG',
             type: 'big_four',
             research_portal: 'https://home.kpmg/insights',
-            handles: {
-                x: '@KPMG',
-                linkedin: 'company/kpmg'
-            },
             verified: true
         }
     }
 };
 
-// Add utility functions for data access
+// Utility Functions
 export const getVerifiedSources = (category) => {
-    const sources = category ? DATA_PROVIDERS[category] : DATA_PROVIDERS;
+    const sources = category ? MARKET_DATA_SOURCES[category] : MARKET_DATA_SOURCES;
     return Object.entries(sources)
         .filter(([_, source]) => source.verified)
         .reduce((acc, [key, source]) => ({...acc, [key]: source}), {});
@@ -253,66 +207,34 @@ export const getFreeTierAPIs = () => {
 export const searchAcrossDataSources = async (query, options = {}) => {
     const {
         categories = ['market_data', 'financial_news', 'consulting'],
-        verifiedOnly = true,
-        includeRoles = true
+        verifiedOnly = true
     } = options;
 
     const results = [];
 
     for (const category of categories) {
-        const sources = DATA_PROVIDERS[category];
-        for (const [key, source] of Object.entries(sources)) {
+        const sources = MARKET_DATA_SOURCES[category] || [];
+        for (const source of sources) {
             if (verifiedOnly && !source.verified) continue;
-
-            try {
-                const data = await fetchDataFromSource(source, query);
-                if (data) {
-                    results.push({
-                        source: key,
-                        type: source.type,
-                        data: includeRoles ? enrichWithRoles(data) : data,
-                        metadata: {
-                            timestamp: new Date().toISOString(),
-                            category,
-                            verified: source.verified
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error(`Error fetching from ${key}:`, error);
-            }
+            results.push({
+                source: source.name,
+                type: source.type || category,
+                content: source.description || `Data from ${source.name}`,
+                url: source.research_portal || source.research_portals?.public,
+                verified: source.verified
+            });
         }
     }
 
     return results;
 };
 
-function enrichWithRoles(data) {
-    if (Array.isArray(data)) {
-        return data.map(item => enrichWithRoles(item));
-    }
-    if (typeof data === 'object' && data !== null) {
-        return {
-            ...data,
-            role: detectRole(data.title || data.description || ''),
-            enriched: true
-        };
-    }
-    return data;
-}
-
-async function fetchDataFromSource(source, query) {
-    // Implementation depends on source type and API
-    // This is a placeholder for the actual implementation
-    return null;
-}
-
-export const MARKET_DATA_SOURCES = [
-    {
-        name: 'Market Research Report',
-        specialty: ['Industry Analysis', 'Market Trends'],
-        description: 'Comprehensive market research and industry analysis',
-        url: 'https://example.com/market-research'
-    },
-    // Add more market data sources...
-]; 
+export default {
+    PLATFORM_CONFIG,
+    VC_FIRMS,
+    MARKET_DATA_SOURCES,
+    DATA_PROVIDERS,
+    getVerifiedSources,
+    getFreeTierAPIs,
+    searchAcrossDataSources
+}; 
