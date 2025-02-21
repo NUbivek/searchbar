@@ -494,40 +494,22 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Selected Sources Pills */}
-              <div className="flex flex-wrap gap-2">
-                {selectedSources.map(source => (
-                  <div key={source} 
-                       className="px-3 py-1 bg-[#4BA3F5]/10 text-[#4BA3F5] rounded-full 
-                                text-sm flex items-center gap-2"
+              {/* Source Buttons - All in one grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {['Deep Web', 'LinkedIn', 'X', 'Reddit', 'Crunchbase'].map((source) => (
+                  <button
+                    key={source}
+                    onClick={() => toggleSource(source)}
+                    className={`p-3 rounded-lg text-[14px] transform transition-all duration-200 ${
+                      selectedSources.includes(source)
+                        ? 'bg-[#4BA3F5] text-white scale-[1.02] shadow-[0_4px_12px_rgba(75,163,245,0.25)]'
+                        : 'border border-gray-300 hover:bg-gray-50 hover:border-[#4BA3F5] active:scale-[0.98]'
+                    }`}
                   >
                     {source}
-                    <button
-                      onClick={() => toggleSource(source)}
-                      className="hover:text-[#3994e8]"
-                    >
-                      ×
-                    </button>
-                  </div>
+                  </button>
                 ))}
               </div>
-            </div>
-
-            {/* Source Buttons - All in one grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              {['Deep Web', 'LinkedIn', 'X', 'Reddit', 'Crunchbase'].map((source) => (
-                <button
-                  key={source}
-                  onClick={() => toggleSource(source)}
-                  className={`p-3 rounded-lg text-[14px] transform transition-all duration-200 ${
-                    selectedSources.includes(source)
-                      ? 'bg-[#4BA3F5] text-white scale-[1.02] shadow-[0_4px_12px_rgba(75,163,245,0.25)]'
-                      : 'border border-gray-300 hover:bg-gray-50 hover:border-[#4BA3F5] active:scale-[0.98]'
-                  }`}
-                >
-                  {source}
-                </button>
-              ))}
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
