@@ -6,6 +6,7 @@ import UrlInput from './UrlInput';
 export default function SearchInterface({ onSearch }) {
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState(SearchModes.VERIFIED);
+  const [customMode, setCustomMode] = useState('verified'); // 'custom' or 'combined'
   const [customUrls, setCustomUrls] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
 
@@ -13,6 +14,7 @@ export default function SearchInterface({ onSearch }) {
     e.preventDefault();
     onSearch(query, {
       mode,
+      customMode,
       customUrls,
       uploadedFiles
     });
@@ -27,7 +29,7 @@ export default function SearchInterface({ onSearch }) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <form onSubmit={handleSearch} className="space-y-4">
         <div className="flex gap-4">
           <input
@@ -47,23 +49,17 @@ export default function SearchInterface({ onSearch }) {
 
         <div className="flex gap-4">
           <button
-            type="button"
             onClick={() => setMode(SearchModes.VERIFIED)}
             className={`px-4 py-2 rounded-lg ${
-              mode === SearchModes.VERIFIED
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100'
+              mode === SearchModes.VERIFIED ? 'bg-blue-600 text-white' : 'bg-gray-100'
             }`}
           >
             Verified Sources
           </button>
           <button
-            type="button"
             onClick={() => setMode(SearchModes.OPEN)}
             className={`px-4 py-2 rounded-lg ${
-              mode === SearchModes.OPEN
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100'
+              mode === SearchModes.OPEN ? 'bg-blue-600 text-white' : 'bg-gray-100'
             }`}
           >
             Open Research
@@ -71,36 +67,53 @@ export default function SearchInterface({ onSearch }) {
         </div>
       </form>
 
-      {mode !== SearchModes.VERIFIED && (
-        <div>
-          <FileUpload onUpload={handleFileUpload} />
-          <UrlInput onSubmit={handleUrlAdd} />
-          
-          {customUrls.length > 0 && (
-            <div className="mt-4">
-              <h3 className="font-medium">Custom URLs:</h3>
-              <ul className="mt-2 space-y-1">
-                {customUrls.map((url, index) => (
-                  <li key={index} className="text-sm text-gray-600">
-                    {url}
-                  </li>
+      {mode === SearchModes.VERIFIED && (
+        <div className="mt-6 space-y-4">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="font-medium mb-2">Default Verified Sources</h3>
+            <ul className="text-sm text-gray-600">
+              <li>• Market Data Analytics</li>
+              <li>• VC Firms & Partners</li>
+              <li>• Investment Banks</li>
+              <li>• Research Firms</li>
+            </ul>
+          </div>
+
+          <div className="flex gap-4 mt-4">
+            <button
+              onClick={() => setCustomMode('custom')}
+              className={`px-4 py-2 rounded-lg ${
+                customMode === 'custom' ? 'bg-blue-600 text-white' : 'bg-gray-100'
+              }`}
+            >
+              Custom Sources
+            </button>
+            <button
+              onClick={() => setCustomMode('combined')}
+              className={`px-4 py-2 rounded-lg ${
+                customMode === 'combined' ? 'bg-blue-600 text-white' : 'bg-gray-100'
+              }`}
+            >
+              Custom + Verified Sources
+            </button>
+          </div>
+
+          <div className="space-y-4 mt-4">
+            <FileUpload onUpload={handleFileUpload} />
+            <UrlInput onSubmit={handleUrlAdd} />
+            
+            {(customUrls.length > 0 || uploadedFiles.length > 0) && (
+              <div className="bg-white p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">Added Sources</h4>
+                {customUrls.map((url, i) => (
+                  <div key={i} className="text-sm text-gray-600">{url}</div>
                 ))}
-              </ul>
-            </div>
-          )}
-          
-          {uploadedFiles.length > 0 && (
-            <div className="mt-4">
-              <h3 className="font-medium">Uploaded Files:</h3>
-              <ul className="mt-2 space-y-1">
-                {uploadedFiles.map((file, index) => (
-                  <li key={index} className="text-sm text-gray-600">
-                    {file.name}
-                  </li>
+                {uploadedFiles.map((file, i) => (
+                  <div key={i} className="text-sm text-gray-600">{file.name}</div>
                 ))}
-              </ul>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

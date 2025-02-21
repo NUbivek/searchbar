@@ -42,220 +42,117 @@ const MODEL_OPTIONS = [
 ];
 
 export default function Home() {
-  const [searchMode, setSearchMode] = useState(SearchModes.VERIFIED);
-  const [selectedSources, setSelectedSources] = useState([]);
-  const [selectedModel, setSelectedModel] = useState('Mixtral-8x7B');
-  const [showUploadPanel, setShowUploadPanel] = useState(false);
-  const [showModelDropdown, setShowModelDropdown] = useState(false);
-  const [urls, setUrls] = useState(['']);
-  const [sessionId] = useState(uuidv4());
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [uploadProgress, setUploadProgress] = useState({});
-  const fileInputRef = useRef(null);
-  const [showLeftUploadPanel, setShowLeftUploadPanel] = useState(false);
-  const [showRightUploadPanel, setShowRightUploadPanel] = useState(false);
-  const [leftUrls, setLeftUrls] = useState(['']);
-  const [rightUrls, setRightUrls] = useState(['']);
-  const [activePanel, setActivePanel] = useState(null); // 'left' or 'right' or null
-  const [searchResults, setSearchResults] = useState(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchError, setSearchError] = useState(null);
-  const [searchHistory, setSearchHistory] = useState([]);
-  const [searchType, setSearchType] = useState({
-    verified: 'default', // 'default', 'custom', 'combined'
-    open: 'web' // 'web', 'linkedin', 'x', 'reddit', etc.
-  });
+  const [query, setQuery] = useState('');
+  const [mode, setMode] = useState(SearchModes.VERIFIED);
+  const [results, setResults] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const toggleSource = (source) => {
-    if (selectedSources.includes(source)) {
-      setSelectedSources(selectedSources.filter(s => s !== source));
-    } else {
-      setSelectedSources([...selectedSources, source]);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      uploadedFiles.forEach(file => {
-        fetch('/api/cleanup', {
-          method: 'POST',
-          body: JSON.stringify({ filePath: file.path }),
-        }).catch(console.error);
-      });
-    };
-  }, [uploadedFiles]);
-
-  const handleFileUpload = async (e) => {
-    const files = e.target.files;
-    if (!files.length) return;
-
-    const formData = new FormData();
-    formData.append('sessionId', sessionId);
-    
-    // Initialize progress for each file
-    const newProgress = {};
-    Array.from(files).forEach(file => {
-      formData.append('files', file);
-      newProgress[file.name] = 0;
-    });
-    setUploadProgress(newProgress);
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
     try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          
-          // Update progress for all files
-          const updatedProgress = {};
-          Object.keys(newProgress).forEach(fileName => {
-            updatedProgress[fileName] = percentCompleted;
-          });
-          setUploadProgress(updatedProgress);
-        },
-      });
-
-      if (!response.ok) throw new Error('Upload failed');
-
+      const response = await fetch(`/api/search?query=${encodeURIComponent(query)}&mode=${mode}`);
       const data = await response.json();
-      setUploadedFiles(prev => [...prev, ...data.files]);
-      setUploadProgress({}); // Clear progress
-    } catch (error) {
-      console.error('Upload error:', error);
-      // Add error UI feedback here
-    }
-  };
-
-  const handleSearch = async (query) => {
-    if (query.trim() === '') return;
-    setIsSearching(true);
-    setSearchError(null);
-
-    try {
-      // Step 1: Source-specific search
-      let sourceResults;
-      if (searchMode === SearchModes.VERIFIED) {
-        if (searchType.verified === 'default') {
-          sourceResults = await searchVerifiedSources(query);
-        } else if (searchType.verified === 'custom') {
-          sourceResults = await searchCustomSources(query, uploadedFiles, urls);
-        } else {
-          // combined search
-          const [verifiedResults, customResults] = await Promise.all([
-            searchVerifiedSources(query),
-            searchCustomSources(query, uploadedFiles, urls)
-          ]);
-          sourceResults = [...verifiedResults, ...customResults];
-        }
-      } else {
-        // Open research tab
-        sourceResults = await searchSpecificSource(searchType.open, query);
-      }
-
-      // Step 2: Process with selected LLM
-      const llmResults = await fetch('/api/processResults', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          results: sourceResults,
-          model: selectedModel
-        })
-      }).then(res => res.json());
-
-      // Update search history
-      setSearchHistory(prev => [
-        { 
-          query, 
-          timestamp: new Date(),
-          tab: searchMode,
-          searchType: searchType[searchMode],
-          model: selectedModel
-        },
-        ...prev.slice(0, 9)
-      ]);
-
-      setSearchResults(llmResults);
-    } catch (error) {
-      setSearchError('Search failed. Please try again.');
-      console.error('Search error:', error);
+      setResults(data);
+    } catch (err) {
+      setError('Search failed. Please try again.');
+      console.error('Search error:', err);
     } finally {
-      setIsSearching(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <Head>
-        <title>AI-Powered Research Assistant</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
-
-      <main className="container mx-auto max-w-[800px] px-6 py-16">
-        {/* Header - Updated styling */}
-        <div className="text-center mb-8">
-          <h1 className="text-[56px] font-bold mb-2 text-[#1E3A8A]">
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
             Research Hub
           </h1>
-          <p className="text-[20px] text-gray-500">
-            Search across curated, verified sources for reliable insights
+          <p className="mt-3 text-lg text-gray-500">
+            Search across verified sources and market data
           </p>
         </div>
 
-        {/* Search Mode Toggle */}
-        <div className="flex justify-center gap-4 mb-8">
-          <button
-            onClick={() => setSearchMode(SearchModes.VERIFIED)}
-            className={`px-6 py-2 rounded-lg transition-all ${
-              searchMode === SearchModes.VERIFIED 
-                ? 'bg-[#4BA3F5] text-white' 
-                : 'border border-gray-300'
-            }`}
-          >
-            Verified Sources
-          </button>
-          <button
-            onClick={() => setSearchMode(SearchModes.OPEN)}
-            className={`px-6 py-2 rounded-lg transition-all ${
-              searchMode === SearchModes.OPEN 
-                ? 'bg-[#4BA3F5] text-white' 
-                : 'border border-gray-300'
-            }`}
-          >
-            Open Research
-          </button>
+        <div className="mt-10">
+          <form onSubmit={handleSearch} className="space-y-4">
+            <div className="flex gap-4">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Enter your search query"
+                className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <button
+                type="submit"
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                disabled={loading}
+              >
+                {loading ? 'Searching...' : 'Search'}
+              </button>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => setMode(SearchModes.VERIFIED)}
+                className={`px-4 py-2 rounded-lg ${
+                  mode === SearchModes.VERIFIED
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 hover:bg-gray-200'
+                }`}
+              >
+                Verified Sources
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode(SearchModes.OPEN)}
+                className={`px-4 py-2 rounded-lg ${
+                  mode === SearchModes.OPEN
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 hover:bg-gray-200'
+                }`}
+              >
+                Open Research
+              </button>
+            </div>
+          </form>
+
+          {error && (
+            <div className="mt-6 text-red-600 text-center">{error}</div>
+          )}
+
+          {results && (
+            <div className="mt-8 space-y-8">
+              {results.sources?.map((result, index) => (
+                <div
+                  key={index}
+                  className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow"
+                >
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {result.source}
+                  </h3>
+                  <p className="mt-2 text-gray-600">{result.content}</p>
+                  {result.url && (
+                    <a
+                      href={result.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-4 inline-block text-blue-600 hover:text-blue-800"
+                    >
+                      View Source →
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-
-        {/* Model Selection */}
-        <ModelSelector 
-          selectedModel={selectedModel}
-          setSelectedModel={setSelectedModel}
-        />
-
-        {/* Search Interface */}
-        <SearchInterface 
-          mode={searchMode}
-          selectedSources={selectedSources}
-          setSelectedSources={setSelectedSources}
-          selectedModel={selectedModel}
-        />
-
-        {/* Search Results */}
-        {searchResults && (
-          <div className="mt-8 space-y-8">
-            {/* Results display with follow-up capability */}
-            <SearchResults 
-              results={searchResults}
-              onFollowUp={handleSearch}
-              isLoading={isSearching}
-              error={searchError}
-            />
-          </div>
-        )}
-      </main>
+      </div>
     </div>
   );
 }
