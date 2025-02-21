@@ -1,3 +1,66 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Root Variables */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --primary: #111827;
+  --border-color: #DDDDDD;
+  --gray-text: #666666;
+  --light-bg: #F5F5F5;
+}
+
+/* Base Styles */
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: system-ui, -apple-system, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Component Classes */
+@layer components {
+  .tab-button {
+    @apply px-5 py-2.5 text-[16px] rounded-lg transition-colors;
+  }
+
+  .tab-button-active {
+    @apply bg-[--primary] text-white;
+  }
+
+  .tab-button-inactive {
+    @apply bg-[--light-bg] text-[--gray-text] hover:bg-[--light-bg]/80;
+  }
+
+  .input-field {
+    @apply flex-1 px-4 py-2.5 text-[16px] border border-[--border-color] 
+           rounded-lg focus:outline-none focus:ring-1 focus:ring-[--primary]/20 
+           focus:border-[--primary]/30;
+  }
+
+  .search-button {
+    @apply px-6 py-2.5 bg-[--primary] text-white text-[16px] rounded-lg
+           hover:opacity-90 transition-colors;
+  }
+
+  .source-button {
+    @apply p-3 text-[14px] rounded-lg border border-[--border-color] 
+           transition-colors flex items-center justify-center;
+  }
+
+  .source-button-active {
+    @apply bg-[--primary] text-white border-[--primary];
+  }
+
+  .source-button-inactive {
+    @apply bg-[--light-bg] text-[--foreground] hover:bg-[--light-bg]/80;
+  }
+
+  .upload-button {
+    @apply flex-1 px-4 py-2.5 border border-[--border-color] rounded-lg text-[16px]
+           flex items-center justify-center gap-2 hover:bg-[--light-bg]/50 transition-colors;
+  }
+}
