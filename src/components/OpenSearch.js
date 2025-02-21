@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Upload } from 'lucide-react';
 import FileUpload from './FileUpload';
 import UrlInput from './UrlInput';
 
@@ -14,7 +15,7 @@ export default function OpenSearch({ selectedModel }) {
   
   const sourceRows = [
     ['Web', 'LinkedIn', 'X', 'Reddit', 'Substack'],
-    ['Crunchbase', 'Pitchbook', 'Medium', 'Verified Sources', 'Upload Files + URL']
+    ['Crunchbase', 'Pitchbook', 'Medium', 'Verified Sources', <span className="flex items-center gap-1"><Upload size={16} /> Files + URL</span>]
   ];
 
   const handleSearch = async (e) => {
