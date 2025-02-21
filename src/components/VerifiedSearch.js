@@ -39,6 +39,10 @@ export default function VerifiedSearch({ selectedModel }) {
     }
   };
 
+  const handleFileUpload = (files) => {
+    setUploadedFiles(prev => [...prev, ...Array.from(files)]);
+  };
+
   return (
     <div className="space-y-6">
       <form onSubmit={handleSearch} className="space-y-4">
@@ -91,7 +95,7 @@ export default function VerifiedSearch({ selectedModel }) {
         </div>
 
         <div className="space-y-4">
-          <FileUpload onUpload={(files) => setUploadedFiles([...uploadedFiles, ...files])} />
+          <FileUpload onUpload={handleFileUpload} />
           <UrlInput onSubmit={(url) => setCustomUrls([...customUrls, url])} />
           
           {(customUrls.length > 0 || uploadedFiles.length > 0) && (

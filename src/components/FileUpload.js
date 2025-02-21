@@ -1,10 +1,39 @@
-export default function FileUpload({ onUpload, uploadProgress }) {
+import { useState } from 'react';
+
+export default function FileUpload({ onUpload }) {
+  const [uploadProgress, setUploadProgress] = useState({});
+
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files);
+    
+    // Initialize progress for each file
+    const initialProgress = {};
+    files.forEach(file => {
+      initialProgress[file.name] = 0;
+    });
+    setUploadProgress(initialProgress);
+
+    try {
+      // Simulate upload progress
+      for (const file of files) {
+        setUploadProgress(prev => ({
+          ...prev,
+          [file.name]: 100
+        }));
+      }
+      
+      onUpload(files);
+    } catch (error) {
+      console.error('Upload error:', error);
+    }
+  };
+
   return (
     <div className="mt-4">
       <input
         type="file"
         multiple
-        onChange={onUpload}
+        onChange={handleFileChange}
         accept=".pdf,.txt,.csv,.json,.xlsx"
         className="block w-full text-sm file:mr-4 file:py-2 file:px-4
           file:rounded-full file:border-0 file:text-sm file:font-semibold
