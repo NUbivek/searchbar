@@ -23,13 +23,19 @@ export default function OpenSearch({ selectedModel }) {
     setLoading(true);
     setError(null);
 
+    const apiUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://research.bivek.ai/api/openSearch'
+      : '/api/openSearch';
+
     try {
-      const response = await fetch('/api/openSearch', {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
         },
+        credentials: 'include',
         body: JSON.stringify({
           query,
           model: selectedModel,
@@ -39,16 +45,22 @@ export default function OpenSearch({ selectedModel }) {
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Search failed');
+      // Check for non-JSON response
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response');
       }
 
       const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Search failed');
+      }
+
       setResults(data);
     } catch (err) {
-      setError(err.message);
       console.error('Search error:', err);
+      setError(err.message || 'Search failed. Please try again.');
     } finally {
       setLoading(false);
     }

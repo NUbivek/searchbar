@@ -4,13 +4,18 @@ export async function searchOpenSources({ query, model, sources, customUrls, upl
   try {
     const results = [];
 
+    // Basic validation
+    if (!query) {
+      throw new Error('Query is required');
+    }
+
     // Web search
     if (sources.includes('Web')) {
       const webResults = await searchWeb(query);
       results.push(...webResults);
     }
 
-    // Platform-specific searches
+    // Platform searches
     const platformSearches = {
       LinkedIn: searchLinkedIn,
       X: searchTwitter,
@@ -23,8 +28,12 @@ export async function searchOpenSources({ query, model, sources, customUrls, upl
 
     for (const source of sources) {
       if (platformSearches[source]) {
-        const platformResults = await platformSearches[source](query);
-        results.push(...platformResults);
+        try {
+          const platformResults = await platformSearches[source](query);
+          results.push(...platformResults);
+        } catch (error) {
+          console.error(`Error searching ${source}:`, error);
+        }
       }
     }
 
@@ -39,6 +48,7 @@ export async function searchOpenSources({ query, model, sources, customUrls, upl
       results.push(...fileResults);
     }
 
+    // Process results
     return {
       query,
       model,
@@ -54,10 +64,10 @@ export async function searchOpenSources({ query, model, sources, customUrls, upl
   }
 }
 
+// Implement basic search functions
 async function searchWeb(query) {
-  // Implement web search
-  return [{ 
-    source: 'Web Search',
+  return [{
+    source: 'Web',
     type: 'web',
     content: `Results for: ${query}`,
     url: '#'

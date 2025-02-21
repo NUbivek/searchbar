@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default class SearchErrorBoundary extends React.Component {
+export class SearchErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -10,20 +10,21 @@ export default class SearchErrorBoundary extends React.Component {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error, errorInfo) {
-    console.error('Search error:', error, errorInfo);
+  componentDidCatch(error, info) {
+    console.error('Search error:', error, info);
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="text-center py-4">
-          <p className="text-red-600">Search failed. Please try again.</p>
+        <div className="text-center py-8">
+          <h2 className="text-xl font-semibold text-red-600">Search failed</h2>
+          <p className="mt-2 text-gray-600">{this.state.error?.message}</p>
           <button
             onClick={() => this.setState({ hasError: false })}
-            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg"
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            Retry Search
+            Try Again
           </button>
         </div>
       );
