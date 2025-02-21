@@ -25,7 +25,7 @@ const sourceHandlers = {
       params: {
         query: query,
         max_results: 20,
-        tweet.fields: 'created_at,author_id,entities,public_metrics'
+        'tweet.fields': 'created_at,author_id,entities,public_metrics'
       }
     });
     return formatTwitterResults(response.data);

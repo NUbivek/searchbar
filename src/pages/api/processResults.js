@@ -1,4 +1,5 @@
-import { API_CONFIG, MODEL_CONFIGS } from '@/config/api-config';
+import { API_CONFIG } from '../../config/api-config';
+import { MODEL_CONFIGS } from '@/config/api-config';
 import axios from 'axios';
 
 const processWithPerplexity = async (results, modelConfig) => {
