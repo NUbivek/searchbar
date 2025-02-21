@@ -206,10 +206,10 @@ export default function Home() {
                       : 'border-gray-200 hover:border-[#4BA3F5]/50'
                     }`}
                 >
-                  <h2 className="text-[24px] md:text-[28px] font-bold whitespace-nowrap mb-0.5">
+                  <h2 className="text-[20px] md:text-[24px] font-bold whitespace-nowrap mb-0.5">
                     Custom Sources Only
                   </h2>
-                  <p className="text-[16px] text-gray-600 whitespace-nowrap">
+                  <p className="text-[14px] text-gray-600 whitespace-nowrap">
                     Upload files or add URLs
                   </p>
                 </button>
@@ -225,10 +225,10 @@ export default function Home() {
                       : 'border-gray-200 hover:border-[#4BA3F5]/50'
                     }`}
                 >
-                  <h2 className="text-[24px] md:text-[28px] font-bold whitespace-nowrap mb-0.5">
+                  <h2 className="text-[20px] md:text-[24px] font-bold whitespace-nowrap mb-0.5">
                     Custom + Verified Sources
                   </h2>
-                  <p className="text-[16px] text-gray-600 whitespace-nowrap">
+                  <p className="text-[14px] text-gray-600 whitespace-nowrap">
                     Combine with curated sources
                   </p>
                 </button>
@@ -239,6 +239,11 @@ export default function Home() {
             {activePanel && (
               <div className="animate-slideDown mt-6">
                 <div className="border border-gray-300 rounded-lg p-6 bg-white">
+                  {activePanel === 'right' && (
+                    <p className="text-[13px] text-gray-500 mb-4 italic">
+                      Leave blank to only use verified sources
+                    </p>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Upload Files Section */}
                     <div className="space-y-3">
