@@ -7,37 +7,47 @@ export default function Home() {
   const [selectedModel, setSelectedModel] = useState('Perplexity');
 
   return (
-    <div className="min-h-screen bg-[--surface] flex flex-col items-center">
+    <div className="min-h-screen bg-white flex justify-center">
       <Head>
         <title>AI-Powered Research Assistant</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <div className="w-full max-w-[720px] px-6 py-16 animate-fade-in">
-        {/* Header - centered */}
-        <div className="text-center mb-12">
-          <h1 className="text-[48px] font-bold mb-4 tracking-tight">
+      <div className="w-full max-w-[800px] px-8 py-20">
+        {/* Centered Header */}
+        <div className="text-center space-y-4 mb-16">
+          <h1 className="text-5xl font-bold">
             AI-Powered Research Assistant
           </h1>
-          <p className="text-[20px] text-[--text-light]">
+          <p className="text-xl text-gray-600">
             Search across curated, verified sources for reliable insights
           </p>
         </div>
 
-        {/* Tab Navigation - refined */}
-        <div className="tab-container mb-8">
-          <button
-            onClick={() => setActiveTab('verified')}
-            className={`tab-button ${activeTab === 'verified' ? 'tab-button-active' : 'tab-button-inactive'}`}
-          >
-            Verified Sources
-          </button>
-          <button
-            onClick={() => setActiveTab('open')}
-            className={`tab-button ${activeTab === 'open' ? 'tab-button-active' : 'tab-button-inactive'}`}
-          >
-            Open Research
-          </button>
+        {/* Enhanced Tab Navigation */}
+        <div className="bg-gray-50 p-1.5 rounded-xl shadow-sm mb-8 max-w-[500px] mx-auto">
+          <div className="grid grid-cols-2 gap-1">
+            <button
+              onClick={() => setActiveTab('verified')}
+              className={`py-3 px-6 rounded-lg font-medium transition-all ${
+                activeTab === 'verified'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Verified Sources
+            </button>
+            <button
+              onClick={() => setActiveTab('open')}
+              className={`py-3 px-6 rounded-lg font-medium transition-all ${
+                activeTab === 'open'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Open Research
+            </button>
+          </div>
         </div>
 
         {activeTab === 'verified' ? (
@@ -46,7 +56,7 @@ export default function Home() {
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
-              className="select-field mb-3"
+              className="w-full px-4 py-3 mb-4 border border-gray-200 rounded-lg"
             >
               <option>Perplexity</option>
             </select>
@@ -56,9 +66,9 @@ export default function Home() {
               <input
                 type="text"
                 placeholder="Search verified sources"
-                className="input-field"
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-lg"
               />
-              <button className="search-button">
+              <button className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium">
                 Search
               </button>
             </div>
@@ -105,46 +115,46 @@ export default function Home() {
               <input
                 type="text"
                 placeholder="Search across the web..."
-                className="input-field"
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-lg"
               />
-              <button className="search-button">
+              <button className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium">
                 Search
               </button>
             </div>
 
             {/* Source Buttons */}
-            <div className="source-button-container">
-              <button className="source-button source-button-active">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button className="p-3 bg-blue-600 text-white rounded-lg">
                 Deep Web
               </button>
-              <button className="source-button">
+              <button className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                 LinkedIn
               </button>
-              <button className="source-button">
+              <button className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                 X
               </button>
-              <button className="source-button">
+              <button className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                 Reddit
               </button>
             </div>
 
-            <div className="source-button-container">
-              <button className="source-button">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                 Crunchbase
               </button>
-              <button className="source-button">
+              <button className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                 Pitchbook
               </button>
-              <button className="source-button">
+              <button className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                 Medium
               </button>
-              <button className="source-button">
+              <button className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                 Substack
               </button>
             </div>
 
-            <button className="upload-button mt-2">
-              <Upload size={16} />
+            <button className="w-full p-3 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2">
+              <Upload size={18} />
               Upload Files + ...
             </button>
           </div>
