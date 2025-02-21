@@ -1,10 +1,20 @@
 import Head from 'next/head';
 import { useState } from 'react';
-import { Upload } from 'lucide-react';
+import { Upload, ChevronDown } from 'lucide-react';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('verified');
   const [selectedModel, setSelectedModel] = useState('Perplexity');
+  const [selectedSources, setSelectedSources] = useState(['Deep Web']);
+  const [showUploadPanel, setShowUploadPanel] = useState(false);
+
+  const toggleSource = (source) => {
+    if (selectedSources.includes(source)) {
+      setSelectedSources(selectedSources.filter(s => s !== source));
+    } else {
+      setSelectedSources([...selectedSources, source]);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -24,22 +34,26 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Tabs */}
+        {/* Enhanced Tabs with Hover */}
         <div className="flex justify-center mb-8">
           <div className="border border-gray-300 rounded-lg overflow-hidden">
             <button
               onClick={() => setActiveTab('verified')}
-              className={`px-8 py-3 text-[18px] ${
-                activeTab === 'verified' ? 'bg-white' : 'bg-gray-100'
-              }`}
+              className={`px-8 py-3 text-[18px] transition-colors hover:bg-gray-50
+                ${activeTab === 'verified' 
+                  ? 'bg-white shadow-sm' 
+                  : 'bg-gray-100'
+                }`}
             >
               Verified Sources
             </button>
             <button
               onClick={() => setActiveTab('open')}
-              className={`px-8 py-3 text-[18px] ${
-                activeTab === 'open' ? 'bg-white' : 'bg-gray-100'
-              }`}
+              className={`px-8 py-3 text-[18px] transition-colors hover:bg-gray-50
+                ${activeTab === 'open' 
+                  ? 'bg-white shadow-sm' 
+                  : 'bg-gray-100'
+                }`}
             >
               Open Research
             </button>
@@ -48,14 +62,16 @@ export default function Home() {
 
         {activeTab === 'verified' ? (
           <div className="space-y-8">
-            {/* Model Selector */}
+            {/* Enhanced Model Selector with Hover */}
             <div className="flex justify-center mb-8">
               <div className="w-[200px]">
                 <select
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
                   className="w-full px-4 py-2.5 text-[18px] border border-gray-300 rounded-lg 
-                           bg-white text-center appearance-none cursor-pointer"
+                           bg-white text-center appearance-none cursor-pointer
+                           hover:border-gray-400 focus:border-gray-500 focus:ring-2 
+                           focus:ring-gray-200 transition-all"
                 >
                   <option>Perplexity ▼</option>
                   <option>Model A ▼</option>
@@ -117,53 +133,101 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Search */}
+            {/* Enhanced Search with Hover */}
             <div className="flex gap-3 mb-8">
               <input
                 type="text"
                 placeholder="Search across the web..."
-                className="flex-1 px-4 py-2.5 text-[18px] border border-gray-300 rounded-lg"
+                className="flex-1 px-4 py-2.5 text-[18px] border border-gray-300 rounded-lg
+                         hover:border-gray-400 focus:border-gray-500 
+                         focus:ring-2 focus:ring-gray-200 transition-all"
               />
-              <button className="px-8 py-2.5 bg-gray-900 text-white rounded-lg text-[18px]">
+              <button className="px-8 py-2.5 bg-gray-900 text-white rounded-lg text-[18px]
+                              hover:bg-gray-800 active:bg-gray-950 
+                              transform active:scale-[0.98] transition-all">
                 Search
               </button>
             </div>
 
-            {/* Source Buttons */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button className="p-3 bg-gray-900 text-white rounded-lg text-[14px]">
-                Deep Web
-              </button>
-              <button className="p-3 border border-gray-300 rounded-lg text-[14px]">
-                LinkedIn
-              </button>
-              <button className="p-3 border border-gray-300 rounded-lg text-[14px]">
-                X
-              </button>
-              <button className="p-3 border border-gray-300 rounded-lg text-[14px]">
-                Reddit
-              </button>
+            {/* Source Buttons with Enhanced Animation */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {['Deep Web', 'LinkedIn', 'X', 'Reddit', 'Crunchbase'].map((source) => (
+                <button
+                  key={source}
+                  onClick={() => toggleSource(source)}
+                  className={`p-3 rounded-lg text-[14px] transform transition-all duration-200
+                    ${selectedSources.includes(source)
+                      ? 'bg-gray-900 text-white scale-[1.02] shadow-md'
+                      : 'border border-gray-300 hover:bg-gray-50 hover:border-gray-400 
+                         active:scale-[0.98]'
+                    }`}
+                >
+                  {source}
+                </button>
+              ))}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button className="p-3 border border-gray-300 rounded-lg text-[14px]">
-                Crunchbase
-              </button>
-              <button className="p-3 border border-gray-300 rounded-lg text-[14px]">
-                Pitchbook
-              </button>
-              <button className="p-3 border border-gray-300 rounded-lg text-[14px]">
-                Medium
-              </button>
-              <button className="p-3 border border-gray-300 rounded-lg text-[14px]">
-                Substack
-              </button>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {['Pitchbook', 'Medium', 'Substack', 'Verified Sources'].map((source) => (
+                <button
+                  key={source}
+                  onClick={() => toggleSource(source)}
+                  className={`p-3 rounded-lg text-[14px] transform transition-all duration-200
+                    ${selectedSources.includes(source)
+                      ? 'bg-gray-900 text-white scale-[1.02] shadow-md'
+                      : 'border border-gray-300 hover:bg-gray-50 hover:border-gray-400 
+                         active:scale-[0.98]'
+                    }`}
+                >
+                  {source}
+                </button>
+              ))}
             </div>
 
-            <button className="w-full p-3 border border-gray-300 rounded-lg text-[14px] flex items-center justify-center gap-2">
-              <Upload size={18} />
-              Upload Files + ...
-            </button>
+            {/* Upload Section */}
+            <div className="space-y-4">
+              <button 
+                onClick={() => setShowUploadPanel(!showUploadPanel)}
+                className="w-full p-3 border border-gray-300 rounded-lg text-[14px] 
+                         hover:bg-gray-50 hover:border-gray-400 transition-all
+                         flex items-center justify-center gap-2 group"
+              >
+                <Upload size={18} className="group-hover:scale-110 transition-transform" />
+                Upload Files + URLs
+                <ChevronDown 
+                  className={`transition-transform duration-200 
+                    ${showUploadPanel ? 'rotate-180' : ''}`} 
+                  size={18} 
+                />
+              </button>
+
+              {/* Expandable Upload Panel */}
+              {showUploadPanel && (
+                <div className="animate-slideDown border border-gray-300 rounded-lg p-6 bg-white">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <h3 className="font-medium text-[16px]">Upload Files</h3>
+                      <button className="w-full px-4 py-2.5 border border-gray-300 rounded-lg 
+                                     hover:bg-gray-50 hover:border-gray-400 transition-all
+                                     flex items-center justify-center gap-2">
+                        <Upload size={18} />
+                        Choose Files
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      <h3 className="font-medium text-[16px]">Add URLs</h3>
+                      <input
+                        type="text"
+                        placeholder="Enter URL"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg
+                                 hover:border-gray-400 focus:border-gray-500 
+                                 focus:ring-2 focus:ring-gray-200 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>
