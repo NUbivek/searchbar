@@ -1,144 +1,153 @@
 import Head from 'next/head';
 import { useState } from 'react';
-import { Globe, Linkedin, Twitter, FileText, Upload, Search } from 'lucide-react';
+import { Upload } from 'lucide-react';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('open');
+  const [activeTab, setActiveTab] = useState('verified');
+  const [selectedModel, setSelectedModel] = useState('Perplexity');
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
-      {/* Top Navigation Bar */}
-      <nav className="border-b border-gray-100 bg-white">
-        <div className="max-w-screen-xl mx-auto px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Globe className="w-5 h-5" />
-            <span className="font-medium">Research AI</span>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-white px-6 py-12">
+      <Head>
+        <title>AI-Powered Research Assistant</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
 
-      <main className="max-w-screen-xl mx-auto px-4 py-12">
+      <div className="max-w-[720px] mx-auto animate-fade-in">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            AI-Powered Research Assistant
-          </h1>
-          <p className="text-lg text-gray-600">
-            Explore the entire web with advanced AI assistance
-          </p>
-        </div>
+        <h1 className="text-[48px] font-bold mb-3">
+          AI-Powered Research Assistant
+        </h1>
+        <p className="text-[20px] text-gray-text mb-8">
+          Search across curated, verified sources for reliable insights
+        </p>
 
         {/* Tab Navigation */}
-        <div className="bg-gray-50 p-1 rounded-xl mb-8 max-w-xl mx-auto">
-          <div className="grid grid-cols-2 gap-1">
-            <button
-              onClick={() => setActiveTab('verified')}
-              className={`py-3 px-4 rounded-lg transition-all duration-200 ${
-                activeTab === 'verified'
-                  ? 'bg-white shadow text-gray-900'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Verified Sources
-            </button>
-            <button
-              onClick={() => setActiveTab('open')}
-              className={`py-3 px-4 rounded-lg transition-all duration-200 ${
-                activeTab === 'open'
-                  ? 'bg-white shadow text-gray-900'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Open Research
-            </button>
-          </div>
+        <div className="tab-container mb-4">
+          <button
+            onClick={() => setActiveTab('verified')}
+            className={`tab-button ${activeTab === 'verified' ? 'tab-button-active' : 'tab-button-inactive'}`}
+          >
+            Verified Sources
+          </button>
+          <button
+            onClick={() => setActiveTab('open')}
+            className={`tab-button ${activeTab === 'open' ? 'tab-button-active' : 'tab-button-inactive'}`}
+          >
+            Open Research
+          </button>
         </div>
 
-        {/* Search Section */}
-        <div className="max-w-xl mx-auto mb-8">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
+        {activeTab === 'verified' ? (
+          <div className="animate-slide-up">
+            {/* Model Selector */}
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="select-field mb-3"
+            >
+              <option>Perplexity</option>
+            </select>
+
+            {/* Search */}
+            <div className="flex gap-2 mb-8">
+              <input
+                type="text"
+                placeholder="Search verified sources"
+                className="input-field"
+              />
+              <button className="search-button">
+                Search
+              </button>
+            </div>
+
+            {/* Custom Sources */}
+            <div className="space-y-8">
+              <div>
+                <h2 className="text-[24px] font-bold mb-2">Custom Sources Only</h2>
+                <p className="text-[16px] text-gray-text mb-4">
+                  Upload your own files or add custom URLs
+                </p>
+                <div className="flex gap-2">
+                  <button className="upload-button">
+                    <Upload size={18} />
+                    Upload Files
+                  </button>
+                  <button className="upload-button">
+                    Add URLs
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <h2 className="text-[24px] font-bold mb-2">Custom + Verified Sources</h2>
+                <p className="text-[16px] text-gray-text mb-4">
+                  Combine your sources with our curated collection
+                </p>
+                <div className="flex gap-2">
+                  <button className="upload-button">
+                    <Upload size={18} />
+                    Upload Files
+                  </button>
+                  <button className="upload-button">
+                    Add URLs
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 animate-slide-up">
+            {/* Search */}
+            <div className="flex gap-2">
               <input
                 type="text"
                 placeholder="Search across the web..."
-                className="w-full pl-4 pr-10 py-3 rounded-lg border border-gray-200 
-                         focus:outline-none focus:ring-2 focus:ring-blue-500/20 
-                         focus:border-blue-500 transition-all"
+                className="input-field"
               />
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <button className="search-button">
+                Search
+              </button>
             </div>
-            <button className="px-6 py-3 bg-[#111827] text-white rounded-lg 
-                           hover:bg-[#1f2937] transition-colors font-medium">
-              Search
+
+            {/* Source Buttons */}
+            <div className="source-button-container">
+              <button className="source-button source-button-active">
+                Deep Web
+              </button>
+              <button className="source-button">
+                LinkedIn
+              </button>
+              <button className="source-button">
+                X
+              </button>
+              <button className="source-button">
+                Reddit
+              </button>
+            </div>
+
+            <div className="source-button-container">
+              <button className="source-button">
+                Crunchbase
+              </button>
+              <button className="source-button">
+                Pitchbook
+              </button>
+              <button className="source-button">
+                Medium
+              </button>
+              <button className="source-button">
+                Substack
+              </button>
+            </div>
+
+            <button className="upload-button mt-2">
+              <Upload size={16} />
+              Upload Files + ...
             </button>
           </div>
-        </div>
-
-        {/* Source Buttons */}
-        <div className="max-w-3xl mx-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-3">
-            <button className="p-4 bg-[#111827] text-white rounded-lg hover:bg-[#1f2937] 
-                           transition-all flex items-center justify-center gap-2">
-              <Globe className="w-4 h-4" />
-              <span>Deep Web</span>
-            </button>
-            <button className="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 
-                           transition-all flex items-center justify-center gap-2">
-              <Linkedin className="w-4 h-4" />
-              <span>LinkedIn</span>
-            </button>
-            <button className="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 
-                           transition-all flex items-center justify-center gap-2">
-              <Twitter className="w-4 h-4" />
-              <span>X</span>
-            </button>
-            <button className="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 
-                           transition-all flex items-center justify-center gap-2">
-              <FileText className="w-4 h-4" />
-              <span>Reddit</span>
-            </button>
-            <button className="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 
-                           transition-all flex items-center justify-center gap-2">
-              <FileText className="w-4 h-4" />
-              <span>Substack</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
-            <button className="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 
-                           transition-all flex items-center justify-center gap-2">
-              <FileText className="w-4 h-4" />
-              <span>Crunchbase</span>
-            </button>
-            <button className="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 
-                           transition-all flex items-center justify-center gap-2">
-              <FileText className="w-4 h-4" />
-              <span>Pitchbook</span>
-            </button>
-            <button className="p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 
-                           transition-all flex items-center justify-center gap-2">
-              <FileText className="w-4 h-4" />
-              <span>Medium</span>
-            </button>
-          </div>
-
-          <button className="w-full p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 
-                         transition-all flex items-center justify-center gap-2">
-            <Upload className="w-4 h-4" />
-            <span>Upload Files + ...</span>
-          </button>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-gray-100 mt-12">
-        <div className="max-w-screen-xl mx-auto px-4 py-4">
-          <div className="flex justify-between items-center text-sm text-gray-500">
-            <div>Built by Bivek. The source code is available on GitHub</div>
-            <div>© 2025 Research AI. All rights reserved.</div>
-          </div>
-        </div>
-      </footer>
+        )}
+      </div>
     </div>
   );
 }
