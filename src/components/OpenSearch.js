@@ -26,20 +26,28 @@ export default function OpenSearch({ selectedModel }) {
     try {
       const response = await fetch('/api/openSearch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           query,
           model: selectedModel,
           sources: selectedSources,
           customUrls,
           uploadedFiles
-        }),
+        })
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Search failed');
+      }
 
       const data = await response.json();
       setResults(data);
     } catch (err) {
-      setError('Search failed. Please try again.');
+      setError(err.message);
       console.error('Search error:', err);
     } finally {
       setLoading(false);
