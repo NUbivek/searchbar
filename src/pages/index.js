@@ -155,12 +155,11 @@ export default function Home() {
                 <button
                   key={source}
                   onClick={() => toggleSource(source)}
-                  className={`p-3 rounded-lg text-[14px] transform transition-all duration-200
-                    ${selectedSources.includes(source)
+                  className={`p-3 rounded-lg text-[14px] transform transition-all duration-200 ${
+                    selectedSources.includes(source)
                       ? 'bg-gray-900 text-white scale-[1.02] shadow-md'
-                      : 'border border-gray-300 hover:bg-gray-50 hover:border-gray-400 
-                         active:scale-[0.98]'
-                    }`}
+                      : 'border border-gray-300 hover:bg-gray-50 hover:border-gray-400 active:scale-[0.98]'
+                  }`}
                 >
                   {source}
                 </button>
@@ -172,12 +171,11 @@ export default function Home() {
                 <button
                   key={source}
                   onClick={() => toggleSource(source)}
-                  className={`p-3 rounded-lg text-[14px] transform transition-all duration-200
-                    ${selectedSources.includes(source)
+                  className={`p-3 rounded-lg text-[14px] transform transition-all duration-200 ${
+                    selectedSources.includes(source)
                       ? 'bg-gray-900 text-white scale-[1.02] shadow-md'
-                      : 'border border-gray-300 hover:bg-gray-50 hover:border-gray-400 
-                         active:scale-[0.98]'
-                    }`}
+                      : 'border border-gray-300 hover:bg-gray-50 hover:border-gray-400 active:scale-[0.98]'
+                  }`}
                 >
                   {source}
                 </button>
