@@ -1,5 +1,6 @@
 import { VC_FIRMS, MARKET_DATA_SOURCES } from './dataSources';
 import { searchCustomSources } from './customSearch';
+import { customSearch } from './customSearch';
 
 export async function searchVerifiedSources(query, options = {}) {
   const { mode = 'default', customUrls = [], uploadedFiles = [] } = options;
@@ -134,4 +135,10 @@ function matchesQuery(obj, query) {
   const searchText = JSON.stringify(obj).toLowerCase();
   const terms = query.toLowerCase().split(' ');
   return terms.every(term => searchText.includes(term));
-} 
+}
+
+export async function verifiedSearch(query, options = {}) {
+  return await customSearch(query, { ...options, verifiedOnly: true });
+}
+
+export default verifiedSearch; 
