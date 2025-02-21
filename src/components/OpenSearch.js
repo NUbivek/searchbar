@@ -1,21 +1,20 @@
 import { useState } from 'react';
+import FileUpload from './FileUpload';
+import UrlInput from './UrlInput';
 
 export default function OpenSearch({ selectedModel }) {
   const [query, setQuery] = useState('');
   const [selectedSources, setSelectedSources] = useState(['Web']);
+  const [showUploadPanel, setShowUploadPanel] = useState(false);
+  const [customUrls, setCustomUrls] = useState([]);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  const sources = [
-    'Web',
-    'LinkedIn',
-    'X',
-    'Reddit',
-    'Substack',
-    'Crunchbase',
-    'Pitchbook',
-    'Medium'
+  const sourceRows = [
+    ['Web', 'LinkedIn', 'X', 'Reddit', 'Substack'],
+    ['Crunchbase', 'Pitchbook', 'Medium', 'Verified Sources', 'Upload Files + URL']
   ];
 
   const handleSearch = async (e) => {
@@ -30,7 +29,9 @@ export default function OpenSearch({ selectedModel }) {
         body: JSON.stringify({
           query,
           model: selectedModel,
-          sources: selectedSources
+          sources: selectedSources,
+          customUrls,
+          uploadedFiles
         }),
       });
 
@@ -42,6 +43,19 @@ export default function OpenSearch({ selectedModel }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSourceClick = (source) => {
+    if (source === 'Upload Files + URL') {
+      setShowUploadPanel(!showUploadPanel);
+      return;
+    }
+
+    setSelectedSources(prev =>
+      prev.includes(source)
+        ? prev.filter(s => s !== source)
+        : [...prev, source]
+    );
   };
 
   return (
@@ -64,27 +78,46 @@ export default function OpenSearch({ selectedModel }) {
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          {sources.map(source => (
-            <button
-              key={source}
-              type="button"
-              onClick={() => {
-                setSelectedSources(prev =>
-                  prev.includes(source)
-                    ? prev.filter(s => s !== source)
-                    : [...prev, source]
-                );
-              }}
-              className={`px-4 py-2 rounded-lg transition-colors
-                ${selectedSources.includes(source)
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 hover:bg-gray-200'}`}
-            >
-              {source}
-            </button>
+        {/* Source Selection Tabs - Two Rows */}
+        <div className="space-y-3">
+          {sourceRows.map((row, rowIndex) => (
+            <div key={rowIndex} className="flex gap-3">
+              {row.map(source => (
+                <button
+                  key={source}
+                  type="button"
+                  onClick={() => handleSourceClick(source)}
+                  className={`px-4 py-2 rounded-lg transition-colors flex-1
+                    ${selectedSources.includes(source) || (source === 'Upload Files + URL' && showUploadPanel)
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 hover:bg-gray-200'}`}
+                >
+                  {source}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
+
+        {/* Upload Panel */}
+        {showUploadPanel && (
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <FileUpload onUpload={(files) => setUploadedFiles([...uploadedFiles, ...files])} />
+            <UrlInput onSubmit={(url) => setCustomUrls([...customUrls, url])} />
+            
+            {(customUrls.length > 0 || uploadedFiles.length > 0) && (
+              <div className="mt-4 bg-white p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">Added Sources</h4>
+                {customUrls.map((url, i) => (
+                  <div key={i} className="text-sm text-gray-600">{url}</div>
+                ))}
+                {uploadedFiles.map((file, i) => (
+                  <div key={i} className="text-sm text-gray-600">{file.name}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </form>
 
       {error && (

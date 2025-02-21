@@ -28,7 +28,7 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Primary Mode Toggle - Moved to top */}
+          {/* Primary Mode Toggle */}
           <div className="flex gap-4 justify-center mb-8">
             <button
               onClick={() => setMode(SearchModes.VERIFIED)}
@@ -50,8 +50,8 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Model Selector */}
-          <div className="mb-8">
+          {/* Model Selector - More subtle positioning */}
+          <div className="flex justify-end mb-4">
             <ModelSelector
               selectedModel={selectedModel}
               setSelectedModel={setSelectedModel}

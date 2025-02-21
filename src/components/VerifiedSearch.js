@@ -39,10 +39,6 @@ export default function VerifiedSearch({ selectedModel }) {
     }
   };
 
-  const handleFileUpload = (files) => {
-    setUploadedFiles(prev => [...prev, ...Array.from(files)]);
-  };
-
   return (
     <div className="space-y-6">
       <form onSubmit={handleSearch} className="space-y-4">
@@ -52,32 +48,24 @@ export default function VerifiedSearch({ selectedModel }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Enter your search query"
-            className="flex-1 px-4 py-2 border rounded-lg"
+            className="flex-1 px-6 py-3 text-lg border rounded-lg shadow-sm
+              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <button
             type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg"
+            className="px-8 py-3 bg-blue-600 text-white text-lg rounded-lg
+              hover:bg-blue-700 transition-colors shadow-sm"
             disabled={loading}
           >
             {loading ? 'Searching...' : 'Search'}
           </button>
         </div>
 
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="font-medium mb-2">Default Verified Sources</h3>
-          <ul className="text-sm text-gray-600">
-            <li>• Market Data Analytics</li>
-            <li>• VC Firms & Partners</li>
-            <li>• Investment Banks</li>
-            <li>• Research Firms</li>
-          </ul>
-        </div>
-
-        <div className="flex gap-4">
+        <div className="flex gap-4 justify-center">
           <button
             type="button"
             onClick={() => setCustomMode('custom')}
-            className={`px-4 py-2 rounded-lg ${
+            className={`px-4 py-2 rounded-lg transition-colors ${
               customMode === 'custom' ? 'bg-blue-600 text-white' : 'bg-gray-100'
             }`}
           >
@@ -86,7 +74,7 @@ export default function VerifiedSearch({ selectedModel }) {
           <button
             type="button"
             onClick={() => setCustomMode('combined')}
-            className={`px-4 py-2 rounded-lg ${
+            className={`px-4 py-2 rounded-lg transition-colors ${
               customMode === 'combined' ? 'bg-blue-600 text-white' : 'bg-gray-100'
             }`}
           >
@@ -94,22 +82,24 @@ export default function VerifiedSearch({ selectedModel }) {
           </button>
         </div>
 
-        <div className="space-y-4">
-          <FileUpload onUpload={handleFileUpload} />
-          <UrlInput onSubmit={(url) => setCustomUrls([...customUrls, url])} />
-          
-          {(customUrls.length > 0 || uploadedFiles.length > 0) && (
-            <div className="bg-white p-4 rounded-lg border">
-              <h4 className="font-medium mb-2">Added Sources</h4>
-              {customUrls.map((url, i) => (
-                <div key={i} className="text-sm text-gray-600">{url}</div>
-              ))}
-              {uploadedFiles.map((file, i) => (
-                <div key={i} className="text-sm text-gray-600">{file.name}</div>
-              ))}
-            </div>
-          )}
-        </div>
+        {(customMode === 'custom' || customMode === 'combined') && (
+          <div className="space-y-4">
+            <FileUpload onUpload={(files) => setUploadedFiles([...uploadedFiles, ...files])} />
+            <UrlInput onSubmit={(url) => setCustomUrls([...customUrls, url])} />
+            
+            {(customUrls.length > 0 || uploadedFiles.length > 0) && (
+              <div className="bg-white p-4 rounded-lg border">
+                <h4 className="font-medium mb-2">Added Sources</h4>
+                {customUrls.map((url, i) => (
+                  <div key={i} className="text-sm text-gray-600">{url}</div>
+                ))}
+                {uploadedFiles.map((file, i) => (
+                  <div key={i} className="text-sm text-gray-600">{file.name}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </form>
 
       {error && (
