@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import { useState, useRef, useEffect } from 'react';
-import { Upload, ChevronDown } from 'lucide-react';
+import { Upload, ChevronDown, Search } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 // First, let's define our blue theme colors at the top
@@ -13,10 +13,34 @@ const theme = {
   textLight: '#64748B',
 };
 
+// Add this near the top of the file with other constants
+const MODEL_OPTIONS = [
+  {
+    id: 'Perplexity',
+    displayName: 'Perplexity-Online',
+    description: 'Real-time web analysis'
+  },
+  {
+    id: 'Mixtral-8x7B',
+    displayName: 'Mixtral 8x7B',
+    description: 'Powerful multi-expert model'
+  },
+  {
+    id: 'Gemma-7B',
+    displayName: 'Gemma 7B',
+    description: 'Efficient Google model'
+  },
+  {
+    id: 'DeepSeek-70B',
+    displayName: 'DeepSeek 70B',
+    description: 'Advanced reasoning model'
+  }
+];
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState('verified');
-  const [selectedModel, setSelectedModel] = useState('Model B');
-  const [selectedSources, setSelectedSources] = useState(['Deep Web']);
+  const [selectedModel, setSelectedModel] = useState('Mixtral-8x7B');
+  const [selectedSources, setSelectedSources] = useState(['Web']);
   const [showUploadPanel, setShowUploadPanel] = useState(false);
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [urls, setUrls] = useState(['']);
@@ -195,17 +219,18 @@ export default function Home() {
                   <div className="absolute top-full left-0 w-full mt-1 bg-white border 
                                 border-gray-300 rounded-lg shadow-lg overflow-hidden
                                 animate-slideDown z-10">
-                    {['Perplexity', 'Model A', 'Model B'].map((model) => (
+                    {MODEL_OPTIONS.map((model) => (
                       <button
-                        key={model}
+                        key={model.id}
                         onClick={() => {
-                          setSelectedModel(model);
+                          setSelectedModel(model.id);
                           setShowModelDropdown(false);
                         }}
-                        className="w-full px-4 py-2 text-[16px] text-left hover:bg-gray-50
-                                 transition-colors"
+                        className="w-full px-4 py-2 text-left hover:bg-gray-50
+                                 transition-colors border-b border-gray-100 last:border-0"
                       >
-                        {model}
+                        <div className="text-[16px]">{model.displayName}</div>
+                        <div className="text-[13px] text-gray-500">{model.description}</div>
                       </button>
                     ))}
                   </div>
@@ -403,17 +428,18 @@ export default function Home() {
                   <div className="absolute top-full left-0 w-full mt-1 bg-white border 
                                 border-gray-300 rounded-lg shadow-lg overflow-hidden
                                 animate-slideDown z-10">
-                    {['Perplexity', 'Model A', 'Model B'].map((model) => (
+                    {MODEL_OPTIONS.map((model) => (
                       <button
-                        key={model}
+                        key={model.id}
                         onClick={() => {
-                          setSelectedModel(model);
+                          setSelectedModel(model.id);
                           setShowModelDropdown(false);
                         }}
-                        className="w-full px-4 py-2 text-[16px] text-left hover:bg-gray-50
-                                 transition-colors"
+                        className="w-full px-4 py-2 text-left hover:bg-gray-50
+                                 transition-colors border-b border-gray-100 last:border-0"
                       >
-                        {model}
+                        <div className="text-[16px]">{model.displayName}</div>
+                        <div className="text-[13px] text-gray-500">{model.description}</div>
                       </button>
                     ))}
                   </div>
@@ -496,17 +522,30 @@ export default function Home() {
 
               {/* Source Buttons - All in one grid */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                {['Deep Web', 'LinkedIn', 'X', 'Reddit', 'Crunchbase'].map((source) => (
+                {[
+                  { name: 'Web', icon: <Search size={14} /> },
+                  'LinkedIn',
+                  'X',
+                  'Reddit',
+                  'Crunchbase'
+                ].map((source) => (
                   <button
-                    key={source}
-                    onClick={() => toggleSource(source)}
+                    key={typeof source === 'string' ? source : source.name}
+                    onClick={() => toggleSource(typeof source === 'string' ? source : source.name)}
                     className={`p-3 rounded-lg text-[14px] transform transition-all duration-200 ${
-                      selectedSources.includes(source)
+                      selectedSources.includes(typeof source === 'string' ? source : source.name)
                         ? 'bg-[#4BA3F5] text-white scale-[1.02] shadow-[0_4px_12px_rgba(75,163,245,0.25)]'
                         : 'border border-gray-300 hover:bg-gray-50 hover:border-[#4BA3F5] active:scale-[0.98]'
                     }`}
                   >
-                    {source}
+                    {typeof source === 'string' ? (
+                      source
+                    ) : (
+                      <div className="flex items-center justify-center gap-1.5">
+                        {source.icon}
+                        {source.name}
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
