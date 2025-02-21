@@ -1,6 +1,7 @@
 import Head from 'next/head';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Upload, ChevronDown } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('verified');
@@ -8,12 +9,72 @@ export default function Home() {
   const [selectedSources, setSelectedSources] = useState(['Deep Web']);
   const [showUploadPanel, setShowUploadPanel] = useState(false);
   const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [urls, setUrls] = useState(['']);
+  const [sessionId] = useState(uuidv4());
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState({});
+  const fileInputRef = useRef(null);
 
   const toggleSource = (source) => {
     if (selectedSources.includes(source)) {
       setSelectedSources(selectedSources.filter(s => s !== source));
     } else {
       setSelectedSources([...selectedSources, source]);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      uploadedFiles.forEach(file => {
+        fetch('/api/cleanup', {
+          method: 'POST',
+          body: JSON.stringify({ filePath: file.path }),
+        }).catch(console.error);
+      });
+    };
+  }, [uploadedFiles]);
+
+  const handleFileUpload = async (e) => {
+    const files = e.target.files;
+    if (!files.length) return;
+
+    const formData = new FormData();
+    formData.append('sessionId', sessionId);
+    
+    // Initialize progress for each file
+    const newProgress = {};
+    Array.from(files).forEach(file => {
+      formData.append('files', file);
+      newProgress[file.name] = 0;
+    });
+    setUploadProgress(newProgress);
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          
+          // Update progress for all files
+          const updatedProgress = {};
+          Object.keys(newProgress).forEach(fileName => {
+            updatedProgress[fileName] = percentCompleted;
+          });
+          setUploadProgress(updatedProgress);
+        },
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+
+      const data = await response.json();
+      setUploadedFiles(prev => [...prev, ...data.files]);
+      setUploadProgress({}); // Clear progress
+    } catch (error) {
+      console.error('Upload error:', error);
+      // Add error UI feedback here
     }
   };
 
@@ -177,7 +238,7 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Source Buttons with Enhanced Animation */}
+            {/* Source Buttons - All in one grid */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {['Deep Web', 'LinkedIn', 'X', 'Reddit', 'Crunchbase'].map((source) => (
                 <button
@@ -208,52 +269,130 @@ export default function Home() {
                   {source}
                 </button>
               ))}
-            </div>
-
-            {/* Upload Section */}
-            <div className="space-y-4">
+              
+              {/* Upload button in the same row */}
               <button 
                 onClick={() => setShowUploadPanel(!showUploadPanel)}
-                className="w-full p-3 border border-gray-300 rounded-lg text-[14px] 
+                className="p-3 border border-gray-300 rounded-lg text-[14px] 
                          hover:bg-gray-50 hover:border-gray-400 transition-all
                          flex items-center justify-center gap-2 group"
               >
-                <Upload size={18} className="group-hover:scale-110 transition-transform" />
-                Upload Files + URLs
-                <ChevronDown 
-                  className={`transition-transform duration-200 
-                    ${showUploadPanel ? 'rotate-180' : ''}`} 
-                  size={18} 
-                />
+                <Upload size={16} className="group-hover:scale-110 transition-transform" />
+                Upload + URLs
               </button>
+            </div>
 
-              {/* Expandable Upload Panel */}
-              {showUploadPanel && (
-                <div className="animate-slideDown border border-gray-300 rounded-lg p-6 bg-white">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <h3 className="font-medium text-[16px]">Upload Files</h3>
-                      <button className="w-full px-4 py-2.5 border border-gray-300 rounded-lg 
-                                     hover:bg-gray-50 hover:border-gray-400 transition-all
-                                     flex items-center justify-center gap-2">
-                        <Upload size={18} />
-                        Choose Files
+            {/* Modified Upload Panel with Multiple URLs */}
+            {showUploadPanel && (
+              <div className="animate-slideDown border border-gray-300 rounded-lg p-6 bg-white mt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h3 className="font-medium text-[16px]">Upload Files</h3>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      multiple
+                      className="hidden"
+                    />
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg 
+                               hover:bg-gray-50 hover:border-gray-400 transition-all
+                               flex items-center justify-center gap-2"
+                    >
+                      <Upload size={18} />
+                      Choose Files
+                    </button>
+                    {uploadedFiles.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {uploadedFiles.map((file, index) => (
+                          <div key={index} className="text-sm text-gray-600 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate max-w-[200px]">{file.name}</span>
+                              <span className="text-xs text-gray-400">
+                                ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+                                fetch('/api/cleanup', {
+                                  method: 'POST',
+                                  body: JSON.stringify({ filePath: file.path }),
+                                });
+                              }}
+                              className="text-gray-400 hover:text-gray-600"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium text-[16px]">Add URLs</h3>
+                      <button 
+                        onClick={() => setUrls([...urls, ''])}
+                        className="text-blue-600 hover:text-blue-700 text-sm"
+                      >
+                        + Add Another URL
                       </button>
                     </div>
-                    <div className="space-y-3">
-                      <h3 className="font-medium text-[16px]">Add URLs</h3>
-                      <input
-                        type="text"
-                        placeholder="Enter URL"
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg
-                                 hover:border-gray-400 focus:border-gray-500 
-                                 focus:ring-2 focus:ring-gray-200 transition-all"
+                    {urls.map((url, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={url}
+                          onChange={(e) => {
+                            const newUrls = [...urls];
+                            newUrls[index] = e.target.value;
+                            setUrls(newUrls);
+                          }}
+                          placeholder="Enter URL"
+                          className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg
+                                   hover:border-gray-400 focus:border-gray-500 
+                                   focus:ring-2 focus:ring-gray-200 transition-all"
+                        />
+                        {urls.length > 1 && (
+                          <button
+                            onClick={() => {
+                              const newUrls = urls.filter((_, i) => i !== index);
+                              setUrls(newUrls);
+                            }}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Upload Progress */}
+            {Object.keys(uploadProgress).length > 0 && (
+              <div className="mt-2 space-y-2">
+                {Object.entries(uploadProgress).map(([fileName, progress]) => (
+                  <div key={fileName} className="space-y-1">
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span className="truncate">{fileName}</span>
+                      <span>{progress}%</span>
+                    </div>
+                    <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-600 transition-all duration-200"
+                        style={{ width: `${progress}%` }}
                       />
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </main>
