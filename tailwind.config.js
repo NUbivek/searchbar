@@ -14,7 +14,7 @@ module.exports = {
       },
       keyframes: {
         fadeIn: {
-          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '0%': { opacity: '0', transform: 'translateY(4px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' }
         },
         slideUp: {
@@ -30,7 +30,7 @@ module.exports = {
         }
       },
       animation: {
-        fadeIn: 'fadeIn 0.4s ease-out forwards',
+        fadeIn: 'fadeIn 0.2s ease-out forwards',
         slideUp: 'slideUp 0.5s ease-out forwards',
         pulse: 'pulse 2s ease-in-out infinite',
         shimmer: 'shimmer 1.5s infinite'
