@@ -28,6 +28,7 @@ export default function Home() {
   const [showRightUploadPanel, setShowRightUploadPanel] = useState(false);
   const [leftUrls, setLeftUrls] = useState(['']);
   const [rightUrls, setRightUrls] = useState(['']);
+  const [activePanel, setActivePanel] = useState(null); // 'left' or 'right' or null
 
   const toggleSource = (source) => {
     if (selectedSources.includes(source)) {
@@ -193,232 +194,148 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Two Panels Side by Side */}
+            {/* Two Panel Options */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-              {/* Left Panel */}
+              {/* Left Panel Option */}
               <div className="space-y-4">
-                <h2 className="text-[24px] md:text-[28px] font-bold whitespace-nowrap">
-                  Custom Sources Only
-                </h2>
-                <p className="text-[16px] text-gray-600 whitespace-nowrap">
-                  Upload files or add URLs
-                </p>
                 <button 
-                  onClick={() => setShowLeftUploadPanel(!showLeftUploadPanel)}
-                  className="w-full p-3 border border-gray-300 rounded-lg text-[14px] 
-                           hover:bg-gray-50 hover:border-gray-400 transition-all
-                           flex items-center justify-center gap-2 group"
+                  onClick={() => setActivePanel(activePanel === 'left' ? null : 'left')}
+                  className={`w-full p-6 rounded-lg text-left transition-all border-2
+                    ${activePanel === 'left'
+                      ? 'border-[#4BA3F5] bg-[#4BA3F5]/5'
+                      : 'border-gray-200 hover:border-[#4BA3F5]/50'
+                    }`}
                 >
-                  <Upload size={16} className="group-hover:scale-110 transition-transform" />
-                  Upload + URLs
+                  <h2 className="text-[24px] md:text-[28px] font-bold whitespace-nowrap mb-0.5">
+                    Custom Sources Only
+                  </h2>
+                  <p className="text-[16px] text-gray-600 whitespace-nowrap">
+                    Upload files or add URLs
+                  </p>
                 </button>
-
-                {/* Left Panel Upload Section */}
-                {showLeftUploadPanel && (
-                  <div className="animate-slideDown border border-gray-300 rounded-lg p-6 bg-white mt-2">
-                    <div className="space-y-6">
-                      <div className="space-y-3">
-                        <h3 className="font-medium text-[16px]">Upload Files</h3>
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          onChange={handleFileUpload}
-                          multiple
-                          className="hidden"
-                        />
-                        <button 
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg 
-                                   hover:bg-gray-50 hover:border-gray-400 transition-all
-                                   flex items-center justify-center gap-2"
-                        >
-                          <Upload size={18} />
-                          Choose Files
-                        </button>
-                        {uploadedFiles.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            {uploadedFiles.map((file, index) => (
-                              <div key={index} className="text-sm text-gray-600 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="truncate max-w-[200px]">{file.name}</span>
-                                  <span className="text-xs text-gray-400">
-                                    ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                                  </span>
-                                </div>
-                                <button
-                                  onClick={() => {
-                                    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
-                                    fetch('/api/cleanup', {
-                                      method: 'POST',
-                                      body: JSON.stringify({ filePath: file.path }),
-                                    });
-                                  }}
-                                  className="text-gray-400 hover:text-gray-600"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="space-y-3">
-                        <h3 className="font-medium text-[16px]">Add URLs</h3>
-                        {leftUrls.map((url, index) => (
-                          <div key={index} className="flex gap-2">
-                            <input
-                              type="text"
-                              value={url}
-                              onChange={(e) => {
-                                const newUrls = [...leftUrls];
-                                newUrls[index] = e.target.value;
-                                setLeftUrls(newUrls);
-                              }}
-                              placeholder="Enter URL"
-                              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg
-                                       hover:border-gray-400 focus:border-gray-500 
-                                       focus:ring-2 focus:ring-gray-200 transition-all"
-                            />
-                            {leftUrls.length > 1 && (
-                              <button
-                                onClick={() => {
-                                  const newUrls = leftUrls.filter((_, i) => i !== index);
-                                  setLeftUrls(newUrls);
-                                }}
-                                className="text-gray-400 hover:text-gray-600 px-2"
-                              >
-                                ×
-                              </button>
-                            )}
-                            {index === leftUrls.length - 1 && (
-                              <button
-                                onClick={() => setLeftUrls([...leftUrls, ''])}
-                                className="text-gray-400 hover:text-gray-600 px-2 
-                                         transition-transform hover:scale-110"
-                              >
-                                +
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Right Panel */}
+              {/* Right Panel Option */}
               <div className="space-y-4">
-                <h2 className="text-[24px] md:text-[28px] font-bold whitespace-nowrap">
-                  Custom + Verified Sources
-                </h2>
-                <p className="text-[16px] text-gray-600 whitespace-nowrap">
-                  Combine with curated sources
-                </p>
                 <button 
-                  onClick={() => setShowRightUploadPanel(!showRightUploadPanel)}
-                  className="w-full p-3 border border-gray-300 rounded-lg text-[14px] 
-                           hover:bg-gray-50 hover:border-gray-400 transition-all
-                           flex items-center justify-center gap-2 group"
+                  onClick={() => setActivePanel(activePanel === 'right' ? null : 'right')}
+                  className={`w-full p-6 rounded-lg text-left transition-all border-2
+                    ${activePanel === 'right'
+                      ? 'border-[#4BA3F5] bg-[#4BA3F5]/5'
+                      : 'border-gray-200 hover:border-[#4BA3F5]/50'
+                    }`}
                 >
-                  <Upload size={16} className="group-hover:scale-110 transition-transform" />
-                  Upload + URLs
+                  <h2 className="text-[24px] md:text-[28px] font-bold whitespace-nowrap mb-0.5">
+                    Custom + Verified Sources
+                  </h2>
+                  <p className="text-[16px] text-gray-600 whitespace-nowrap">
+                    Combine with curated sources
+                  </p>
                 </button>
-
-                {/* Right Panel Upload Section */}
-                {showRightUploadPanel && (
-                  <div className="animate-slideDown border border-gray-300 rounded-lg p-6 bg-white mt-2">
-                    <div className="space-y-6">
-                      <div className="space-y-3">
-                        <h3 className="font-medium text-[16px]">Upload Files</h3>
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          onChange={handleFileUpload}
-                          multiple
-                          className="hidden"
-                        />
-                        <button 
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg 
-                                   hover:bg-gray-50 hover:border-gray-400 transition-all
-                                   flex items-center justify-center gap-2"
-                        >
-                          <Upload size={18} />
-                          Choose Files
-                        </button>
-                        {uploadedFiles.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            {uploadedFiles.map((file, index) => (
-                              <div key={index} className="text-sm text-gray-600 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="truncate max-w-[200px]">{file.name}</span>
-                                  <span className="text-xs text-gray-400">
-                                    ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                                  </span>
-                                </div>
-                                <button
-                                  onClick={() => {
-                                    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
-                                    fetch('/api/cleanup', {
-                                      method: 'POST',
-                                      body: JSON.stringify({ filePath: file.path }),
-                                    });
-                                  }}
-                                  className="text-gray-400 hover:text-gray-600"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="space-y-3">
-                        <h3 className="font-medium text-[16px]">Add URLs</h3>
-                        {rightUrls.map((url, index) => (
-                          <div key={index} className="flex gap-2">
-                            <input
-                              type="text"
-                              value={url}
-                              onChange={(e) => {
-                                const newUrls = [...rightUrls];
-                                newUrls[index] = e.target.value;
-                                setRightUrls(newUrls);
-                              }}
-                              placeholder="Enter URL"
-                              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg
-                                       hover:border-gray-400 focus:border-gray-500 
-                                       focus:ring-2 focus:ring-gray-200 transition-all"
-                            />
-                            {rightUrls.length > 1 && (
-                              <button
-                                onClick={() => {
-                                  const newUrls = rightUrls.filter((_, i) => i !== index);
-                                  setRightUrls(newUrls);
-                                }}
-                                className="text-gray-400 hover:text-gray-600 px-2"
-                              >
-                                ×
-                              </button>
-                            )}
-                            {index === rightUrls.length - 1 && (
-                              <button
-                                onClick={() => setRightUrls([...rightUrls, ''])}
-                                className="text-gray-400 hover:text-gray-600 px-2 
-                                         transition-transform hover:scale-110"
-                              >
-                                +
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
+
+            {/* Full Width Upload Panel */}
+            {activePanel && (
+              <div className="animate-slideDown mt-6">
+                <div className="border border-gray-300 rounded-lg p-6 bg-white">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Upload Files Section */}
+                    <div className="space-y-3">
+                      <h3 className="font-medium text-[16px]">Upload Files</h3>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        multiple
+                        className="hidden"
+                      />
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg 
+                                 hover:bg-gray-50 hover:border-[#4BA3F5] transition-all
+                                 flex items-center justify-center gap-2"
+                      >
+                        <Upload size={18} />
+                        Choose Files
+                      </button>
+                      {uploadedFiles.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {uploadedFiles.map((file, index) => (
+                            <div key={index} className="text-sm text-gray-600 flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="truncate max-w-[200px]">{file.name}</span>
+                                <span className="text-xs text-gray-400">
+                                  ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+                                  fetch('/api/cleanup', {
+                                    method: 'POST',
+                                    body: JSON.stringify({ filePath: file.path }),
+                                  });
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Add URLs Section */}
+                    <div className="space-y-3">
+                      <h3 className="font-medium text-[16px]">Add URLs</h3>
+                      {(activePanel === 'left' ? leftUrls : rightUrls).map((url, index) => (
+                        <div key={index} className="flex gap-2">
+                          <input
+                            type="text"
+                            value={url}
+                            onChange={(e) => {
+                              const newUrls = [...(activePanel === 'left' ? leftUrls : rightUrls)];
+                              newUrls[index] = e.target.value;
+                              activePanel === 'left' ? setLeftUrls(newUrls) : setRightUrls(newUrls);
+                            }}
+                            placeholder="Enter URL"
+                            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg
+                                     hover:border-gray-400 focus:border-[#4BA3F5] 
+                                     focus:ring-2 focus:ring-[#4BA3F5]/20 transition-all"
+                          />
+                          {(activePanel === 'left' ? leftUrls : rightUrls).length > 1 && (
+                            <button
+                              onClick={() => {
+                                const newUrls = (activePanel === 'left' ? leftUrls : rightUrls)
+                                  .filter((_, i) => i !== index);
+                                activePanel === 'left' ? setLeftUrls(newUrls) : setRightUrls(newUrls);
+                              }}
+                              className="text-gray-400 hover:text-gray-600 px-2"
+                            >
+                              ×
+                            </button>
+                          )}
+                          {index === (activePanel === 'left' ? leftUrls : rightUrls).length - 1 && (
+                            <button
+                              onClick={() => {
+                                const newUrls = [...(activePanel === 'left' ? leftUrls : rightUrls), ''];
+                                activePanel === 'left' ? setLeftUrls(newUrls) : setRightUrls(newUrls);
+                              }}
+                              className="text-[#4BA3F5] hover:text-[#3994e8] px-2 
+                                       transition-transform hover:scale-110"
+                            >
+                              +
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
@@ -473,12 +390,12 @@ export default function Home() {
               {/* Upload button in the same row */}
               <button 
                 onClick={() => setShowUploadPanel(!showUploadPanel)}
-                className="p-3 border border-gray-300 rounded-lg text-[14px] 
-                         hover:bg-gray-50 hover:border-gray-400 transition-all
-                         flex items-center justify-center gap-2 group"
+                className="p-3 border border-gray-300 rounded-lg text-[13px] 
+                         hover:bg-gray-50 hover:border-[#4BA3F5] transition-all
+                         flex items-center justify-center gap-1.5 group whitespace-nowrap"
               >
-                <Upload size={16} className="group-hover:scale-110 transition-transform" />
-                Upload + URLs
+                <Upload size={15} className="group-hover:scale-110 transition-transform" />
+                Upload + URL
               </button>
             </div>
 
