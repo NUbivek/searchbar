@@ -102,6 +102,63 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {/* Open Research Content */}
+        {activeTab === 'open' && (
+          <div className="space-y-6">
+            {/* Search Bar for Open Research */}
+            <div className="flex gap-3">
+              <input
+                type="text"
+                placeholder="Search across the web..."
+                className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-lg text-[16px]"
+              />
+              <button className="px-8 py-3 bg-[#2196F3] text-white rounded-lg text-[16px] font-medium hover:bg-[#1E88E5]">
+                Search
+              </button>
+            </div>
+
+            {/* Source Buttons - First Row */}
+            <div className="grid grid-cols-4 gap-3">
+              <button className="p-4 bg-[#2196F3] text-white rounded-lg text-[14px] font-medium hover:bg-[#1E88E5] flex items-center justify-center">
+                Deep Web
+              </button>
+              <button className="p-4 bg-white border border-gray-300 rounded-lg text-[14px] text-gray-700 hover:bg-gray-50 flex items-center justify-center">
+                LinkedIn
+              </button>
+              <button className="p-4 bg-white border border-gray-300 rounded-lg text-[14px] text-gray-700 hover:bg-gray-50 flex items-center justify-center">
+                X
+              </button>
+              <button className="p-4 bg-white border border-gray-300 rounded-lg text-[14px] text-gray-700 hover:bg-gray-50 flex items-center justify-center">
+                Reddit
+              </button>
+            </div>
+
+            {/* Source Buttons - Second Row */}
+            <div className="grid grid-cols-4 gap-3">
+              <button className="p-4 bg-white border border-gray-300 rounded-lg text-[14px] text-gray-700 hover:bg-gray-50 flex items-center justify-center">
+                Crunchbase
+              </button>
+              <button className="p-4 bg-white border border-gray-300 rounded-lg text-[14px] text-gray-700 hover:bg-gray-50 flex items-center justify-center">
+                Pitchbook
+              </button>
+              <button className="p-4 bg-white border border-gray-300 rounded-lg text-[14px] text-gray-700 hover:bg-gray-50 flex items-center justify-center">
+                Medium
+              </button>
+              <button className="p-4 bg-white border border-gray-300 rounded-lg text-[14px] text-gray-700 hover:bg-gray-50 flex items-center justify-center">
+                Substack
+              </button>
+            </div>
+
+            {/* Upload Files Button */}
+            <div className="mt-4">
+              <button className="w-full p-4 bg-white border border-gray-300 rounded-lg text-[14px] text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2">
+                <Upload size={18} />
+                Upload Files + ...
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
