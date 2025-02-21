@@ -3,6 +3,16 @@ import { useState, useRef, useEffect } from 'react';
 import { Upload, ChevronDown } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
+// First, let's define our blue theme colors at the top
+const theme = {
+  primary: '#4BA3F5', // The bright blue from the screenshot
+  primaryHover: '#3994e8',
+  primaryActive: '#2d87db',
+  background: '#F8FAFC',
+  text: '#334155',
+  textLight: '#64748B',
+};
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState('verified');
   const [selectedModel, setSelectedModel] = useState('Perplexity');
@@ -14,6 +24,10 @@ export default function Home() {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
   const fileInputRef = useRef(null);
+  const [showLeftUploadPanel, setShowLeftUploadPanel] = useState(false);
+  const [showRightUploadPanel, setShowRightUploadPanel] = useState(false);
+  const [leftUrls, setLeftUrls] = useState(['']);
+  const [rightUrls, setRightUrls] = useState(['']);
 
   const toggleSource = (source) => {
     if (selectedSources.includes(source)) {
@@ -96,25 +110,25 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Enhanced Tabs with Hover */}
+        {/* Enhanced Tabs with Better Shadow */}
         <div className="flex justify-center mb-8">
-          <div className="border border-gray-300 rounded-lg overflow-hidden">
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
             <button
               onClick={() => setActiveTab('verified')}
-              className={`px-8 py-3 text-[18px] transition-colors hover:bg-gray-50
+              className={`px-8 py-3 text-[18px] transition-all
                 ${activeTab === 'verified' 
-                  ? 'bg-white shadow-sm' 
-                  : 'bg-gray-100'
+                  ? 'bg-[#4BA3F5] text-white shadow-[0_4px_12px_rgba(75,163,245,0.25)] relative z-10 font-medium' 
+                  : 'bg-gray-50 text-gray-600 hover:text-gray-800'
                 }`}
             >
               Verified Sources
             </button>
             <button
               onClick={() => setActiveTab('open')}
-              className={`px-8 py-3 text-[18px] transition-colors hover:bg-gray-50
+              className={`px-8 py-3 text-[18px] transition-all
                 ${activeTab === 'open' 
-                  ? 'bg-white shadow-sm' 
-                  : 'bg-gray-100'
+                  ? 'bg-[#4BA3F5] text-white shadow-[0_4px_12px_rgba(75,163,245,0.25)] relative z-10 font-medium' 
+                  : 'bg-gray-50 text-gray-600 hover:text-gray-800'
                 }`}
             >
               Open Research
@@ -130,13 +144,13 @@ export default function Home() {
                 <button
                   onClick={() => setShowModelDropdown(!showModelDropdown)}
                   className="w-full px-4 py-2.5 text-[18px] border border-gray-300 rounded-lg 
-                            bg-white text-center group hover:border-gray-400 
-                            focus:ring-2 focus:ring-gray-200 transition-all
+                            bg-white text-center group hover:border-[#4BA3F5] 
+                            focus:ring-2 focus:ring-[#4BA3F5]/20 transition-all
                             flex items-center justify-center gap-2"
                 >
                   {selectedModel}
                   <ChevronDown 
-                    className={`transition-transform duration-200 
+                    className={`transition-transform duration-200 text-[#4BA3F5]
                       ${showModelDropdown ? 'rotate-180' : ''}`}
                     size={18}
                   />
@@ -172,7 +186,9 @@ export default function Home() {
                 placeholder="Search verified sources"
                 className="flex-1 px-4 py-2.5 text-[18px] border border-gray-300 rounded-lg"
               />
-              <button className="px-8 py-2.5 bg-gray-900 text-white rounded-lg text-[18px]">
+              <button className="px-8 py-2.5 bg-[#4BA3F5] text-white rounded-lg text-[18px]
+                              hover:bg-[#3994e8] active:bg-[#2d87db] 
+                              transform active:scale-[0.98] transition-all">
                 Search
               </button>
             </div>
@@ -184,19 +200,111 @@ export default function Home() {
                 <h2 className="text-[24px] md:text-[28px] font-bold whitespace-nowrap">
                   Custom Sources Only
                 </h2>
-                <p className="text-[18px] text-gray-600">
-                  Upload your own files or add custom URLs
+                <p className="text-[16px] text-gray-600 whitespace-nowrap">
+                  Upload files or add URLs
                 </p>
-                <div className="flex gap-3">
-                  <button className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg 
-                                 text-[18px] flex items-center justify-center gap-2">
-                    <Upload size={20} />
-                    Upload Files
-                  </button>
-                  <button className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-[18px]">
-                    Add URLs
-                  </button>
-                </div>
+                <button 
+                  onClick={() => setShowLeftUploadPanel(!showLeftUploadPanel)}
+                  className="w-full p-3 border border-gray-300 rounded-lg text-[14px] 
+                           hover:bg-gray-50 hover:border-gray-400 transition-all
+                           flex items-center justify-center gap-2 group"
+                >
+                  <Upload size={16} className="group-hover:scale-110 transition-transform" />
+                  Upload + URLs
+                </button>
+
+                {/* Left Panel Upload Section */}
+                {showLeftUploadPanel && (
+                  <div className="animate-slideDown border border-gray-300 rounded-lg p-6 bg-white mt-2">
+                    <div className="space-y-6">
+                      <div className="space-y-3">
+                        <h3 className="font-medium text-[16px]">Upload Files</h3>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileUpload}
+                          multiple
+                          className="hidden"
+                        />
+                        <button 
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg 
+                                   hover:bg-gray-50 hover:border-gray-400 transition-all
+                                   flex items-center justify-center gap-2"
+                        >
+                          <Upload size={18} />
+                          Choose Files
+                        </button>
+                        {uploadedFiles.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {uploadedFiles.map((file, index) => (
+                              <div key={index} className="text-sm text-gray-600 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="truncate max-w-[200px]">{file.name}</span>
+                                  <span className="text-xs text-gray-400">
+                                    ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+                                    fetch('/api/cleanup', {
+                                      method: 'POST',
+                                      body: JSON.stringify({ filePath: file.path }),
+                                    });
+                                  }}
+                                  className="text-gray-400 hover:text-gray-600"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-3">
+                        <h3 className="font-medium text-[16px]">Add URLs</h3>
+                        {leftUrls.map((url, index) => (
+                          <div key={index} className="flex gap-2">
+                            <input
+                              type="text"
+                              value={url}
+                              onChange={(e) => {
+                                const newUrls = [...leftUrls];
+                                newUrls[index] = e.target.value;
+                                setLeftUrls(newUrls);
+                              }}
+                              placeholder="Enter URL"
+                              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg
+                                       hover:border-gray-400 focus:border-gray-500 
+                                       focus:ring-2 focus:ring-gray-200 transition-all"
+                            />
+                            {leftUrls.length > 1 && (
+                              <button
+                                onClick={() => {
+                                  const newUrls = leftUrls.filter((_, i) => i !== index);
+                                  setLeftUrls(newUrls);
+                                }}
+                                className="text-gray-400 hover:text-gray-600 px-2"
+                              >
+                                ×
+                              </button>
+                            )}
+                            {index === leftUrls.length - 1 && (
+                              <button
+                                onClick={() => setLeftUrls([...leftUrls, ''])}
+                                className="text-gray-400 hover:text-gray-600 px-2 
+                                         transition-transform hover:scale-110"
+                              >
+                                +
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Right Panel */}
@@ -204,19 +312,111 @@ export default function Home() {
                 <h2 className="text-[24px] md:text-[28px] font-bold whitespace-nowrap">
                   Custom + Verified Sources
                 </h2>
-                <p className="text-[18px] text-gray-600">
-                  Combine your sources with our curated collection
+                <p className="text-[16px] text-gray-600 whitespace-nowrap">
+                  Combine with curated sources
                 </p>
-                <div className="flex gap-3">
-                  <button className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg 
-                                 text-[18px] flex items-center justify-center gap-2">
-                    <Upload size={20} />
-                    Upload Files
-                  </button>
-                  <button className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-[18px]">
-                    Add URLs
-                  </button>
-                </div>
+                <button 
+                  onClick={() => setShowRightUploadPanel(!showRightUploadPanel)}
+                  className="w-full p-3 border border-gray-300 rounded-lg text-[14px] 
+                           hover:bg-gray-50 hover:border-gray-400 transition-all
+                           flex items-center justify-center gap-2 group"
+                >
+                  <Upload size={16} className="group-hover:scale-110 transition-transform" />
+                  Upload + URLs
+                </button>
+
+                {/* Right Panel Upload Section */}
+                {showRightUploadPanel && (
+                  <div className="animate-slideDown border border-gray-300 rounded-lg p-6 bg-white mt-2">
+                    <div className="space-y-6">
+                      <div className="space-y-3">
+                        <h3 className="font-medium text-[16px]">Upload Files</h3>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileUpload}
+                          multiple
+                          className="hidden"
+                        />
+                        <button 
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg 
+                                   hover:bg-gray-50 hover:border-gray-400 transition-all
+                                   flex items-center justify-center gap-2"
+                        >
+                          <Upload size={18} />
+                          Choose Files
+                        </button>
+                        {uploadedFiles.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {uploadedFiles.map((file, index) => (
+                              <div key={index} className="text-sm text-gray-600 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="truncate max-w-[200px]">{file.name}</span>
+                                  <span className="text-xs text-gray-400">
+                                    ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+                                    fetch('/api/cleanup', {
+                                      method: 'POST',
+                                      body: JSON.stringify({ filePath: file.path }),
+                                    });
+                                  }}
+                                  className="text-gray-400 hover:text-gray-600"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-3">
+                        <h3 className="font-medium text-[16px]">Add URLs</h3>
+                        {rightUrls.map((url, index) => (
+                          <div key={index} className="flex gap-2">
+                            <input
+                              type="text"
+                              value={url}
+                              onChange={(e) => {
+                                const newUrls = [...rightUrls];
+                                newUrls[index] = e.target.value;
+                                setRightUrls(newUrls);
+                              }}
+                              placeholder="Enter URL"
+                              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg
+                                       hover:border-gray-400 focus:border-gray-500 
+                                       focus:ring-2 focus:ring-gray-200 transition-all"
+                            />
+                            {rightUrls.length > 1 && (
+                              <button
+                                onClick={() => {
+                                  const newUrls = rightUrls.filter((_, i) => i !== index);
+                                  setRightUrls(newUrls);
+                                }}
+                                className="text-gray-400 hover:text-gray-600 px-2"
+                              >
+                                ×
+                              </button>
+                            )}
+                            {index === rightUrls.length - 1 && (
+                              <button
+                                onClick={() => setRightUrls([...rightUrls, ''])}
+                                className="text-gray-400 hover:text-gray-600 px-2 
+                                         transition-transform hover:scale-110"
+                              >
+                                +
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -231,8 +431,8 @@ export default function Home() {
                          hover:border-gray-400 focus:border-gray-500 
                          focus:ring-2 focus:ring-gray-200 transition-all"
               />
-              <button className="px-8 py-2.5 bg-gray-900 text-white rounded-lg text-[18px]
-                              hover:bg-gray-800 active:bg-gray-950 
+              <button className="px-8 py-2.5 bg-[#4BA3F5] text-white rounded-lg text-[18px]
+                              hover:bg-[#3994e8] active:bg-[#2d87db] 
                               transform active:scale-[0.98] transition-all">
                 Search
               </button>
@@ -246,8 +446,8 @@ export default function Home() {
                   onClick={() => toggleSource(source)}
                   className={`p-3 rounded-lg text-[14px] transform transition-all duration-200 ${
                     selectedSources.includes(source)
-                      ? 'bg-gray-900 text-white scale-[1.02] shadow-md'
-                      : 'border border-gray-300 hover:bg-gray-50 hover:border-gray-400 active:scale-[0.98]'
+                      ? 'bg-[#4BA3F5] text-white scale-[1.02] shadow-[0_4px_12px_rgba(75,163,245,0.25)]'
+                      : 'border border-gray-300 hover:bg-gray-50 hover:border-[#4BA3F5] active:scale-[0.98]'
                   }`}
                 >
                   {source}
@@ -262,8 +462,8 @@ export default function Home() {
                   onClick={() => toggleSource(source)}
                   className={`p-3 rounded-lg text-[14px] transform transition-all duration-200 ${
                     selectedSources.includes(source)
-                      ? 'bg-gray-900 text-white scale-[1.02] shadow-md'
-                      : 'border border-gray-300 hover:bg-gray-50 hover:border-gray-400 active:scale-[0.98]'
+                      ? 'bg-[#4BA3F5] text-white scale-[1.02] shadow-[0_4px_12px_rgba(75,163,245,0.25)]'
+                      : 'border border-gray-300 hover:bg-gray-50 hover:border-[#4BA3F5] active:scale-[0.98]'
                   }`}
                 >
                   {source}
@@ -334,12 +534,6 @@ export default function Home() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h3 className="font-medium text-[16px]">Add URLs</h3>
-                      <button 
-                        onClick={() => setUrls([...urls, ''])}
-                        className="text-blue-600 hover:text-blue-700 text-sm"
-                      >
-                        + Add Another URL
-                      </button>
                     </div>
                     {urls.map((url, index) => (
                       <div key={index} className="flex gap-2">
@@ -362,9 +556,18 @@ export default function Home() {
                               const newUrls = urls.filter((_, i) => i !== index);
                               setUrls(newUrls);
                             }}
-                            className="text-gray-400 hover:text-gray-600"
+                            className="text-gray-400 hover:text-gray-600 px-2"
                           >
                             ×
+                          </button>
+                        )}
+                        {index === urls.length - 1 && (
+                          <button
+                            onClick={() => setUrls([...urls, ''])}
+                            className="text-[#4BA3F5] hover:text-[#3994e8] px-2 
+                                     transition-transform hover:scale-110"
+                          >
+                            +
                           </button>
                         )}
                       </div>
@@ -385,7 +588,7 @@ export default function Home() {
                     </div>
                     <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-blue-600 transition-all duration-200"
+                        className="h-full bg-[#4BA3F5] transition-all duration-200"
                         style={{ width: `${progress}%` }}
                       />
                     </div>

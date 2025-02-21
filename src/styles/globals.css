@@ -5,12 +5,14 @@
 /* Base Styles */
 @layer base {
   :root {
-    --primary: #2563eb;     /* Bright blue for primary actions */
-    --surface: #ffffff;     /* Clean white surface */
-    --text: #111827;       /* Dark text for contrast */
-    --text-light: #6b7280; /* Lighter text for subtitles */
-    --border: #e5e7eb;     /* Subtle borders */
-    --hover: #f3f4f6;      /* Hover state background */
+    --primary: #4BA3F5;
+    --primary-hover: #3994e8;
+    --primary-active: #2d87db;
+    --surface: #ffffff;
+    --text: #334155;
+    --text-light: #64748B;
+    --border: #e5e7eb;
+    --hover: #f8fafc;
   }
 
   body {
@@ -125,6 +127,15 @@
   /* Add a test class */
   .test-component {
     @apply bg-blue-500 text-white p-4 rounded-lg;
+  }
+
+  .btn-primary {
+    @apply bg-[#4BA3F5] text-white hover:bg-[#3994e8] active:bg-[#2d87db]
+           transition-all duration-200;
+  }
+  
+  .input-focus {
+    @apply focus:border-[#4BA3F5] focus:ring-2 focus:ring-[#4BA3F5]/20;
   }
 }
 
