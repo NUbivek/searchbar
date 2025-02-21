@@ -31,6 +31,9 @@ export default function Home() {
   const [activePanel, setActivePanel] = useState(null); // 'left' or 'right' or null
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchError, setSearchError] = useState(null);
+  const [searchHistory, setSearchHistory] = useState([]);
 
   const toggleSource = (source) => {
     if (selectedSources.includes(source)) {
@@ -95,28 +98,27 @@ export default function Home() {
     }
   };
 
-  // Update the search handler function
-  const handleOpenSearch = async (searchQuery) => {
-    if (searchQuery.trim() === '') return;
+  // Enhanced search handler
+  const handleOpenSearch = async (query) => {
+    if (query.trim() === '') return;
     
     setIsSearching(true);
+    setSearchError(null);
     
     try {
-      // DuckDuckGo search parameters
-      const searchParams = {
-        q: searchQuery,
-        format: 'json',
-        t: 'ResearchHub',
-        ia: 'web',
-        kl: 'wt-wt',
-      };
+      // Save to search history
+      setSearchHistory(prev => [
+        { query, timestamp: new Date(), sources: [...selectedSources] },
+        ...prev.slice(0, 9) // Keep last 10 searches
+      ]);
 
-      // Fetch results
-      const response = await fetch(`https://api.duckduckgo.com/?${new URLSearchParams(searchParams).toString()}`);
-      const data = await response.json();
+      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      if (!response.ok) throw new Error('Search failed');
       
+      const data = await response.json();
       setSearchResults(data);
     } catch (error) {
+      setSearchError('Failed to perform search. Please try again.');
       console.error('Search error:', error);
     } finally {
       setIsSearching(false);
@@ -379,33 +381,96 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Enhanced Search with Hover */}
-            <div className="flex gap-3 mb-8">
-              <input
-                type="text"
-                placeholder="Search across the web..."
-                className="flex-1 px-4 py-2.5 text-[18px] border border-gray-300 rounded-lg
-                         hover:border-gray-400 focus:border-[#4BA3F5] 
-                         focus:ring-2 focus:ring-[#4BA3F5]/20 transition-all
-                         placeholder:text-gray-400"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleOpenSearch(e.target.value);
-                  }
-                }}
-              />
-              <button 
-                onClick={() => {
-                  const searchInput = document.querySelector('input[type="text"]');
-                  handleOpenSearch(searchInput.value);
-                }}
-                className="px-8 py-2.5 bg-[#4BA3F5] text-white rounded-lg text-[18px]
-                         hover:bg-[#3994e8] active:bg-[#2d87db] 
-                         transform active:scale-[0.98] transition-all
-                         shadow-sm hover:shadow-md"
-              >
-                Search
-              </button>
+            {/* Enhanced Search Section */}
+            <div className="space-y-6">
+              {/* Search Input with History */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search across the web..."
+                  className="w-full px-4 py-2.5 text-[18px] border border-gray-300 rounded-lg
+                           hover:border-[#4BA3F5] focus:border-[#4BA3F5] 
+                           focus:ring-2 focus:ring-[#4BA3F5]/20 transition-all
+                           pr-24" // Space for clear button
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleOpenSearch(searchQuery);
+                  }}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 
+                             text-gray-400 hover:text-gray-600 p-2"
+                  >
+                    Clear
+                  </button>
+                )}
+                
+                {/* Search History Dropdown */}
+                {searchQuery && searchHistory.length > 0 && (
+                  <div className="absolute top-full left-0 w-full mt-1 bg-white border 
+                                border-gray-300 rounded-lg shadow-lg overflow-hidden z-10">
+                    {searchHistory
+                      .filter(h => h.query.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .map((history, index) => (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            setSearchQuery(history.query);
+                            handleOpenSearch(history.query);
+                          }}
+                          className="w-full p-3 text-left hover:bg-gray-50 flex items-center gap-3"
+                        >
+                          <span className="text-gray-400">↑</span>
+                          <div className="flex-1">
+                            <div className="font-medium">{history.query}</div>
+                            <div className="text-sm text-gray-500">
+                              {history.sources.join(', ')}
+                            </div>
+                          </div>
+                          <span className="text-xs text-gray-400">
+                            {new Date(history.timestamp).toLocaleTimeString()}
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Error Message */}
+              {searchError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+                  {searchError}
+                </div>
+              )}
+
+              {/* Loading State */}
+              {isSearching && (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4BA3F5] mx-auto" />
+                  <p className="mt-4 text-gray-500">Searching across selected sources...</p>
+                </div>
+              )}
+
+              {/* Selected Sources Pills */}
+              <div className="flex flex-wrap gap-2">
+                {selectedSources.map(source => (
+                  <div key={source} 
+                       className="px-3 py-1 bg-[#4BA3F5]/10 text-[#4BA3F5] rounded-full 
+                                text-sm flex items-center gap-2"
+                  >
+                    {source}
+                    <button
+                      onClick={() => toggleSource(source)}
+                      className="hover:text-[#3994e8]"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Source Buttons - All in one grid */}
@@ -564,49 +629,6 @@ export default function Home() {
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-
-            {/* Search Results Section */}
-            {(isSearching || searchResults) && (
-              <div className="mt-8 border border-gray-300 rounded-lg bg-white">
-                <div className="p-4 border-b border-gray-300">
-                  <h3 className="font-medium text-[16px] text-gray-700">
-                    {isSearching ? 'Searching...' : 'Search Results'}
-                  </h3>
-                </div>
-                
-                <div className="max-h-[500px] overflow-y-auto">
-                  {isSearching ? (
-                    <div className="p-8 text-center text-gray-500">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4BA3F5] mx-auto mb-4" />
-                      Searching across selected sources...
-                    </div>
-                  ) : searchResults ? (
-                    <div className="divide-y divide-gray-200">
-                      {searchResults.RelatedTopics?.map((result, index) => (
-                        <div key={index} className="p-4 hover:bg-gray-50 transition-colors">
-                          <a 
-                            href={result.FirstURL} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="block"
-                          >
-                            <h4 className="font-medium text-[15px] text-[#1E3A8A] mb-1 hover:text-[#4BA3F5]">
-                              {result.Text.split(' - ')[0]}
-                            </h4>
-                            <p className="text-[14px] text-gray-600">
-                              {result.Text.split(' - ')[1]}
-                            </p>
-                            <span className="text-[13px] text-green-700">
-                              {result.FirstURL}
-                            </span>
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
               </div>
             )}
           </div>

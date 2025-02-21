@@ -34,3 +34,10 @@ jobs:
         with:
           branch: gh-pages
           folder: out 
+
+env:
+  LINKEDIN_API_KEY: ${{ secrets.LINKEDIN_API_KEY }}
+  TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+  REDDIT_API_KEY: ${{ secrets.REDDIT_API_KEY }}
+  PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+  TOGETHER_API_KEY: ${{ secrets.TOGETHER_API_KEY }} 
