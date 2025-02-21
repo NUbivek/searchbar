@@ -1,43 +1,19 @@
 import axios from 'axios';
 
 export async function processWithLLM(results, model) {
-  // Format the input for the LLM
-  const context = results.map(result => ({
-    content: result.content,
-    source: result.url,
-    type: result.type
-  }));
-
-  const prompt = `
-    Analyze and synthesize the following information:
-    ${JSON.stringify(context)}
-    
-    Please provide:
-    1. A concise summary
-    2. Key findings categorized by topic
-    3. Relevant source citations
-    4. Suggested follow-up questions
-  `;
-
   try {
-    const response = await axios.post('/api/llm', {
-      prompt,
-      model,
-      options: {
-        temperature: 0.7,
-        max_tokens: 1000
-      }
+    const response = await fetch('/api/llm/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ results, model })
     });
-
-    // Structure the LLM output
-    return {
-      summary: response.data.summary,
-      categories: response.data.categories,
-      sources: response.data.sources,
-      followUpQuestions: response.data.followUpQuestions
-    };
+    
+    return await response.json();
   } catch (error) {
     console.error('LLM processing error:', error);
-    throw error;
+    return {
+      summary: 'Failed to process results with LLM',
+      contentMap: {}
+    };
   }
 } 
