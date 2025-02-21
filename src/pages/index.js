@@ -2,20 +2,20 @@ import Head from 'next/head';
 
 export default function Home() {
   return (
-    <div style={{ minHeight: '100vh' }} className="bg-red-500 p-5">
+    <div className="min-h-screen bg-red-500 p-8">
       <Head>
-        <title>Test Page</title>
+        <title>Tailwind Test</title>
       </Head>
 
-      <h1 className="text-white text-4xl text-center mb-5">
-        Test Page
-      </h1>
-
-      <div className="bg-white max-w-2xl mx-auto rounded-lg p-5">
-        <p className="text-blue-600 text-xl">
-          If this text is blue and centered in a white card on a red background,
-          both inline styles and Tailwind are working.
-        </p>
+      <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg overflow-hidden md:max-w-2xl">
+        <div className="p-8">
+          <div className="uppercase tracking-wide text-sm text-indigo-500 font-semibold">
+            Tailwind Test
+          </div>
+          <p className="mt-2 text-slate-500">
+            If you see this card with proper styling, Tailwind is working.
+          </p>
+        </div>
       </div>
     </div>
   );
