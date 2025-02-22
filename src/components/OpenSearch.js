@@ -5,76 +5,21 @@ import UrlInput from './UrlInput';
 import { NetworkMonitor } from '../utils/networkMonitor';
 import SearchErrorBoundary from './SearchErrorBoundary';
 
-export default function OpenSearch({ selectedModel }) {
-  const [query, setQuery] = useState('');
+export default function OpenSearch({ selectedModel, onSearch, isLoading, error, results }) {
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedSources, setSelectedSources] = useState(['Web']);
   const [showUploadPanel, setShowUploadPanel] = useState(false);
   const [customUrls, setCustomUrls] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [results, setResults] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  
+
   const sourceRows = [
     ['Web', 'LinkedIn', 'X', 'Reddit', 'Substack'],
     ['Crunchbase', 'Pitchbook', 'Medium', 'Verified Sources', <span className="flex items-center gap-1"><Upload size={16} /> Files + URL</span>]
   ];
 
-  const handleSearch = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    const requestId = NetworkMonitor.startRequest('/api/openSearch', {
-      method: 'POST',
-      query,
-      model: selectedModel
-    });
-
-    const apiUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://research.bivek.ai/api/openSearch'
-      : '/api/openSearch';
-
-    try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          query,
-          model: selectedModel,
-          sources: selectedSources,
-          customUrls,
-          uploadedFiles
-        })
-      });
-
-      NetworkMonitor.endRequest(requestId, response);
-
-      // Check for non-JSON response
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Server returned non-JSON response');
-      }
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Search failed');
-      }
-
-      setResults(data);
-    } catch (err) {
-      NetworkMonitor.endRequest(requestId, { ok: false, status: 'failed', error: err.message });
-      console.error('Search error:', err);
-      setError(err.message || 'Search failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    onSearch(searchQuery);
   };
 
   const handleSourceClick = (source) => {
@@ -93,21 +38,23 @@ export default function OpenSearch({ selectedModel }) {
   return (
     <SearchErrorBoundary>
       <div className="space-y-6">
-        <form onSubmit={handleSearch} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex gap-4">
             <input
               type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Enter your search query"
-              className="flex-1 px-4 py-2 border rounded-lg"
+              className="flex-1 px-6 py-3 text-lg border rounded-lg shadow-sm
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg"
-              disabled={loading}
+              className="px-8 py-3 bg-blue-600 text-white text-lg rounded-lg
+                hover:bg-blue-700 transition-colors shadow-sm"
+              disabled={isLoading}
             >
-              {loading ? 'Searching...' : 'Search'}
+              {isLoading ? 'Searching...' : 'Search'}
             </button>
           </div>
 
@@ -157,9 +104,13 @@ export default function OpenSearch({ selectedModel }) {
           <div className="text-red-600 text-center">{error}</div>
         )}
 
+        {isLoading && (
+          <div className="text-center">Loading...</div>
+        )}
+
         {results && (
           <div className="mt-8 space-y-8">
-            {results.sources?.map((result, index) => (
+            {results.results?.map((result, index) => (
               <div
                 key={index}
                 className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow"
