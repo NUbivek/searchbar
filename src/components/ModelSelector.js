@@ -7,7 +7,7 @@ export default function ModelSelector({ selectedModel, setSelectedModel }) {
   const models = [
     { id: 'Gemma-7B', name: 'Gemma 7B', description: 'Efficient Google model', icon: '🧠' },
     { id: 'Mixtral-8x7B', name: 'Mixtral 8x7B', description: 'Powerful multi-expert model', icon: '⚡' },
-    { id: 'Perplexity', name: 'Perplexity-Online', description: 'Real-time web analysis', icon: '🌐' },
+    { id: 'Perplexity', name: 'Perplexity', description: 'Custom model for deep analysis', icon: '🔮' },
     { id: 'DeepSeek-70B', name: 'DeepSeek 70B', description: 'Advanced reasoning model', icon: '🔍' }
   ];
 

@@ -8,8 +8,11 @@ import DebugPanel from '../components/DebugPanel';
 
 export default function Home() {
   const [mode, setMode] = useState(SearchModes.VERIFIED);
-  const [selectedModel, setSelectedModel] = useState('Gemma-7B');
+  const [selectedModel, setSelectedModel] = useState('Mixtral-8x7B');
   const [debugMode, setDebugMode] = useState(false);
+  const [searchResults, setSearchResults] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Enable debug with Ctrl+Shift+D
   useEffect(() => {
@@ -21,6 +24,37 @@ export default function Home() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const handleSearch = async (query, customMode = mode) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const endpoint = customMode === SearchModes.VERIFIED ? 'verifiedSearch' : 'openSearch';
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          model: selectedModel,
+          customMode
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setSearchResults(data);
+    } catch (err) {
+      console.error('Search error:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -71,9 +105,21 @@ export default function Home() {
 
         {/* Conditional Page Rendering */}
         {mode === SearchModes.VERIFIED ? (
-          <VerifiedSearch selectedModel={selectedModel} />
+          <VerifiedSearch 
+            selectedModel={selectedModel} 
+            onSearch={handleSearch}
+            isLoading={isLoading}
+            error={error}
+            results={searchResults}
+          />
         ) : (
-          <OpenSearch selectedModel={selectedModel} />
+          <OpenSearch 
+            selectedModel={selectedModel}
+            onSearch={handleSearch}
+            isLoading={isLoading}
+            error={error}
+            results={searchResults}
+          />
         )}
 
         {debugMode && <DebugPanel />}

@@ -5,28 +5,22 @@ const nextConfig = {
   images: {
     unoptimized: true
   },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: '/api/:path*'
-      }
-    ];
-  },
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: '/api/:path*',
         headers: [
-          { key: 'Access-Control-Allow-Credentials', value: 'true' },
           { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Access-Control-Allow-Methods', value: 'GET,POST,OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'X-Requested-With,Content-Type' },
-          { key: 'Content-Type', value: 'application/json' }
+          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type' }
         ]
       }
     ];
-  }
+  },
+  // Remove rewrites as they might be interfering
+  // async rewrites() {
+  //   return [];
+  // }
 };
 
 module.exports = nextConfig;

@@ -2,6 +2,8 @@ import { VC_FIRMS, MARKET_DATA_SOURCES, searchAcrossDataSources } from './dataSo
 import { processWithLLM } from './llmProcessing';
 import { logger } from './logger';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 export async function searchVerifiedSources(query, options = {}) {
   const searchId = Math.random().toString(36).substring(7);
   logger.debug(`[${searchId}] Starting search`, { query, options });
@@ -116,4 +118,25 @@ function matchesQuery(obj, query) {
   const searchText = JSON.stringify(obj).toLowerCase();
   const terms = query.toLowerCase().split(' ');
   return terms.every(term => searchText.includes(term));
+}
+
+export async function verifiedSearch(query, model = 'Gemma 7B') {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/verifiedSearch`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, model }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error in verifiedSearch:', error);
+    throw error;
+  }
 } 

@@ -3,74 +3,26 @@ import FileUpload from './FileUpload';
 import UrlInput from './UrlInput';
 import SearchErrorBoundary from './SearchErrorBoundary';
 
-export default function VerifiedSearch({ selectedModel }) {
-  const [query, setQuery] = useState('');
+export default function VerifiedSearch({ selectedModel, onSearch, isLoading, error, results }) {
+  const [searchQuery, setSearchQuery] = useState('');
   const [customMode, setCustomMode] = useState('verified');
   const [customUrls, setCustomUrls] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [results, setResults] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
-  const handleSearch = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    console.log('Starting search with:', {
-      query,
-      model: selectedModel,
-      customMode,
-      customUrls,
-      uploadedFiles
-    });
-
-    try {
-      const response = await fetch('/api/verifiedSearch', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          query,
-          model: selectedModel,
-          customMode,
-          customUrls: customUrls || [],
-          uploadedFiles: uploadedFiles || []
-        })
-      });
-
-      // First check if response is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Server returned non-JSON response');
-      }
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || data.error || 'Search failed');
-      }
-
-      setResults(data);
-    } catch (err) {
-      console.error('Search error:', err);
-      setError(err.message || 'Search failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    onSearch(searchQuery);
   };
 
   return (
     <SearchErrorBoundary>
       <div className="space-y-6">
-        <form onSubmit={handleSearch} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex gap-4">
             <input
               type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Enter your search query"
               className="flex-1 px-6 py-3 text-lg border rounded-lg shadow-sm
                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -79,9 +31,9 @@ export default function VerifiedSearch({ selectedModel }) {
               type="submit"
               className="px-8 py-3 bg-blue-600 text-white text-lg rounded-lg
                 hover:bg-blue-700 transition-colors shadow-sm"
-              disabled={loading}
+              disabled={isLoading}
             >
-              {loading ? 'Searching...' : 'Search'}
+              {isLoading ? 'Searching...' : 'Search'}
             </button>
           </div>
 
@@ -128,6 +80,10 @@ export default function VerifiedSearch({ selectedModel }) {
 
         {error && (
           <div className="text-red-600 text-center">{error}</div>
+        )}
+
+        {isLoading && (
+          <div className="text-center">Loading...</div>
         )}
 
         {results && (
