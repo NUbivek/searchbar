@@ -9,79 +9,79 @@ export async function searchVerifiedSources(query, options = {}) {
   const { model, mode = 'verified', customUrls = [], uploadedFiles = [] } = options;
 
   try {
-    // Track each step
-    const steps = {
-      start: Date.now(),
-      dataSourcesLoaded: false,
-      searchStarted: false,
-      resultsProcessed: false,
-      end: null
-    };
+    // Validate inputs
+    if (!query) {
+      throw new Error('Query is required');
+    }
 
-    // Verify data sources
-    const dataSourcesCheck = {
-      hasVCFirms: !!VC_FIRMS,
-      vcFirmsCount: Object.keys(VC_FIRMS || {}).length,
-      hasMarketData: !!MARKET_DATA_SOURCES,
-      marketDataCount: Object.keys(MARKET_DATA_SOURCES || {}).length
-    };
-    steps.dataSourcesLoaded = true;
-    logger.debug(`[${searchId}] Data sources check:`, dataSourcesCheck);
+    // Initialize results array
+    let results = [];
 
-    // Start search
-    steps.searchStarted = true;
-    const results = [];
-    
-    // Track each search operation
-    const searchOperations = [];
+    // Verify data sources are loaded
+    if (!VC_FIRMS || !MARKET_DATA_SOURCES) {
+      logger.error('Data sources not loaded properly');
+      throw new Error('Data sources unavailable');
+    }
 
     // Search based on mode
     if (mode === 'verified' || mode === 'combined') {
-      console.log('Searching verified sources...');
-      
-      const verifiedOp = {
-        type: 'verified',
-        startTime: Date.now()
-      };
-      try {
-        const verifiedResults = await searchAcrossDataSources(query, {
-          verifiedOnly: true,
-          categories: ['financial', 'industry', 'consulting']
-        });
-        console.log('Verified results:', verifiedResults);
-        results.push(...verifiedResults);
-        verifiedOp.success = true;
-        verifiedOp.resultCount = verifiedResults.length;
-      } catch (e) {
-        console.error('Error in verified search:', e);
-        verifiedOp.success = false;
-        verifiedOp.error = e.message;
-      }
-      verifiedOp.endTime = Date.now();
-      searchOperations.push(verifiedOp);
+      logger.debug('Searching verified sources...');
+
+      // Search market data
+      const marketResults = await searchAcrossDataSources(query, {
+        verifiedOnly: true,
+        categories: ['financial', 'industry', 'consulting']
+      });
+      results.push(...marketResults);
+
+      // Search VC firms
+      const vcResults = Object.entries(VC_FIRMS)
+        .filter(([_, firm]) => matchesQuery(firm, query))
+        .map(([_, firm]) => ({
+          source: firm.name,
+          type: 'VC Firm',
+          content: `${firm.name} - ${firm.focus?.join(', ') || 'No focus specified'}`,
+          url: firm.handles?.linkedin || firm.handles?.x || '#',
+          verified: true
+        }));
+      results.push(...vcResults);
+
+      logger.debug('Verified search results:', {
+        marketResultsCount: marketResults.length,
+        vcResultsCount: vcResults.length
+      });
     }
 
     // Handle custom sources
     if ((mode === 'custom' || mode === 'combined') && 
         (customUrls.length > 0 || uploadedFiles.length > 0)) {
-      console.log('Processing custom sources...');
+      logger.debug('Processing custom sources...');
       
-      const customResults = [];
-      
+      // Process URLs
       if (customUrls.length > 0) {
-        console.log('Processing URLs:', customUrls);
-        const urlResults = customUrls.map(url => ({
-          source: new URL(url).hostname,
-          type: 'Custom URL',
-          content: `Content from ${url}`,
-          url,
-          verified: false
-        }));
-        customResults.push(...urlResults);
+        const urlResults = await Promise.all(
+          customUrls.map(async (url) => {
+            try {
+              const response = await fetch(url);
+              const text = await response.text();
+              return {
+                source: new URL(url).hostname,
+                type: 'Custom URL',
+                content: text.substring(0, 1000), // First 1000 chars for preview
+                url,
+                verified: false
+              };
+            } catch (error) {
+              logger.error(`Error fetching URL ${url}:`, error);
+              return null;
+            }
+          })
+        );
+        results.push(...urlResults.filter(Boolean));
       }
 
+      // Process files
       if (uploadedFiles.length > 0) {
-        console.log('Processing files:', uploadedFiles);
         const fileResults = uploadedFiles.map(file => ({
           source: file.name,
           type: 'Uploaded File',
@@ -89,43 +89,24 @@ export async function searchVerifiedSources(query, options = {}) {
           url: '#',
           verified: false
         }));
-        customResults.push(...fileResults);
+        results.push(...fileResults);
       }
-
-      results.push(...customResults);
     }
 
-    console.log('Pre-LLM results:', results);
-
-    // Process with LLM
+    // Process results with LLM
     const processedResults = await processWithLLM(results, model);
-    console.log('Post-LLM results:', processedResults);
-
-    // Process results
-    steps.resultsProcessed = true;
-    steps.end = Date.now();
-
-    // Log performance
-    logger.debug(`[${searchId}] Search completed`, {
-      duration: steps.end - steps.start,
-      steps,
-      operations: searchOperations,
-      resultCount: results.length
-    });
+    
+    logger.debug(`Search completed with ${results.length} results`);
 
     return {
-      searchId,
-      timing: {
-        total: steps.end - steps.start,
-        steps
-      },
-      results: results.map(result => ({
+      summary: processedResults.summary,
+      sources: results.map(result => ({
         ...result,
         content: processedResults.contentMap[result.url] || result.content
       }))
     };
   } catch (error) {
-    logger.error(`[${searchId}] Search failed:`, error);
+    logger.error(`Search failed:`, error);
     throw new Error(`Search failed: ${error.message}`);
   }
 }
