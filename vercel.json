@@ -8,17 +8,25 @@
   ],
   "routes": [
     {
-      "src": "/(.*)",
-      "dest": "/$1",
+      "src": "/api/(.*)",
+      "dest": "/api/$1",
       "headers": {
         "Access-Control-Allow-Credentials": "true",
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-        "Access-Control-Allow-Headers": "X-Requested-With,Content-Type"
+        "Access-Control-Allow-Methods": "GET,OPTIONS,PATCH,DELETE,POST,PUT",
+        "Access-Control-Allow-Headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
       }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
     }
   ],
   "env": {
-    "TOGETHER_API_KEY": "15a66263c48b3736db06ba44e4c5992bf7fbd86c1c97e53efcf0f3366f624c2b"
+    "LINKEDIN_API_KEY": "@linkedin_api_key",
+    "REDDIT_API_KEY": "@reddit_api_key",
+    "PERPLEXITY_API_KEY": "@perplexity_api_key",
+    "TOGETHER_API_KEY": "@together_api_key",
+    "SERPER_API_KEY": "@serper_api_key"
   }
 }
