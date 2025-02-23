@@ -2,10 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  output: 'export', // Change to export for static site generation
-  images: {
-    unoptimized: true, // Required for static export
-  },
   env: {
     // Add environment variables here
     SERPER_API_KEY: process.env.SERPER_API_KEY,

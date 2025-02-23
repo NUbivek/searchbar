@@ -44,6 +44,36 @@ async function searchDuckDuckGo(query) {
 // Main search function
 export async function searchWeb(query) {
   try {
+    // Try Serper API first for local development
+    const serperApiKey = process.env.SERPER_API_KEY;
+    if (serperApiKey) {
+      try {
+        const response = await axios.post('https://google.serper.dev/search', 
+          { q: query },
+          { 
+            headers: { 
+              'X-API-KEY': serperApiKey,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (response.data && response.data.organic) {
+          return response.data.organic.map(result => ({
+            source: new URL(result.link).hostname,
+            type: 'WebResult',
+            content: `${result.title}\n${result.snippet}`,
+            url: result.link,
+            score: 1
+          }));
+        }
+      } catch (serperError) {
+        logger.error('Serper API error:', serperError);
+        // Fall through to DuckDuckGo if Serper fails
+      }
+    }
+
+    // Fallback to DuckDuckGo if Serper is not configured or fails
     const results = await searchDuckDuckGo(query);
 
     // If no results, add a fallback
@@ -64,13 +94,7 @@ export async function searchWeb(query) {
 
     return results;
   } catch (error) {
-    logger.error('Web search error:', error);
-    return [{
-      source: 'Search',
-      type: 'Error',
-      content: 'Search service is temporarily unavailable. Please try again later.',
-      url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
-      timestamp: new Date().toISOString()
-    }];
+    logger.error('Search error:', error);
+    throw error;
   }
 }
