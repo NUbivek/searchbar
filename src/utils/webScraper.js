@@ -73,4 +73,37 @@ export async function scrapeSource(source, query) {
     console.error(`Error scraping ${source}:`, error);
     return [];
   }
-} 
+}
+
+export async function scrapeWebsite(url) {
+  try {
+    const response = await axios.get(url);
+    const $ = cheerio.load(response.data);
+    
+    // Extract text content
+    const textContent = $('body').text()
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Extract metadata
+    const title = $('title').text() || $('h1').first().text() || '';
+    const description = $('meta[name="description"]').attr('content') || 
+                       $('meta[property="og:description"]').attr('content') || '';
+    
+    return {
+      title,
+      description,
+      content: textContent,
+      url
+    };
+  } catch (error) {
+    console.error(`Error scraping website ${url}:`, error);
+    return {
+      title: '',
+      description: '',
+      content: '',
+      url,
+      error: error.message
+    };
+  }
+}
