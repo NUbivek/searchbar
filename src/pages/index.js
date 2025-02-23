@@ -9,6 +9,8 @@ import DebugPanel from '../components/DebugPanel';
 // Add a console log for testing
 console.log('API URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
 
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.research.bivek.ai';
+
 export default function Home() {
   const [mode, setMode] = useState(SearchModes.VERIFIED);
   const [selectedModel, setSelectedModel] = useState('Mixtral-8x7B');
@@ -30,12 +32,12 @@ export default function Home() {
 
   // Update the search function to log the query
   const handleSearch = async (query) => {
-    console.log('Searching for:', query);
+    console.log('Searching with API:', API_URL);
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/search/open-search`, {
+      const response = await fetch(`${API_URL}/api/search/open-search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -43,8 +45,12 @@ export default function Home() {
         body: JSON.stringify({ query }),
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
-      console.log('Search response:', data);  // Add this line
+      console.log('Search response:', data);
       
       if (data.status === 'success') {
         setSearchResults(data.results);
