@@ -1,4 +1,4 @@
-name: Deploy Research Hub
+name: Build Verification
 on:
   push:
     branches: [ main ]
@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     
     steps:
@@ -21,16 +21,7 @@ jobs:
       run: npm ci
       
     - name: Build
-      run: |
-        npm run build
-        touch out/.nojekyll
+      run: npm run build
       env:
         NEXT_PUBLIC_API_BASE_URL: "https://api.research.bivek.ai"
         NEXT_PUBLIC_ENABLE_LOGGING: "true"
-        
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./out
-        cname: research.bivek.ai
