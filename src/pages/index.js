@@ -6,10 +6,18 @@ import VerifiedSearch from '../components/VerifiedSearch';
 import OpenSearch from '../components/OpenSearch';
 import DebugPanel from '../components/DebugPanel';
 
+// Add a console log for testing
+console.log('API URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
+
+const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.research.bivek.ai';
+
 export default function Home() {
   const [mode, setMode] = useState(SearchModes.VERIFIED);
-  const [selectedModel, setSelectedModel] = useState('Gemma-7B');
+  const [selectedModel, setSelectedModel] = useState('Mixtral-8x7B');
   const [debugMode, setDebugMode] = useState(false);
+  const [searchResults, setSearchResults] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Enable debug with Ctrl+Shift+D
   useEffect(() => {
@@ -21,6 +29,41 @@ export default function Home() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Update the search function to log the query
+  const handleSearch = async (query) => {
+    console.log('Searching with API:', API_URL);
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/search/open-search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Search response:', data);
+      
+      if (data.status === 'success') {
+        setSearchResults(data.results);
+      } else {
+        setError(data.message || 'Search failed');
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      setError('An error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -71,9 +114,59 @@ export default function Home() {
 
         {/* Conditional Page Rendering */}
         {mode === SearchModes.VERIFIED ? (
-          <VerifiedSearch selectedModel={selectedModel} />
+          <VerifiedSearch 
+            selectedModel={selectedModel} 
+            onSearch={handleSearch}
+            isLoading={isLoading}
+            error={error}
+            results={searchResults}
+          />
         ) : (
-          <OpenSearch selectedModel={selectedModel} />
+          <OpenSearch 
+            selectedModel={selectedModel}
+            onSearch={handleSearch}
+            isLoading={isLoading}
+            error={error}
+            results={searchResults}
+          />
+        )}
+
+        {searchResults && (
+          <div className="mt-8 space-y-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Search Results</h2>
+              
+              {/* Summary Section */}
+              <div className="mb-6">
+                <h3 className="text-lg font-medium mb-2">Summary</h3>
+                <p className="text-gray-700">{searchResults.summary}</p>
+              </div>
+
+              {/* Sources Section */}
+              {searchResults.sources.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Sources</h3>
+                  <div className="space-y-3">
+                    {searchResults.sources.map((source, index) => (
+                      <div key={index} className="border-l-4 border-blue-500 pl-4">
+                        <a 
+                          href={source.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          {source.title}
+                        </a>
+                        <p className="text-sm text-gray-500">
+                          Source: {source.source} {source.verified && '✓'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {debugMode && <DebugPanel />}
