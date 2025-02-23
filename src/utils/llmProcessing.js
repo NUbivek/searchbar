@@ -8,17 +8,21 @@ const MODEL_ENDPOINTS = {
   'deepseek-70b': process.env.TOGETHER_API_KEY
 };
 
-export async function processWithLLM(results, model) {
+export async function processWithLLM(results, model = null) {
+  // If no model specified or no results, return original results
+  if (!model || !results || results.length === 0) {
+    return { results };
+  }
+
   try {
     // Format results for LLM processing
     const formattedResults = results.map(result => ({
-      content: result.content,
+      content: result.content || '',
       metadata: {
-        source: result.source,
-        url: result.url,
-        type: result.type,
-        contributors: result.contributors || [],
-        timestamp: result.timestamp
+        source: result.source || 'Unknown',
+        url: result.url || '',
+        type: result.type || 'Unknown',
+        timestamp: result.timestamp || new Date().toISOString()
       }
     }));
 
@@ -38,7 +42,8 @@ export async function processWithLLM(results, model) {
     // Select API endpoint based on model
     const apiKey = MODEL_ENDPOINTS[model.toLowerCase()];
     if (!apiKey) {
-      throw new Error('Invalid model selection');
+      logger.warn('Invalid model selection, returning original results');
+      return { results };
     }
 
     // Process with selected model
@@ -52,24 +57,19 @@ export async function processWithLLM(results, model) {
       }
     });
 
-    // Format response with source attribution
-    const processedResults = {
-      results: formattedResults.map(result => ({
-        content: result.content,
-        source: result.metadata.source,
-        url: result.metadata.url,
-        type: result.metadata.type,
-        contributors: result.metadata.contributors,
-        timestamp: result.metadata.timestamp
-      })),
-      summary: response.data.summary,
-      categories: response.data.categories || [],
-      followupQuestions: response.data.suggestions || []
-    };
+    if (!response.data || !response.data.summary) {
+      logger.warn('LLM processing returned invalid response, using original results');
+      return { results };
+    }
 
-    return processedResults;
+    return {
+      results,
+      summary: response.data.summary,
+      categories: response.data.categories
+    };
   } catch (error) {
     logger.error('LLM processing error:', error);
-    throw new Error('Failed to process results with LLM');
+    // Return original results on error
+    return { results };
   }
 }

@@ -7,14 +7,14 @@ const limiter = rateLimit({
 });
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
+  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     await limiter.check(res, 10, 'LINKEDIN_CACHE_TOKEN');
     
-    const { query } = req.query;
+    const { query } = req.body;
     const apiKey = process.env.LINKEDIN_API_KEY;
     
     if (!apiKey) {
@@ -30,9 +30,10 @@ export default async function handler(req, res) {
     const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
-        'X-Restli-Protocol-Version': '2.0.0'
+        'X-Restli-Protocol-Version': '2.0.0',
+        'Content-Type': 'application/json'
       },
-      method: 'GET',
+      method: 'POST',
       body: JSON.stringify({
         q: query,
         type: ['COMPANY', 'PEOPLE', 'CONTENT']
@@ -50,14 +51,13 @@ export default async function handler(req, res) {
       source: 'LinkedIn',
       type: item.type,
       content: item.text || item.description || '',
-      url: item.url || item.permalink,
-      contributors: item.author ? [item.author.name] : [],
-      timestamp: item.created || new Date().toISOString()
+      url: item.url || '',
+      timestamp: new Date().toISOString()
     }));
 
-    return res.status(200).json({ results });
+    res.json(results);
   } catch (error) {
     logger.error('LinkedIn search error:', error);
-    return res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 }

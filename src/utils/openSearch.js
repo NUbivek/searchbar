@@ -1,11 +1,8 @@
 import axios from 'axios';
 import { logger } from './logger';
 import { searchWeb } from './deepWebSearch';
-import { searchLinkedIn, searchTwitter, searchReddit } from './searchHandlers';
-import { searchSubstack, searchCrunchbase, searchPitchbook, searchMedium } from './scrapers/vcScraper';
-import { processWithLLM } from './llmProcessing';
 
-export async function searchOpenSources({ query, model, sources = ['Web'], customUrls = [], uploadedFiles = [] }) {
+export async function searchOpenSources(query, sources = ['Web']) {
   const searchId = Math.random().toString(36).substring(7);
   logger.debug(`[${searchId}] Starting open search`, { query, sources });
 
@@ -27,55 +24,17 @@ export async function searchOpenSources({ query, model, sources = ['Web'], custo
       }
     }
 
-    // Platform-specific searches
-    const platformSearches = {
-      LinkedIn: searchLinkedIn,
-      X: searchTwitter,
-      Reddit: searchReddit,
-      Substack: searchSubstack,
-      Crunchbase: searchCrunchbase,
-      Pitchbook: searchPitchbook,
-      Medium: searchMedium
-    };
-
-    // Execute searches for selected platforms
-    await Promise.all(
-      sources.map(async (source) => {
-        if (platformSearches[source]) {
-          try {
-            const platformResults = await platformSearches[source](query);
-            results.push(...platformResults);
-          } catch (error) {
-            errors.push({ source, error: error.message });
-          }
-        }
-      })
-    );
-
-    // Process results with LLM
-    const processedResults = await processWithLLM(results, model);
+    // Log any errors that occurred
+    if (errors.length > 0) {
+      logger.warn(`[${searchId}] Some searches failed:`, errors);
+    }
 
     return {
-      results: processedResults.results.map(result => ({
-        ...result,
-        sourceUrl: result.url,
-        sourceName: result.source,
-        contributors: result.contributors || [],
-        timestamp: result.timestamp,
-        category: result.category || source
-      })),
-      summary: processedResults.summary,
-      metadata: {
-        totalSources: results.length,
-        searchId,
-        sources,
-        errors: errors.length > 0 ? errors : undefined
-      },
-      followupQuestions: processedResults.followupQuestions
+      results,
+      errors: errors.length > 0 ? errors : undefined
     };
-
   } catch (error) {
-    logger.error(`[${searchId}] Open search failed:`, error);
+    logger.error(`[${searchId}] Open search error:`, error);
     throw error;
   }
 }

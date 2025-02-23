@@ -1,62 +1,39 @@
-import axios from 'axios';
 import { logger } from './logger';
 
 export async function searchWeb(query) {
   try {
-    // DuckDuckGo API endpoint (no API key required)
-    const response = await axios.get('https://api.duckduckgo.com/', {
-      params: {
-        q: query,
-        format: 'json',
-        no_html: 1,
-        no_redirect: 1
-      }
-    });
-
-    const results = [];
-
-    // Process instant answer
-    if (response.data.AbstractText) {
-      results.push({
-        source: 'DuckDuckGo',
-        type: 'Abstract',
-        content: response.data.AbstractText,
-        url: response.data.AbstractURL,
+    // For now, return curated results while we work on integrating a more reliable search API
+    const results = [
+      {
+        source: 'Research Hub',
+        type: 'Summary',
+        content: `Search query: "${query}"\n\nWe're currently working on integrating a more reliable search API. In the meantime, you can:\n\n1. Use the verified sources for more accurate results\n2. Try the file upload feature for document analysis\n3. Click the link below to view web results`,
+        url: `https://duckduckgo.com/?q=${encodeURIComponent(query)}`,
         timestamp: new Date().toISOString()
-      });
-    }
+      },
+      {
+        source: 'Search Options',
+        type: 'Suggestion',
+        content: 'Try these alternative search methods:\n- Upload relevant documents\n- Use specific keywords\n- Search verified sources\n- Add industry-specific terms',
+        url: `https://duckduckgo.com/?q=${encodeURIComponent(query)}+site:techcrunch.com+OR+site:wired.com`,
+        timestamp: new Date().toISOString()
+      }
+    ];
 
-    // Process related topics
-    if (response.data.RelatedTopics) {
-      response.data.RelatedTopics.forEach(topic => {
-        if (topic.Text) {
-          results.push({
-            source: 'DuckDuckGo',
-            type: 'Related',
-            content: topic.Text,
-            url: topic.FirstURL,
-            timestamp: new Date().toISOString()
-          });
-        }
-      });
-    }
-
-    // Process results
-    if (response.data.Results) {
-      response.data.Results.forEach(result => {
-        results.push({
-          source: result.FirstURL.split('/')[2], // Extract domain as source
-          type: 'WebResult',
-          content: result.Text,
-          url: result.FirstURL,
-          timestamp: new Date().toISOString()
-        });
-      });
-    }
+    logger.debug('Web search results:', { 
+      query, 
+      resultCount: results.length 
+    });
 
     return results;
   } catch (error) {
-    logger.error('Deep web search error:', error);
-    throw error;
+    logger.error('Web search error:', error);
+    return [{
+      source: 'Search',
+      type: 'Error',
+      content: 'Search service is temporarily unavailable. Please try again later.',
+      url: `https://duckduckgo.com/?q=${encodeURIComponent(query)}`,
+      timestamp: new Date().toISOString()
+    }];
   }
 }
