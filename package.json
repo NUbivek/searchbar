@@ -12,15 +12,20 @@
     "axios": "^1.7.9",
     "axios-retry": "^4.5.0",
     "cheerio": "^1.0.0",
+    "csv-parse": "^5.6.0",
     "formidable": "^3.5.2",
+    "lru-cache": "^11.0.2",
     "lucide-react": "^0.475.0",
+    "mammoth": "^1.9.0",
     "memory-cache": "^0.2.0",
     "next": "13.4.19",
+    "pdf-parse": "^1.1.1",
     "rate-limiter-flexible": "^5.0.5",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "redis": "^4.7.0",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.14",

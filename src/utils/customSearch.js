@@ -1,10 +1,13 @@
 import axios from 'axios';
+import cheerio from 'cheerio';
+import { logger } from './logger';
 import { VC_FIRMS, MARKET_DATA_SOURCES } from './dataSources';
 
 export async function customSearch(query, options = {}) {
     const {
-        sources = ['vc', 'market'],
-        verifiedOnly = true
+        sources = ['vc', 'market', 'custom'],
+        verifiedOnly = true,
+        customUrls = []
     } = options;
 
     const results = [];
@@ -17,6 +20,11 @@ export async function customSearch(query, options = {}) {
     if (sources.includes('market')) {
         const marketResults = await searchMarketData(query, verifiedOnly);
         results.push(...marketResults);
+    }
+
+    if (sources.includes('custom')) {
+        const customResults = await searchCustomUrls(customUrls, query);
+        results.push(...customResults);
     }
 
     return results;
@@ -54,4 +62,59 @@ async function searchMarketData(query, verifiedOnly) {
         }));
 }
 
-export default customSearch; 
+export async function searchCustomUrls(urls, query) {
+    const results = [];
+
+    for (const url of urls) {
+        try {
+            const content = await scrapeUrl(url);
+            if (!content) continue;
+
+            // Simple text search for now - can be enhanced with more sophisticated matching
+            if (content.toLowerCase().includes(query.toLowerCase())) {
+                results.push({
+                    source: new URL(url).hostname,
+                    type: 'CustomURL',
+                    content: content.substring(0, 500) + '...', // Truncate for response
+                    url: url,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        } catch (error) {
+            logger.error(`Error processing URL ${url}:`, error);
+        }
+    }
+
+    return results;
+}
+
+async function scrapeUrl(url) {
+    try {
+        const response = await axios.get(url, {
+            timeout: 5000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
+
+        const $ = cheerio.load(response.data);
+
+        // Remove script and style elements
+        $('script').remove();
+        $('style').remove();
+
+        // Extract text from main content areas
+        const mainContent = $('article, main, .content, #content, .post-content, .entry-content')
+            .first()
+            .text()
+            .trim();
+
+        // If no main content found, get body text
+        return mainContent || $('body').text().trim();
+    } catch (error) {
+        logger.error(`Error scraping URL ${url}:`, error);
+        return null;
+    }
+}
+
+export { customSearch as default };

@@ -1,110 +1,62 @@
 import axios from 'axios';
-import { load } from 'cheerio';
+import { logger } from './logger';
 
-export async function searchDeepWeb(query) {
+export async function searchWeb(query) {
   try {
-    // Use DuckDuckGo API
+    // DuckDuckGo API endpoint (no API key required)
     const response = await axios.get('https://api.duckduckgo.com/', {
       params: {
         q: query,
         format: 'json',
         no_html: 1,
-        no_redirect: 1,
-        t: 'ResearchHub'
+        no_redirect: 1
       }
     });
 
-    // Extract and enrich results
-    const results = await enrichResults(formatDuckDuckGoResults(response.data));
+    const results = [];
 
-    // Remove duplicates and rank results
-    return rankAndDeduplicate(results);
-  } catch (error) {
-    console.error('Deep web search error:', error);
-    return [];
-  }
-}
-
-function formatDuckDuckGoResults(data) {
-  const results = [];
-
-  // Add abstract if available
-  if (data.Abstract) {
-    results.push({
-      title: data.Heading,
-      content: data.Abstract,
-      url: data.AbstractURL,
-      type: 'abstract',
-      source: 'duckduckgo'
-    });
-  }
-
-  // Add related topics
-  data.RelatedTopics.forEach(topic => {
-    if (topic.Text) {
+    // Process instant answer
+    if (response.data.AbstractText) {
       results.push({
-        title: topic.FirstURL.split('/').pop().replace(/_/g, ' '),
-        content: topic.Text,
-        url: topic.FirstURL,
-        type: 'related',
-        source: 'duckduckgo'
+        source: 'DuckDuckGo',
+        type: 'Abstract',
+        content: response.data.AbstractText,
+        url: response.data.AbstractURL,
+        timestamp: new Date().toISOString()
       });
     }
-  });
 
-  return results;
-}
+    // Process related topics
+    if (response.data.RelatedTopics) {
+      response.data.RelatedTopics.forEach(topic => {
+        if (topic.Text) {
+          results.push({
+            source: 'DuckDuckGo',
+            type: 'Related',
+            content: topic.Text,
+            url: topic.FirstURL,
+            timestamp: new Date().toISOString()
+          });
+        }
+      });
+    }
 
-async function enrichResults(results) {
-  const enrichedResults = await Promise.allSettled(
-    results.map(async result => {
-      try {
-        // Fetch page content
-        const response = await axios.get(result.url, {
-          timeout: 5000,
-          maxContentLength: 10000000 // 10MB
+    // Process results
+    if (response.data.Results) {
+      response.data.Results.forEach(result => {
+        results.push({
+          source: result.FirstURL.split('/')[2], // Extract domain as source
+          type: 'WebResult',
+          content: result.Text,
+          url: result.FirstURL,
+          timestamp: new Date().toISOString()
         });
+      });
+    }
 
-        const $ = load(response.data);
-        
-        // Extract main content
-        const content = $('article, main, .content, #content')
-          .first()
-          .text()
-          .trim();
-
-        return {
-          ...result,
-          fullContent: content || $('body').text().trim(),
-          verified: true
-        };
-      } catch (error) {
-        return result;
-      }
-    })
-  );
-
-  return enrichedResults
-    .filter(result => result.status === 'fulfilled')
-    .map(result => result.value);
+    return results;
+  } catch (error) {
+    logger.error('Deep web search error:', error);
+    throw error;
+  }
 }
-
-function rankAndDeduplicate(results) {
-  // Remove duplicates based on URL
-  const uniqueResults = [...new Map(results.map(r => [r.url, r])).values()];
-
-  // Rank based on content quality and verification
-  return uniqueResults.sort((a, b) => {
-    const scoreA = calculateScore(a);
-    const scoreB = calculateScore(b);
-    return scoreB - scoreA;
-  });
-}
-
-function calculateScore(result) {
-  let score = 0;
-  if (result.verified) score += 2;
-  if (result.fullContent) score += 2;
-  if (result.title && result.title.length > 10) score += 1;
-  return score;
-} 
