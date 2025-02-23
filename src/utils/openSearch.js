@@ -1,21 +1,33 @@
 import axios from 'axios';
+import { logger } from './logger';
+import { searchWeb } from './deepWebSearch';
+import { searchLinkedIn, searchTwitter, searchReddit } from './searchHandlers';
+import { searchSubstack, searchCrunchbase, searchPitchbook, searchMedium } from './scrapers/vcScraper';
+import { processWithLLM } from './llmProcessing';
 
-export async function searchOpenSources({ query, model, sources, customUrls, uploadedFiles }) {
+export async function searchOpenSources({ query, model, sources = ['Web'], customUrls = [], uploadedFiles = [] }) {
+  const searchId = Math.random().toString(36).substring(7);
+  logger.debug(`[${searchId}] Starting open search`, { query, sources });
+
   try {
-    const results = [];
-
-    // Basic validation
     if (!query) {
       throw new Error('Query is required');
     }
 
-    // Web search
+    const results = [];
+    const errors = [];
+
+    // Web search (DuckDuckGo) is default for Open Research
     if (sources.includes('Web')) {
-      const webResults = await searchWeb(query);
-      results.push(...webResults);
+      try {
+        const webResults = await searchWeb(query);
+        results.push(...webResults);
+      } catch (error) {
+        errors.push({ source: 'Web', error: error.message });
+      }
     }
 
-    // Platform searches
+    // Platform-specific searches
     const platformSearches = {
       LinkedIn: searchLinkedIn,
       X: searchTwitter,
@@ -26,57 +38,44 @@ export async function searchOpenSources({ query, model, sources, customUrls, upl
       Medium: searchMedium
     };
 
-    for (const source of sources) {
-      if (platformSearches[source]) {
-        try {
-          const platformResults = await platformSearches[source](query);
-          results.push(...platformResults);
-        } catch (error) {
-          console.error(`Error searching ${source}:`, error);
+    // Execute searches for selected platforms
+    await Promise.all(
+      sources.map(async (source) => {
+        if (platformSearches[source]) {
+          try {
+            const platformResults = await platformSearches[source](query);
+            results.push(...platformResults);
+          } catch (error) {
+            errors.push({ source, error: error.message });
+          }
         }
-      }
-    }
+      })
+    );
 
-    // Custom sources
-    if (customUrls?.length > 0) {
-      const urlResults = await searchUrls(query, customUrls);
-      results.push(...urlResults);
-    }
+    // Process results with LLM
+    const processedResults = await processWithLLM(results, model);
 
-    if (uploadedFiles?.length > 0) {
-      const fileResults = await searchFiles(query, uploadedFiles);
-      results.push(...fileResults);
-    }
-
-    // Process results
     return {
-      query,
-      model,
-      sources: results.map(result => ({
-        source: result.source,
-        type: result.type,
-        content: result.content,
-        url: result.url
-      }))
+      results: processedResults.results.map(result => ({
+        ...result,
+        sourceUrl: result.url,
+        sourceName: result.source,
+        contributors: result.contributors || [],
+        timestamp: result.timestamp,
+        category: result.category || source
+      })),
+      summary: processedResults.summary,
+      metadata: {
+        totalSources: results.length,
+        searchId,
+        sources,
+        errors: errors.length > 0 ? errors : undefined
+      },
+      followupQuestions: processedResults.followupQuestions
     };
+
   } catch (error) {
-    throw new Error(`Search failed: ${error.message}`);
+    logger.error(`[${searchId}] Open search failed:`, error);
+    throw error;
   }
 }
-
-// Implement basic search functions
-async function searchWeb(query) {
-  return [{
-    source: 'Web',
-    type: 'web',
-    content: `Results for: ${query}`,
-    url: '#'
-  }];
-}
-
-async function searchLinkedIn(query) {
-  // Implement LinkedIn search
-  return [];
-}
-
-// Implement other platform searches... 
