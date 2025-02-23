@@ -17,7 +17,7 @@ export default function OpenSearch({ selectedModel }) {
   
   const sourceRows = [
     ['Web', 'LinkedIn', 'X', 'Reddit', 'Substack'],
-    ['Crunchbase', 'Pitchbook', 'Medium', 'Verified Sources', <span className="flex items-center gap-1"><Upload size={16} /> Files + URL</span>]
+    ['Crunchbase', 'Pitchbook', 'Medium', 'Verified Sources', 'Files + URL']
   ];
 
   const handleSearch = async (e) => {
@@ -78,7 +78,7 @@ export default function OpenSearch({ selectedModel }) {
   };
 
   const handleSourceClick = (source) => {
-    if (source === 'Upload Files + URL') {
+    if (source === 'Files + URL') {
       setShowUploadPanel(!showUploadPanel);
       return;
     }
@@ -121,7 +121,7 @@ export default function OpenSearch({ selectedModel }) {
                     type="button"
                     onClick={() => handleSourceClick(source)}
                     className={`px-4 py-2 rounded-lg transition-colors flex-1
-                      ${selectedSources.includes(source) || (source === 'Upload Files + URL' && showUploadPanel)
+                      ${selectedSources.includes(source) || (source === 'Files + URL' && showUploadPanel)
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-100 hover:bg-gray-200'}`}
                   >
