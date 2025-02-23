@@ -4,48 +4,34 @@ import { logger } from './logger';
 // DuckDuckGo search function
 async function searchDuckDuckGo(query) {
   try {
-    const response = await axios.get(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&pretty=1`);
+    // Use DuckDuckGo HTML search
+    const response = await axios.get(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+
+    // Extract search results using regex
     const results = [];
-
-    // Process Related Topics
-    if (response.data.RelatedTopics) {
-      response.data.RelatedTopics.forEach(topic => {
-        if (topic.Result) {
-          results.push({
-            source: 'DuckDuckGo',
-            type: 'WebResult',
-            content: topic.Text,
-            url: topic.FirstURL,
-            timestamp: new Date().toISOString()
-          });
-        }
-      });
-    }
-
-    // Process Abstract
-    if (response.data.Abstract) {
-      results.push({
-        source: response.data.AbstractSource || 'DuckDuckGo',
-        type: 'Summary',
-        content: response.data.Abstract,
-        url: response.data.AbstractURL,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // Process Infobox
-    if (response.data.Infobox) {
-      const infoContent = response.data.Infobox.content
-        .map(item => `${item.label}: ${item.value}`)
-        .join('\n');
+    const regex = /<h2 class="result__title">\s*<a.*?href="(.*?)".*?>(.*?)<\/a>/g;
+    const snippetRegex = /<a class="result__snippet".*?>(.*?)<\/a>/g;
+    
+    let match;
+    let snippetMatch;
+    
+    while ((match = regex.exec(response.data)) !== null && (snippetMatch = snippetRegex.exec(response.data)) !== null) {
+      const [, url, title] = match;
+      const [, snippet] = snippetMatch;
       
-      results.push({
-        source: 'DuckDuckGo',
-        type: 'Information',
-        content: infoContent,
-        url: response.data.AbstractURL,
-        timestamp: new Date().toISOString()
-      });
+      if (url && !url.includes('duckduckgo.com')) {
+        results.push({
+          source: new URL(url).hostname,
+          type: 'WebResult',
+          content: `${title}\n${snippet}`,
+          url: url,
+          timestamp: new Date().toISOString()
+        });
+      }
     }
 
     return results;
@@ -60,7 +46,7 @@ export async function searchWeb(query) {
   try {
     const results = await searchDuckDuckGo(query);
 
-    // If no results from DuckDuckGo, add a fallback
+    // If no results, add a fallback
     if (results.length === 0) {
       results.push({
         source: 'Search',
