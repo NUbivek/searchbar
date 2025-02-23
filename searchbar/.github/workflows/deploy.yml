@@ -25,7 +25,7 @@ jobs:
         npm run build
         touch out/.nojekyll
       env:
-        NEXT_PUBLIC_API_BASE_URL: "https://research-hub-nlt65ewwj-biveks-projects-dc13cd60.vercel.app"
+        NEXT_PUBLIC_API_BASE_URL: "https://research-hub-8uv2i80dy-biveks-projects-dc13cd60.vercel.app"
         NEXT_PUBLIC_ENABLE_LOGGING: "true"
         
     - name: Deploy to GitHub Pages
