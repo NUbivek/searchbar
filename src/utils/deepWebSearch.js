@@ -1,59 +1,86 @@
+import axios from 'axios';
 import { logger } from './logger';
+import puppeteer from 'puppeteer';
 
+// DuckDuckGo search function
+async function searchDuckDuckGo(query) {
+  try {
+    const response = await axios.get(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`);
+    return response.data.RelatedTopics.map(topic => ({
+      source: 'DuckDuckGo',
+      type: 'WebResult',
+      content: topic.Text,
+      url: topic.FirstURL,
+      timestamp: new Date().toISOString()
+    }));
+  } catch (error) {
+    logger.error('DuckDuckGo search error:', error);
+    return [];
+  }
+}
+
+// Web scraping function
+async function scrapeWebResults(query) {
+  const browser = await puppeteer.launch({ headless: 'new' });
+  try {
+    const page = await browser.newPage();
+    await page.goto(`https://www.google.com/search?q=${encodeURIComponent(query)}`);
+    
+    const results = await page.evaluate(() => {
+      const items = document.querySelectorAll('div.g');
+      return Array.from(items).map(item => {
+        const titleEl = item.querySelector('h3');
+        const linkEl = item.querySelector('a');
+        const snippetEl = item.querySelector('div.VwiC3b');
+        
+        return {
+          title: titleEl ? titleEl.innerText : '',
+          url: linkEl ? linkEl.href : '',
+          snippet: snippetEl ? snippetEl.innerText : ''
+        };
+      });
+    });
+
+    return results.map(result => ({
+      source: new URL(result.url).hostname,
+      type: 'WebResult',
+      content: `${result.title}\n${result.snippet}`,
+      url: result.url,
+      timestamp: new Date().toISOString()
+    }));
+  } finally {
+    await browser.close();
+  }
+}
+
+// Main search function
 export async function searchWeb(query) {
   try {
-    // Create relevant results based on the query
-    const results = [];
+    // Run searches in parallel
+    const [duckDuckGoResults, scrapedResults] = await Promise.all([
+      searchDuckDuckGo(query),
+      scrapeWebResults(query)
+    ]);
+
+    // Combine and rank results
+    const allResults = [...duckDuckGoResults, ...scrapedResults];
     
-    // Add a summary result
-    results.push({
-      source: 'Research Hub',
-      type: 'Summary',
-      content: `Here are the latest findings about "${query}":\n\n` +
-        '1. The AI startup ecosystem has seen tremendous growth in 2024\n' +
-        '2. Key areas include: Machine Learning, Natural Language Processing, and Computer Vision\n' +
-        '3. Major funding rounds are focusing on practical AI applications\n' +
-        '4. Enterprise AI solutions are leading the market',
-      url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
-      timestamp: new Date().toISOString()
-    });
-
-    // Add some relevant tech news
-    results.push({
-      source: 'TechCrunch',
-      type: 'News',
-      content: 'Top AI Startups to Watch in 2025: From Language Models to Robotics\n' +
-        'The AI startup landscape continues to evolve with new innovations in enterprise solutions, healthcare, and automation.',
-      url: 'https://techcrunch.com/ai-startups-2025',
-      timestamp: new Date().toISOString()
-    });
-
-    // Add industry analysis
-    results.push({
-      source: 'Forbes',
-      type: 'Analysis',
-      content: 'AI Startup Funding Report 2025\n' +
-        'Investment in AI startups has reached $150B globally, with focus on practical applications and enterprise solutions.',
-      url: 'https://forbes.com/ai-startup-funding-2025',
-      timestamp: new Date().toISOString()
-    });
-
-    // Add market insights
-    results.push({
-      source: 'CB Insights',
-      type: 'Market Research',
-      content: 'AI Market Map: 100 Most Promising Startups\n' +
-        'Analysis of emerging trends, market opportunities, and breakthrough technologies in the AI startup ecosystem.',
-      url: 'https://cbinsights.com/ai-startups-2025',
-      timestamp: new Date().toISOString()
+    // Simple ranking: prioritize results with query terms in title/content
+    const queryTerms = query.toLowerCase().split(' ');
+    allResults.sort((a, b) => {
+      const scoreA = queryTerms.reduce((score, term) => 
+        score + (a.content.toLowerCase().includes(term) ? 1 : 0), 0);
+      const scoreB = queryTerms.reduce((score, term) => 
+        score + (b.content.toLowerCase().includes(term) ? 1 : 0), 0);
+      return scoreB - scoreA;
     });
 
     logger.debug('Web search results:', { 
       query, 
-      resultCount: results.length 
+      resultCount: allResults.length 
     });
 
-    return results;
+    return allResults;
   } catch (error) {
     logger.error('Web search error:', error);
     return [{
