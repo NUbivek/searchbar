@@ -3,6 +3,14 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   output: 'standalone', // Change to standalone for server-side rendering
+  env: {
+    // Add environment variables here
+    SERPER_API_KEY: process.env.SERPER_API_KEY,
+    LINKEDIN_API_KEY: process.env.LINKEDIN_API_KEY,
+    REDDIT_API_KEY: process.env.REDDIT_API_KEY,
+    PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
+    TOGETHER_API_KEY: process.env.TOGETHER_API_KEY
+  },
   async headers() {
     return [
       {
