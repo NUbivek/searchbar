@@ -25,7 +25,7 @@ jobs:
         npm run build
         touch out/.nojekyll
       env:
-        NEXT_PUBLIC_API_BASE_URL: "https://research-hub-ojhdmdg9o-biveks-projects-dc13cd60.vercel.app"
+        NEXT_PUBLIC_API_BASE_URL: "https://research-hub-[new-deployment-id].vercel.app"
         NEXT_PUBLIC_ENABLE_LOGGING: "true"
         LINKEDIN_API_KEY: ${{ secrets.LINKEDIN_API_KEY }}
         TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}

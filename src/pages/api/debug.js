@@ -1,9 +1,9 @@
 export default function handler(req, res) {
   res.status(200).json({
-    status: 'ok',
-    env: process.env.NODE_ENV,
-    timestamp: new Date().toISOString(),
+    status: 'API is working',
+    method: req.method,
+    url: req.url,
     headers: req.headers,
-    method: req.method
+    body: req.body
   });
 } 

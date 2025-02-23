@@ -25,32 +25,29 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleSearch = async (query, customMode = mode) => {
+  const handleSearch = async (query) => {
     setIsLoading(true);
     setError(null);
+    
     try {
-      const endpoint = customMode === SearchModes.VERIFIED ? 'verifiedSearch' : 'openSearch';
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/${endpoint}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/search/open-search`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          query,
-          model: selectedModel,
-          customMode
-        }),
+        body: JSON.stringify({ query }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       const data = await response.json();
-      setSearchResults(data);
-    } catch (err) {
-      console.error('Search error:', err);
-      setError(err.message);
+      
+      if (data.status === 'success') {
+        setSearchResults(data.results);
+      } else {
+        setError(data.message || 'Search failed');
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      setError('An error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -120,6 +117,44 @@ export default function Home() {
             error={error}
             results={searchResults}
           />
+        )}
+
+        {searchResults && (
+          <div className="mt-8 space-y-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Search Results</h2>
+              
+              {/* Summary Section */}
+              <div className="mb-6">
+                <h3 className="text-lg font-medium mb-2">Summary</h3>
+                <p className="text-gray-700">{searchResults.summary}</p>
+              </div>
+
+              {/* Sources Section */}
+              {searchResults.sources.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Sources</h3>
+                  <div className="space-y-3">
+                    {searchResults.sources.map((source, index) => (
+                      <div key={index} className="border-l-4 border-blue-500 pl-4">
+                        <a 
+                          href={source.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          {source.title}
+                        </a>
+                        <p className="text-sm text-gray-500">
+                          Source: {source.source} {source.verified && '✓'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {debugMode && <DebugPanel />}
