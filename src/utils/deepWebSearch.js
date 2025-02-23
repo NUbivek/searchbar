@@ -1,24 +1,69 @@
+import axios from 'axios';
 import { logger } from './logger';
 
 export async function searchWeb(query) {
   try {
-    // For now, return curated results while we work on integrating a more reliable search API
-    const results = [
-      {
-        source: 'Research Hub',
-        type: 'Summary',
-        content: `Search query: "${query}"\n\nWe're currently working on integrating a more reliable search API. In the meantime, you can:\n\n1. Use the verified sources for more accurate results\n2. Try the file upload feature for document analysis\n3. Click the link below to view web results`,
-        url: `https://duckduckgo.com/?q=${encodeURIComponent(query)}`,
-        timestamp: new Date().toISOString()
-      },
-      {
-        source: 'Search Options',
-        type: 'Suggestion',
-        content: 'Try these alternative search methods:\n- Upload relevant documents\n- Use specific keywords\n- Search verified sources\n- Add industry-specific terms',
-        url: `https://duckduckgo.com/?q=${encodeURIComponent(query)}+site:techcrunch.com+OR+site:wired.com`,
-        timestamp: new Date().toISOString()
+    // Use Serper API for real search results
+    const response = await axios.post('https://google.serper.dev/search', {
+      q: query,
+      num: 5 // Limit to 5 results for better performance
+    }, {
+      headers: {
+        'X-API-KEY': process.env.SERPER_API_KEY,
+        'Content-Type': 'application/json'
       }
-    ];
+    });
+
+    const results = [];
+
+    // Process organic search results
+    if (response.data.organic) {
+      response.data.organic.forEach(result => {
+        results.push({
+          source: result.link ? new URL(result.link).hostname : 'Search Result',
+          type: 'WebResult',
+          content: `${result.title}\n${result.snippet}`,
+          url: result.link,
+          timestamp: new Date().toISOString()
+        });
+      });
+    }
+
+    // Process knowledge graph if available
+    if (response.data.knowledgeGraph) {
+      const kg = response.data.knowledgeGraph;
+      results.push({
+        source: 'Knowledge Graph',
+        type: 'Summary',
+        content: `${kg.title}\n${kg.description || ''}\n${kg.attributes ? Object.entries(kg.attributes).map(([k, v]) => `${k}: ${v}`).join('\n') : ''}`,
+        url: kg.url || `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Add top news results if available
+    if (response.data.news && response.data.news.length > 0) {
+      response.data.news.slice(0, 3).forEach(news => {
+        results.push({
+          source: news.source || new URL(news.link).hostname,
+          type: 'News',
+          content: `${news.title}\n${news.snippet}`,
+          url: news.link,
+          timestamp: new Date().toISOString()
+        });
+      });
+    }
+
+    // If no results found, provide a helpful message
+    if (results.length === 0) {
+      results.push({
+        source: 'Search',
+        type: 'NoResults',
+        content: 'No results found. Try refining your search query.',
+        url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+        timestamp: new Date().toISOString()
+      });
+    }
 
     logger.debug('Web search results:', { 
       query, 
@@ -28,11 +73,14 @@ export async function searchWeb(query) {
     return results;
   } catch (error) {
     logger.error('Web search error:', error);
+    
+    // Return a more specific error message
+    const errorMessage = error.response?.data?.message || error.message || 'Search service is temporarily unavailable';
     return [{
       source: 'Search',
       type: 'Error',
-      content: 'Search service is temporarily unavailable. Please try again later.',
-      url: `https://duckduckgo.com/?q=${encodeURIComponent(query)}`,
+      content: `Search error: ${errorMessage}. Please try again later.`,
+      url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
       timestamp: new Date().toISOString()
     }];
   }
