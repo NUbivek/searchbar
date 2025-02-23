@@ -1,0 +1,3 @@
+env:
+  NEXT_PUBLIC_API_BASE_URL: "https://research-hub-nlt65ewwj-biveks-projects-dc13cd60.vercel.app"
+  NEXT_PUBLIC_ENABLE_LOGGING: "true" 
