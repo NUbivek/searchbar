@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { logger } from './logger';
-import puppeteer from 'puppeteer';
+import chromium from 'chrome-aws-lambda';
 
 // DuckDuckGo search function
 async function searchDuckDuckGo(query) {
@@ -21,8 +21,16 @@ async function searchDuckDuckGo(query) {
 
 // Web scraping function
 async function scrapeWebResults(query) {
-  const browser = await puppeteer.launch({ headless: 'new' });
+  let browser = null;
   try {
+    browser = await chromium.puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless,
+      ignoreHTTPSErrors: true,
+    });
+
     const page = await browser.newPage();
     await page.goto(`https://www.google.com/search?q=${encodeURIComponent(query)}`);
     
@@ -48,8 +56,13 @@ async function scrapeWebResults(query) {
       url: result.url,
       timestamp: new Date().toISOString()
     }));
+  } catch (error) {
+    logger.error('Web scraping error:', error);
+    return [];
   } finally {
-    await browser.close();
+    if (browser !== null) {
+      await browser.close();
+    }
   }
 }
 
