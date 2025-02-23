@@ -6,6 +6,9 @@ import VerifiedSearch from '../components/VerifiedSearch';
 import OpenSearch from '../components/OpenSearch';
 import DebugPanel from '../components/DebugPanel';
 
+// Add a console log for testing
+console.log('API URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
+
 export default function Home() {
   const [mode, setMode] = useState(SearchModes.VERIFIED);
   const [selectedModel, setSelectedModel] = useState('Mixtral-8x7B');
@@ -25,7 +28,9 @@ export default function Home() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Update the search function to log the query
   const handleSearch = async (query) => {
+    console.log('Searching for:', query);
     setIsLoading(true);
     setError(null);
     
@@ -39,6 +44,7 @@ export default function Home() {
       });
 
       const data = await response.json();
+      console.log('Search response:', data);  // Add this line
       
       if (data.status === 'success') {
         setSearchResults(data.results);
