@@ -11,4 +11,19 @@ export const SourceTypes = {
   MEDIUM: 'medium',
   CRUNCHBASE: 'crunchbase',
   PITCHBOOK: 'pitchbook'
-}; 
+};
+
+export const MODEL_OPTIONS = [
+  {
+    id: 'mixtral-8x7b',
+    name: 'Mixtral 8x7B',
+    description: 'Powerful multi-expert model',
+    icon: '🧠'
+  },
+  {
+    id: 'perplexity',
+    name: 'Perplexity-Online',
+    description: 'Real-time web analysis',
+    icon: '🔍'
+  }
+];
