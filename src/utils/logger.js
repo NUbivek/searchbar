@@ -6,5 +6,8 @@ export const logger = {
   },
   error: (...args) => {
     console.error('[Error]', ...args);
+  },
+  warn: (...args) => {
+    console.warn('[Warning]', ...args);
   }
-}; 
+};

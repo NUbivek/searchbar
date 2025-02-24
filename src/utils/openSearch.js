@@ -1,82 +1,130 @@
+import { logger } from './logger';
+import { searchWeb } from './deepWebSearch';
+import { SourceTypes } from './constants';
 import axios from 'axios';
 
-export async function searchOpenSources({ query, model, sources, customUrls, uploadedFiles }) {
+const searchWithSerper = async (query, domain, searchId) => {
+  const apiKey = process.env.SERPER_API_KEY;
+  if (!apiKey) {
+    throw new Error('Serper API key not configured');
+  }
+
+  try {
+    const response = await axios.post('https://google.serper.dev/search', 
+      { 
+        q: `site:${domain} ${query}`,
+        num: 10
+      },
+      { 
+        headers: { 
+          'X-API-KEY': apiKey,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.data?.organic) {
+      return [];
+    }
+
+    return response.data.organic
+      .filter(result => result.link && result.link.includes(domain))
+      .map(result => ({
+        source: domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1),
+        type: 'SearchResult',
+        content: `${result.title}\n${result.snippet || ''}`,
+        url: result.link,
+        timestamp: new Date().toISOString(),
+        title: result.title
+      }));
+  } catch (error) {
+    logger.error(`[${searchId}] Serper API error for ${domain}:`, error.message);
+    return [{
+      source: domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1),
+      type: 'SearchError',
+      content: `Unable to search ${domain} at this time. Please try again later.`,
+      url: `https://${domain}/search?q=${encodeURIComponent(query)}`,
+      timestamp: new Date().toISOString()
+    }];
+  }
+};
+
+export async function searchOpenSources(query, sources = [SourceTypes.WEB], searchId = Math.random().toString(36).substring(7)) {
+  logger.debug(`[${searchId}] Starting open search`, { query, sources });
+
   try {
     const results = [];
 
-    // Basic validation
-    if (!query) {
-      throw new Error('Query is required');
-    }
+    // Process each source in parallel
+    const searchPromises = sources.map(async (source) => {
+      try {
+        let sourceResults = [];
 
-    // Web search
-    if (sources.includes('Web')) {
-      const webResults = await searchWeb(query);
-      results.push(...webResults);
-    }
+        switch (source) {
+          case 'Web':
+            sourceResults = await searchWeb(query, searchId);
+            break;
 
-    // Platform searches
-    const platformSearches = {
-      LinkedIn: searchLinkedIn,
-      X: searchTwitter,
-      Reddit: searchReddit,
-      Substack: searchSubstack,
-      Crunchbase: searchCrunchbase,
-      Pitchbook: searchPitchbook,
-      Medium: searchMedium
-    };
+          case SourceTypes.LINKEDIN:
+            sourceResults = await searchWithSerper(query, 'linkedin.com', searchId);
+            break;
 
-    for (const source of sources) {
-      if (platformSearches[source]) {
-        try {
-          const platformResults = await platformSearches[source](query);
-          results.push(...platformResults);
-        } catch (error) {
-          console.error(`Error searching ${source}:`, error);
+          case SourceTypes.TWITTER:
+            sourceResults = await searchWithSerper(query, 'twitter.com', searchId);
+            break;
+
+          case SourceTypes.REDDIT:
+            sourceResults = await searchWithSerper(query, 'reddit.com', searchId);
+            break;
+
+          case SourceTypes.SUBSTACK:
+            sourceResults = await searchWithSerper(query, 'substack.com', searchId);
+            break;
+
+          case SourceTypes.MEDIUM:
+            sourceResults = await searchWithSerper(query, 'medium.com', searchId);
+            break;
+
+          case SourceTypes.CRUNCHBASE:
+            sourceResults = await searchWithSerper(query, 'crunchbase.com', searchId);
+            break;
+
+          case SourceTypes.PITCHBOOK:
+            sourceResults = await searchWithSerper(query, 'pitchbook.com', searchId);
+            break;
+
+          default:
+            logger.warn(`[${searchId}] Unsupported source type: ${source}`);
+            return;
         }
+
+        if (sourceResults.length > 0) {
+          results.push(...sourceResults);
+        }
+      } catch (error) {
+        logger.error(`[${searchId}] Error searching ${source}:`, error.message);
+        results.push({
+          source,
+          type: 'SearchError',
+          content: `Error searching ${source}. Please try again later.`,
+          url: '#',
+          timestamp: new Date().toISOString()
+        });
       }
-    }
+    });
 
-    // Custom sources
-    if (customUrls?.length > 0) {
-      const urlResults = await searchUrls(query, customUrls);
-      results.push(...urlResults);
-    }
+    // Wait for all searches to complete
+    await Promise.all(searchPromises);
 
-    if (uploadedFiles?.length > 0) {
-      const fileResults = await searchFiles(query, uploadedFiles);
-      results.push(...fileResults);
-    }
+    logger.debug(`[${searchId}] Open search completed`, { 
+      resultsCount: results.length,
+      sources: sources.join(', ')
+    });
 
-    // Process results
-    return {
-      query,
-      model,
-      sources: results.map(result => ({
-        source: result.source,
-        type: result.type,
-        content: result.content,
-        url: result.url
-      }))
-    };
+    return results;
+
   } catch (error) {
-    throw new Error(`Search failed: ${error.message}`);
+    logger.error(`[${searchId}] Open search error:`, error.message);
+    throw error;
   }
 }
-
-// Implement basic search functions
-async function searchWeb(query) {
-  return [{
-    source: 'Web',
-    type: 'web',
-    content: `Results for: ${query}`,
-    url: '#'
-  }];
-}
-
-async function searchLinkedIn(query) {
-  // Implement LinkedIn search
-  return [];
-}
-
-// Implement other platform searches... 

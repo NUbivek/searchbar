@@ -1,12 +1,10 @@
-import '../styles/globals.css'
+import '../styles/globals.css';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
-function MyApp({ Component, pageProps }) {
+export default function MyApp({ Component, pageProps }) {
   return (
     <ErrorBoundary>
       <Component {...pageProps} />
     </ErrorBoundary>
   );
 }
-
-export default MyApp; 

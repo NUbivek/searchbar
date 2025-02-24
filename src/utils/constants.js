@@ -3,27 +3,40 @@ export const SearchModes = {
   OPEN: 'open'
 };
 
-export const SourceTypes = {
-  LINKEDIN: 'linkedin',
-  TWITTER: 'twitter',
-  REDDIT: 'reddit',
-  SUBSTACK: 'substack',
-  MEDIUM: 'medium',
-  CRUNCHBASE: 'crunchbase',
-  PITCHBOOK: 'pitchbook'
-};
-
 export const MODEL_OPTIONS = [
   {
     id: 'mixtral-8x7b',
     name: 'Mixtral 8x7B',
-    description: 'Powerful multi-expert model',
     icon: '🧠'
   },
   {
-    id: 'perplexity',
-    name: 'Perplexity-Online',
-    description: 'Real-time web analysis',
+    id: 'deepseek-70b',
+    name: 'DeepSeek 70B',
     icon: '🔍'
+  },
+  {
+    id: 'gemma-7b',
+    name: 'Gemma 7B',
+    icon: '💫'
   }
+];
+
+export const SourceTypes = {
+  WEB: 'Web',
+  LINKEDIN: 'LinkedIn',
+  TWITTER: 'X',
+  REDDIT: 'Reddit',
+  SUBSTACK: 'Substack',
+  CRUNCHBASE: 'Crunchbase',
+  PITCHBOOK: 'Pitchbook',
+  MEDIUM: 'Medium'
+};
+
+export const OPEN_SOURCE_TYPES = [
+  { id: 'academic', name: 'Academic Papers' },
+  { id: 'news', name: 'News Articles' },
+  { id: 'blogs', name: 'Blog Posts' },
+  { id: 'forums', name: 'Forums & Discussions' },
+  { id: 'patents', name: 'Patents' },
+  { id: 'reports', name: 'Industry Reports' }
 ];

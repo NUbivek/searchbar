@@ -1,110 +1,195 @@
 import axios from 'axios';
 import { load } from 'cheerio';
+import { logger } from './logger';
 
-export async function searchDeepWeb(query) {
+export async function searchWeb(query, searchId = Math.random().toString(36).substring(7)) {
+  logger.debug(`[${searchId}] Starting web search`, { query });
+
   try {
-    // Use DuckDuckGo API
-    const response = await axios.get('https://api.duckduckgo.com/', {
-      params: {
-        q: query,
-        format: 'json',
-        no_html: 1,
-        no_redirect: 1,
-        t: 'ResearchHub'
-      }
-    });
-
-    // Extract and enrich results
-    const results = await enrichResults(formatDuckDuckGoResults(response.data));
-
-    // Remove duplicates and rank results
-    return rankAndDeduplicate(results);
-  } catch (error) {
-    console.error('Deep web search error:', error);
-    return [];
-  }
-}
-
-function formatDuckDuckGoResults(data) {
-  const results = [];
-
-  // Add abstract if available
-  if (data.Abstract) {
-    results.push({
-      title: data.Heading,
-      content: data.Abstract,
-      url: data.AbstractURL,
-      type: 'abstract',
-      source: 'duckduckgo'
-    });
-  }
-
-  // Add related topics
-  data.RelatedTopics.forEach(topic => {
-    if (topic.Text) {
-      results.push({
-        title: topic.FirstURL.split('/').pop().replace(/_/g, ' '),
-        content: topic.Text,
-        url: topic.FirstURL,
-        type: 'related',
-        source: 'duckduckgo'
-      });
+    // Verify Serper API key is present
+    const serperApiKey = process.env.SERPER_API_KEY;
+    if (!serperApiKey) {
+      logger.error(`[${searchId}] Missing Serper API key`);
+      return [{
+        source: 'Web',
+        type: 'ConfigError',
+        content: 'Search API key not configured. Please check environment variables.',
+        url: '#',
+        timestamp: new Date().toISOString()
+      }];
     }
-  });
 
-  return results;
+    // Search with Serper API
+    const response = await axios.post('https://google.serper.dev/search', 
+      { 
+        q: query,
+        num: 10,
+        gl: 'us',
+        hl: 'en'
+      },
+      { 
+        headers: { 
+          'X-API-KEY': serperApiKey,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.data) {
+      logger.error(`[${searchId}] No data in Serper API response`);
+      return [{
+        source: 'Web',
+        type: 'SearchError',
+        content: 'Search service returned an invalid response. Please try again.',
+        url: '#',
+        timestamp: new Date().toISOString()
+      }];
+    }
+
+    const results = [];
+
+    // Process organic results
+    if (response.data.organic) {
+      const organicResults = response.data.organic
+        .filter(result => result.link && result.title)
+        .map(result => ({
+          source: 'Web',
+          type: 'WebResult',
+          content: result.snippet || '',
+          url: result.link,
+          timestamp: new Date().toISOString(),
+          title: result.title
+        }));
+      results.push(...organicResults);
+    }
+
+    // Process knowledge graph if present
+    if (response.data.knowledgeGraph) {
+      const kg = response.data.knowledgeGraph;
+      if (kg.title && kg.description) {
+        results.push({
+          source: 'Web',
+          type: 'KnowledgeGraph',
+          content: kg.description,
+          url: kg.link || '#',
+          timestamp: new Date().toISOString(),
+          title: kg.title
+        });
+      }
+    }
+
+    // Process answer box if present
+    if (response.data.answerBox) {
+      const answer = response.data.answerBox;
+      if (answer.answer || answer.snippet) {
+        results.push({
+          source: 'Web',
+          type: 'AnswerBox',
+          content: answer.answer || answer.snippet,
+          url: answer.link || '#',
+          timestamp: new Date().toISOString(),
+          title: answer.title || 'Quick Answer'
+        });
+      }
+    }
+
+    // Return results if we found any
+    if (results.length > 0) {
+      logger.debug(`[${searchId}] Web search successful`, { resultCount: results.length });
+      return results;
+    }
+
+    // No results case
+    logger.debug(`[${searchId}] No web results found`);
+    return [{
+      source: 'Web',
+      type: 'NoResults',
+      content: 'No results found. Try refining your search query.',
+      url: '#',
+      timestamp: new Date().toISOString()
+    }];
+
+  } catch (error) {
+    logger.error(`[${searchId}] Web search error:`, error.message);
+    return [{
+      source: 'Web',
+      type: 'SearchError',
+      content: 'Unable to search at this time. Please try again later.',
+      url: '#',
+      timestamp: new Date().toISOString()
+    }];
+  }
 }
 
 async function enrichResults(results) {
-  const enrichedResults = await Promise.allSettled(
-    results.map(async result => {
-      try {
-        // Fetch page content
-        const response = await axios.get(result.url, {
-          timeout: 5000,
-          maxContentLength: 10000000 // 10MB
-        });
+  return Promise.all(results.map(async result => {
+    try {
+      if (!result.url || result.url === '#') return result;
 
-        const $ = load(response.data);
-        
-        // Extract main content
-        const content = $('article, main, .content, #content')
-          .first()
-          .text()
-          .trim();
+      const response = await axios.get(result.url);
+      const $ = load(response.data);
 
-        return {
-          ...result,
-          fullContent: content || $('body').text().trim(),
-          verified: true
-        };
-      } catch (error) {
-        return result;
-      }
-    })
-  );
+      // Extract full content
+      const fullContent = $('body').text().trim();
+      
+      // Extract metadata
+      const metadata = {
+        description: $('meta[name="description"]').attr('content'),
+        keywords: $('meta[name="keywords"]').attr('content'),
+        author: $('meta[name="author"]').attr('content')
+      };
 
-  return enrichedResults
-    .filter(result => result.status === 'fulfilled')
-    .map(result => result.value);
+      return {
+        ...result,
+        fullContent,
+        metadata,
+        enriched: true
+      };
+    } catch (error) {
+      return result;
+    }
+  }));
 }
 
 function rankAndDeduplicate(results) {
   // Remove duplicates based on URL
-  const uniqueResults = [...new Map(results.map(r => [r.url, r])).values()];
+  const uniqueResults = results.reduce((acc, current) => {
+    const exists = acc.find(item => item.url === current.url);
+    if (!exists) {
+      acc.push(current);
+    }
+    return acc;
+  }, []);
 
-  // Rank based on content quality and verification
-  return uniqueResults.sort((a, b) => {
-    const scoreA = calculateScore(a);
-    const scoreB = calculateScore(b);
-    return scoreB - scoreA;
-  });
+  // Sort by score
+  return uniqueResults
+    .map(result => ({ ...result, score: calculateScore(result) }))
+    .sort((a, b) => b.score - a.score);
 }
 
 function calculateScore(result) {
   let score = 0;
+  
+  // Base score for verified sources
   if (result.verified) score += 2;
+  
+  // Score for content completeness
   if (result.fullContent) score += 2;
-  if (result.title && result.title.length > 10) score += 1;
+  if (result.metadata?.description) score += 1;
+  if (result.metadata?.keywords) score += 1;
+  if (result.metadata?.author) score += 1;
+  
+  // Score for result type
+  switch (result.type) {
+    case 'abstract':
+      score += 3;
+      break;
+    case 'related':
+      score += 1;
+      break;
+    default:
+      break;
+  }
+  
   return score;
-} 
+}
