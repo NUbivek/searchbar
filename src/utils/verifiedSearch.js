@@ -1,6 +1,7 @@
 import { VC_FIRMS, MARKET_DATA_SOURCES, searchAcrossDataSources } from './dataSources';
-import { processWithLLM } from './llmProcessing';
 import { logger } from './logger';
+import { withRetry } from './errorHandling';
+import axios from 'axios';
 
 export async function searchVerifiedSources(query, options = {}) {
   const searchId = Math.random().toString(36).substring(7);
@@ -17,22 +18,30 @@ export async function searchVerifiedSources(query, options = {}) {
     // Initialize results array
     let results = [];
 
-    // Verify data sources are loaded
-    if (!VC_FIRMS || !MARKET_DATA_SOURCES) {
-      logger.error('Data sources not loaded properly');
-      throw new Error('Data sources unavailable');
-    }
+    // Verify data sources are loaded with retry
+    const getDataSources = withRetry(async () => {
+      if (!VC_FIRMS || !MARKET_DATA_SOURCES) {
+        throw new Error('Data sources unavailable');
+      }
+      return { VC_FIRMS, MARKET_DATA_SOURCES };
+    }, 3);
+
+    await getDataSources();
 
     // Search based on mode
     if (mode === 'verified' || mode === 'combined') {
       logger.debug('Searching verified sources...');
 
-      // Search market data
-      const marketResults = await searchAcrossDataSources(query, {
-        verifiedOnly: true,
-        categories: ['financial', 'industry', 'consulting']
-      });
-      results.push(...marketResults);
+      // Search market data with retry
+      const marketResults = await withRetry(() => 
+        searchAcrossDataSources(query, {
+          verifiedOnly: true,
+          categories: ['financial', 'industry', 'consulting']
+        }), 3);
+      
+      if (marketResults && marketResults.length > 0) {
+        results.push(...marketResults);
+      }
 
       // Search VC firms
       const vcResults = Object.entries(VC_FIRMS)
@@ -44,76 +53,54 @@ export async function searchVerifiedSources(query, options = {}) {
           url: firm.handles?.linkedin || firm.handles?.x || '#',
           verified: true
         }));
-      results.push(...vcResults);
+      
+      if (vcResults.length > 0) {
+        results.push(...vcResults);
+      }
 
       logger.debug('Verified search results:', {
-        marketResultsCount: marketResults.length,
+        marketResultsCount: marketResults?.length || 0,
         vcResultsCount: vcResults.length
       });
     }
 
-    // Handle custom sources
-    if ((mode === 'custom' || mode === 'combined') && 
-        (customUrls.length > 0 || uploadedFiles.length > 0)) {
-      logger.debug('Processing custom sources...');
-      
-      // Process URLs
-      if (customUrls.length > 0) {
-        const urlResults = await Promise.all(
-          customUrls.map(async (url) => {
-            try {
-              const response = await fetch(url);
-              const text = await response.text();
-              return {
-                source: new URL(url).hostname,
-                type: 'Custom URL',
-                content: text.substring(0, 1000), // First 1000 chars for preview
-                url,
-                verified: false
-              };
-            } catch (error) {
-              logger.error(`Error fetching URL ${url}:`, error);
-              return null;
-            }
-          })
-        );
-        results.push(...urlResults.filter(Boolean));
-      }
-
-      // Process files
-      if (uploadedFiles.length > 0) {
-        const fileResults = uploadedFiles.map(file => ({
-          source: file.name,
-          type: 'Uploaded File',
-          content: `Content from ${file.name}`,
-          url: '#',
-          verified: false
+    // Process results with LLM if available
+    if (results.length > 0 && model) {
+      try {
+        const llmResponse = await axios.post('/api/llm/process', {
+          query,
+          sources: results,
+          model: model.toLowerCase(),
+          context: ''
+        });
+        results = results.map(result => ({
+          ...result,
+          llmProcessed: llmResponse.data.content
         }));
-        results.push(...fileResults);
+      } catch (error) {
+        logger.error(`[${searchId}] LLM processing failed:`, error);
+        // Continue with unprocessed results
       }
     }
 
-    // Process results with LLM
-    const processedResults = await processWithLLM(results, model);
-    
-    logger.debug(`Search completed with ${results.length} results`);
+    return results;
 
-    return {
-      summary: processedResults.summary,
-      sources: results.map(result => ({
-        ...result,
-        content: processedResults.contentMap[result.url] || result.content
-      }))
-    };
   } catch (error) {
-    logger.error(`Search failed:`, error);
-    throw new Error(`Search failed: ${error.message}`);
+    logger.error(`[${searchId}] Search failed:`, error);
+    throw error;
   }
 }
 
+// Improved query matching with fuzzy search
 function matchesQuery(obj, query) {
-  if (!query || !obj) return false;
-  const searchText = JSON.stringify(obj).toLowerCase();
-  const terms = query.toLowerCase().split(' ');
-  return terms.every(term => searchText.includes(term));
-} 
+  const searchTerms = query.toLowerCase().split(' ');
+  const objString = JSON.stringify(obj).toLowerCase();
+  
+  return searchTerms.every(term => 
+    objString.includes(term) || 
+    // Add fuzzy matching for terms longer than 4 characters
+    (term.length > 4 && [...objString].some((_, i) => 
+      objString.slice(i).startsWith(term.slice(0, -1))
+    ))
+  );
+}

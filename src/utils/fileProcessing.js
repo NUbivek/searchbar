@@ -6,188 +6,288 @@ import { promisify } from 'util';
 import { logger } from './logger';
 import { PDFDocument } from 'pdf-lib';
 import { readFile } from 'fs/promises';
-import pdfParse from 'pdf-parse';
-import xlsx from 'xlsx';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 const parseCSV = promisify(csv.parse);
 
+// File size limits in bytes
+const FILE_SIZE_LIMITS = {
+  'txt': 10 * 1024 * 1024,  // 10MB
+  'pdf': 50 * 1024 * 1024,  // 50MB
+  'xlsx': 20 * 1024 * 1024, // 20MB
+  'xls': 20 * 1024 * 1024,  // 20MB
+  'csv': 20 * 1024 * 1024,  // 20MB
+  'json': 10 * 1024 * 1024, // 10MB
+  'docx': 20 * 1024 * 1024, // 20MB
+  'pptx': 50 * 1024 * 1024  // 50MB
+};
+
+// Supported file types and their processors
+const FILE_PROCESSORS = {
+  'txt': processTextFile,
+  'pdf': processPDFFile,
+  'xlsx': processExcelFile,
+  'xls': processExcelFile,
+  'csv': processCSVFile,
+  'json': processJSONFile,
+  'docx': processDocxFile,
+  'pptx': processPPTXFile
+};
+
+// Supported file types and their handlers
+const FILE_HANDLERS = {
+  '.txt': handleTextFile,
+  '.json': handleJsonFile,
+  '.csv': handleCsvFile,
+  '.xlsx': handleExcelFile,
+  '.xls': handleExcelFile,
+  '.pdf': handlePdfFile
+};
+
+// Maximum file size (10MB)
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+// Process uploaded file
+export async function processFile(file) {
+  try {
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error(`File size exceeds limit of ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
+    }
+
+    // Get file extension
+    const ext = path.extname(file.originalFilename).toLowerCase();
+    const handler = FILE_HANDLERS[ext];
+
+    if (!handler) {
+      throw new Error(`Unsupported file type: ${ext}`);
+    }
+
+    // Process file
+    const content = await handler(file);
+
+    return {
+      name: file.originalFilename,
+      type: file.mimetype,
+      size: file.size,
+      content
+    };
+  } catch (error) {
+    logger.error('File processing error:', error);
+    throw error;
+  }
+}
+
+// Process uploaded files
 export async function processUploadedFiles(files) {
   const results = await Promise.allSettled(
     files.map(file => processFile(file))
   );
 
-  return results
-    .filter(result => result.status === 'fulfilled')
-    .map(result => result.value);
+  // Filter out failed results but log them
+  const processedFiles = results
+    .map((result, index) => {
+      if (result.status === 'rejected') {
+        logger.error(`Failed to process file ${files[index].name}:`, result.reason);
+        return null;
+      }
+      return result.value;
+    })
+    .filter(Boolean);
+
+  return processedFiles;
 }
 
 async function processFile(file) {
+  const extension = file.name.split('.').pop().toLowerCase();
+
+  // Validate file type
+  if (!FILE_PROCESSORS[extension]) {
+    throw new Error(`Unsupported file type: ${extension}`);
+  }
+
+  // Validate file size
+  const sizeLimit = FILE_SIZE_LIMITS[extension];
+  if (file.size > sizeLimit) {
+    throw new Error(`File size exceeds limit of ${sizeLimit / (1024 * 1024)}MB for ${extension} files`);
+  }
+
   try {
-    const extension = file.name.split('.').pop().toLowerCase();
-    const content = await readFile(file, extension);
+    const content = await FILE_PROCESSORS[extension](file);
     
     return {
       source: file.name,
       type: 'FileContent',
-      content,
+      content: content.toString(),
       timestamp: new Date().toISOString(),
-      title: file.name
+      title: file.name,
+      metadata: content.metadata || {}
     };
   } catch (error) {
-    logger.error('File processing error:', error);
-    return {
-      source: file.name,
-      type: 'FileError',
-      content: `Error processing file: ${error.message}`,
-      timestamp: new Date().toISOString(),
-      title: file.name
-    };
+    logger.error(`Error processing ${file.name}:`, error);
+    throw new Error(`Failed to process file ${file.name}: ${error.message}`);
   }
 }
 
-async function readFile(file, extension) {
-  switch (extension) {
-    case 'txt':
-    case 'json':
-    case 'csv':
-      return await readTextFile(file);
-      
-    case 'xlsx':
-    case 'xls':
-      return await readExcelFile(file);
-      
-    case 'pdf':
-      return await readPDFFile(file);
-      
-    case 'ppt':
-    case 'pptx':
-      return await readPPTFile(file);
-      
-    case 'docx':
-      return await processDocx(file);
-      
-    default:
-      throw new Error(`Unsupported file type: ${extension}`);
-  }
+async function processTextFile(file) {
+  return await file.text();
 }
 
-async function readTextFile(file) {
+async function processJSONFile(file) {
   const text = await file.text();
-  return text;
-}
-
-async function readExcelFile(file) {
-  const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: 'array' });
-  
-  let content = '';
-  workbook.SheetNames.forEach(sheetName => {
-    const sheet = workbook.Sheets[sheetName];
-    content += `Sheet: ${sheetName}\n`;
-    content += XLSX.utils.sheet_to_csv(sheet);
-    content += '\n\n';
-  });
-  
-  return content;
-}
-
-async function readPDFFile(file) {
-  const buffer = await file.arrayBuffer();
-  const pdf = await PDFDocument.load(buffer);
-  const pages = pdf.getPages();
-  
-  let content = '';
-  for (let i = 0; i < pages.length; i++) {
-    const page = pages[i];
-    content += await page.getText();
-    content += '\n\n';
-  }
-  
-  return content;
-}
-
-async function readPPTFile(file) {
-  // For PPT files, we'll extract text content
-  const text = await file.text();
-  return text;
-}
-
-async function processDocx(file) {
-  const arrayBuffer = await file.arrayBuffer();
-  const result = await mammoth.extractRawText({ arrayBuffer });
-  return {
-    type: 'docx',
-    content: result.value,
-    metadata: result.messages
-  };
-}
-
-export async function processFileNew(file) {
   try {
-    const content = await readFile(file.filepath);
-    const extension = file.originalFilename.split('.').pop().toLowerCase();
-
-    switch (extension) {
-      case 'txt':
-        return {
-          name: file.originalFilename,
-          content: content.toString(),
-          type: 'text'
-        };
-
-      case 'pdf':
-        const pdfData = await pdfParse(content);
-        return {
-          name: file.originalFilename,
-          content: pdfData.text,
-          type: 'pdf'
-        };
-
-      case 'xlsx':
-      case 'xls':
-        const workbook = xlsx.read(content);
-        const sheetNames = workbook.SheetNames;
-        const texts = sheetNames.map(sheetName => {
-          const sheet = workbook.Sheets[sheetName];
-          return xlsx.utils.sheet_to_txt(sheet);
-        });
-        return {
-          name: file.originalFilename,
-          content: texts.join('\n'),
-          type: 'spreadsheet'
-        };
-
-      case 'csv':
-        const csvWorkbook = xlsx.read(content);
-        const csvSheet = csvWorkbook.Sheets[csvWorkbook.SheetNames[0]];
-        return {
-          name: file.originalFilename,
-          content: xlsx.utils.sheet_to_txt(csvSheet),
-          type: 'csv'
-        };
-
-      case 'json':
-        return {
-          name: file.originalFilename,
-          content: JSON.stringify(JSON.parse(content.toString()), null, 2),
-          type: 'json'
-        };
-
-      case 'ppt':
-      case 'pptx':
-        // For PPT files, we'll need to extract text content
-        // This is a placeholder - you might want to use a library like pptxgenjs
-        return {
-          name: file.originalFilename,
-          content: 'PPT content extraction not implemented yet',
-          type: 'presentation'
-        };
-
-      default:
-        throw new Error(`Unsupported file type: ${extension}`);
-    }
+    const json = JSON.parse(text);
+    return JSON.stringify(json, null, 2);
   } catch (error) {
-    logger.error('File processing error:', error);
-    throw new Error(`Failed to process file ${file.originalFilename}: ${error.message}`);
+    throw new Error('Invalid JSON file');
+  }
+}
+
+async function processCSVFile(file) {
+  const text = await file.text();
+  try {
+    const records = await parseCSV(text, {
+      columns: true,
+      skip_empty_lines: true
+    });
+    return {
+      content: records.map(record => Object.values(record).join(', ')).join('\n'),
+      metadata: {
+        rowCount: records.length,
+        columns: Object.keys(records[0] || {})
+      }
+    };
+  } catch (error) {
+    throw new Error('Invalid CSV file');
+  }
+}
+
+async function processExcelFile(file) {
+  const buffer = await file.arrayBuffer();
+  try {
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    
+    const sheets = {};
+    let totalContent = '';
+    
+    workbook.SheetNames.forEach(sheetName => {
+      const sheet = workbook.Sheets[sheetName];
+      const content = XLSX.utils.sheet_to_csv(sheet);
+      sheets[sheetName] = content;
+      totalContent += `Sheet: ${sheetName}\n${content}\n\n`;
+    });
+    
+    return {
+      content: totalContent,
+      metadata: {
+        sheets: Object.keys(sheets),
+        sheetCount: workbook.SheetNames.length
+      }
+    };
+  } catch (error) {
+    throw new Error('Invalid Excel file');
+  }
+}
+
+async function processPDFFile(file) {
+  const buffer = await file.arrayBuffer();
+  try {
+    const data = await pdf(buffer, {
+      max: 0,  // No page limit
+      pagerender: async (pageData) => {
+        const renderOptions = {
+          normalizeWhitespace: true,
+          disableCombineTextItems: false
+        };
+        return await pageData.getTextContent(renderOptions);
+      }
+    });
+
+    return {
+      content: data.text,
+      metadata: {
+        pageCount: data.numpages,
+        info: data.info
+      }
+    };
+  } catch (error) {
+    throw new Error('Invalid or corrupted PDF file');
+  }
+}
+
+async function processDocxFile(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  try {
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return {
+      content: result.value,
+      metadata: {
+        messages: result.messages
+      }
+    };
+  } catch (error) {
+    throw new Error('Invalid DOCX file');
+  }
+}
+
+async function processPPTXFile(file) {
+  throw new Error('PPTX processing not implemented');
+}
+
+// Handle text files
+async function handleTextFile(file) {
+  const buffer = await fs.readFile(file.filepath);
+  return buffer.toString('utf-8');
+}
+
+// Handle JSON files
+async function handleJsonFile(file) {
+  const content = await handleTextFile(file);
+  try {
+    const data = JSON.parse(content);
+    return JSON.stringify(data, null, 2);
+  } catch (error) {
+    throw new Error('Invalid JSON file');
+  }
+}
+
+// Handle CSV files
+async function handleCsvFile(file) {
+  const workbook = XLSX.readFile(file.filepath);
+  const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+  const data = XLSX.utils.sheet_to_json(worksheet);
+  return JSON.stringify(data, null, 2);
+}
+
+// Handle Excel files
+async function handleExcelFile(file) {
+  const workbook = XLSX.readFile(file.filepath);
+  const result = {};
+
+  // Process each sheet
+  workbook.SheetNames.forEach(sheetName => {
+    const worksheet = workbook.Sheets[sheetName];
+    result[sheetName] = XLSX.utils.sheet_to_json(worksheet);
+  });
+
+  return JSON.stringify(result, null, 2);
+}
+
+// Handle PDF files
+async function handlePdfFile(file) {
+  // Placeholder for PDF processing
+  // You'll need to add a PDF processing library like pdf-parse
+  throw new Error('PDF processing not implemented yet');
+}
+
+// Clean up temporary files
+export async function cleanupFiles(files) {
+  for (const file of files) {
+    try {
+      await fs.unlink(file.filepath);
+    } catch (error) {
+      logger.error('File cleanup error:', error);
+    }
   }
 }

@@ -1,6 +1,6 @@
 import formidable from 'formidable';
-import fs from 'fs';
-import path from 'path';
+import { processFile } from '../../utils/fileProcessing';
+import { logger } from '../../utils/logger';
 
 // Disable body parsing, we'll handle it with formidable
 export const config = {
@@ -63,40 +63,68 @@ export default async function handler(req, res) {
         }
         return true;
       },
+      allowEmptyFiles: false,
+      maxFileSize: 10 * 1024 * 1024, // 10MB
+      maxFiles: 5
     });
 
-    form.parse(req, async (err, fields, files) => {
-      if (err) {
-        console.error('Upload error:', err);
-        return res.status(500).json({ error: 'Upload failed: ' + err.message });
-      }
-
-      const sessionId = fields.sessionId;
-      const uploadedFiles = Object.values(files).map(file => ({
-        name: file.originalFilename,
-        path: file.filepath,
-        type: file.mimetype,
-        size: file.size,
-      }));
-
-      // Schedule file deletion after 1 hour
-      setTimeout(() => {
-        uploadedFiles.forEach(file => {
-          try {
-            fs.unlinkSync(file.path);
-          } catch (error) {
-            console.error('Error deleting file:', error);
-          }
-        });
-      }, 3600000);
-
-      res.status(200).json({ 
-        files: uploadedFiles,
-        message: 'Files will be automatically deleted after 1 hour'
+    const [fields, files] = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) reject(err);
+        resolve([fields, files]);
       });
     });
+
+    const uploadedFiles = await Promise.all(
+      Object.values(files).map(async file => {
+        try {
+          const result = await processFile(file);
+          return {
+            name: file.originalFilename,
+            type: file.mimetype,
+            size: file.size,
+            content: result.content,
+            error: null
+          };
+        } catch (error) {
+          logger.error('File processing error:', error);
+          return {
+            name: file.originalFilename,
+            type: file.mimetype,
+            size: file.size,
+            content: null,
+            error: error.message
+          };
+        }
+      })
+    );
+
+    // Schedule file deletion after 1 hour
+    setTimeout(() => {
+      uploadedFiles.forEach(file => {
+        try {
+          fs.unlinkSync(file.path);
+        } catch (error) {
+          console.error('Error deleting file:', error);
+        }
+      });
+    }, 3600000);
+
+    // Log success
+    logger.info('Files uploaded successfully', {
+      count: uploadedFiles.length,
+      types: uploadedFiles.map(f => f.type)
+    });
+
+    return res.status(200).json({ 
+      files: uploadedFiles,
+      message: 'Files will be automatically deleted after 1 hour'
+    });
   } catch (error) {
-    console.error('Server error:', error);
-    res.status(500).json({ error: 'Server error occurred' });
+    logger.error('Upload error:', error);
+    return res.status(500).json({
+      error: 'Upload failed',
+      details: error.message
+    });
   }
 } 

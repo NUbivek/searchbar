@@ -2,122 +2,84 @@ import axios from 'axios';
 import { load } from 'cheerio';
 import { logger } from './logger';
 
-export async function searchWeb(query, searchId = Math.random().toString(36).substring(7)) {
-  logger.debug(`[${searchId}] Starting web search`, { query });
+export async function searchWeb(query, options = {}) {
+  const {
+    numResults = 10,
+    includeKnowledgeGraph = true,
+    includeAnswerBox = true
+  } = options;
+
+  const SERPER_API_KEY = process.env.SERPER_API_KEY;
+  if (!SERPER_API_KEY) {
+    throw new Error('SERPER_API_KEY environment variable is not set');
+  }
 
   try {
-    // Verify Serper API key is present
-    const serperApiKey = process.env.SERPER_API_KEY;
-    if (!serperApiKey) {
-      logger.error(`[${searchId}] Missing Serper API key`);
-      return [{
-        source: 'Web',
-        type: 'ConfigError',
-        content: 'Search API key not configured. Please check environment variables.',
-        url: '#',
-        timestamp: new Date().toISOString()
-      }];
-    }
-
-    // Search with Serper API
     const response = await axios.post('https://google.serper.dev/search', 
       { 
         q: query,
-        num: 10,
+        num: numResults,
         gl: 'us',
         hl: 'en'
       },
       { 
         headers: { 
-          'X-API-KEY': serperApiKey,
+          'X-API-KEY': SERPER_API_KEY,
           'Content-Type': 'application/json'
         }
       }
     );
 
     if (!response.data) {
-      logger.error(`[${searchId}] No data in Serper API response`);
-      return [{
-        source: 'Web',
-        type: 'SearchError',
-        content: 'Search service returned an invalid response. Please try again.',
-        url: '#',
-        timestamp: new Date().toISOString()
-      }];
+      logger.error(`Serper API error: No data in response`);
+      return [];
     }
 
+    const data = response.data;
     const results = [];
 
     // Process organic results
-    if (response.data.organic) {
-      const organicResults = response.data.organic
-        .filter(result => result.link && result.title)
-        .map(result => ({
-          source: 'Web',
-          type: 'WebResult',
-          content: result.snippet || '',
-          url: result.link,
-          timestamp: new Date().toISOString(),
-          title: result.title
-        }));
-      results.push(...organicResults);
+    if (data.organic) {
+      results.push(...data.organic.map(result => ({
+        title: result.title,
+        content: result.snippet,
+        url: result.link,
+        source: 'Web',
+        type: 'WebResult',
+        timestamp: new Date().toISOString()
+      })));
     }
 
-    // Process knowledge graph if present
-    if (response.data.knowledgeGraph) {
-      const kg = response.data.knowledgeGraph;
-      if (kg.title && kg.description) {
-        results.push({
-          source: 'Web',
-          type: 'KnowledgeGraph',
-          content: kg.description,
-          url: kg.link || '#',
-          timestamp: new Date().toISOString(),
-          title: kg.title
-        });
-      }
+    // Process knowledge graph if present and requested
+    if (includeKnowledgeGraph && data.knowledgeGraph) {
+      results.push({
+        title: data.knowledgeGraph.title || 'Knowledge Graph',
+        content: data.knowledgeGraph.description || '',
+        url: data.knowledgeGraph.link || '#',
+        source: 'Web',
+        type: 'KnowledgeGraph',
+        timestamp: new Date().toISOString()
+      });
     }
 
-    // Process answer box if present
-    if (response.data.answerBox) {
-      const answer = response.data.answerBox;
-      if (answer.answer || answer.snippet) {
-        results.push({
-          source: 'Web',
-          type: 'AnswerBox',
-          content: answer.answer || answer.snippet,
-          url: answer.link || '#',
-          timestamp: new Date().toISOString(),
-          title: answer.title || 'Quick Answer'
-        });
-      }
+    // Process answer box if present and requested
+    if (includeAnswerBox && data.answerBox) {
+      results.push({
+        title: data.answerBox.title || 'Featured Snippet',
+        content: data.answerBox.snippet || data.answerBox.answer || '',
+        url: data.answerBox.link || '#',
+        source: 'Web',
+        type: 'AnswerBox',
+        timestamp: new Date().toISOString()
+      });
     }
 
-    // Return results if we found any
-    if (results.length > 0) {
-      logger.debug(`[${searchId}] Web search successful`, { resultCount: results.length });
-      return results;
-    }
-
-    // No results case
-    logger.debug(`[${searchId}] No web results found`);
-    return [{
-      source: 'Web',
-      type: 'NoResults',
-      content: 'No results found. Try refining your search query.',
-      url: '#',
-      timestamp: new Date().toISOString()
-    }];
+    // Filter out any results without content
+    return results.filter(r => r.content && r.content.trim() !== '');
 
   } catch (error) {
-    logger.error(`[${searchId}] Web search error:`, error.message);
-    return [{
-      source: 'Web',
-      type: 'SearchError',
-      content: 'Unable to search at this time. Please try again later.',
-      url: '#',
-      timestamp: new Date().toISOString()
-    }];
+    logger.error('Web search error:', error);
+    return [];
   }
 }
 

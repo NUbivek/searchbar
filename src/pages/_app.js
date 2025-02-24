@@ -1,3 +1,4 @@
+import React from 'react';
 import '../styles/globals.css';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 

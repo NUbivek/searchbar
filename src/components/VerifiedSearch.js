@@ -1,22 +1,24 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { marked } from 'marked';
 import FileUpload from './FileUpload';
 import UrlInput from './UrlInput';
-import ModelSelector from './ModelSelector';
-import { NetworkMonitor } from '../utils/networkMonitor';
 import SearchErrorBoundary from './SearchErrorBoundary';
+import SearchResults from './SearchResults';
+import { performSearch, SearchModes, SourceTypes, VERIFIED_SOURCES } from '../utils/searchUtils';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import SourceSelector from './SourceSelector';
 
 export default function VerifiedSearch() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedModel, setSelectedModel] = useState('Mixtral-8x7B');
+  const [query, setQuery] = useState('');
+  const [selectedModel, setSelectedModel] = useState('gemma-7b');
   const [customMode, setCustomMode] = useState('verified');
+  const [isCustomSourcesExpanded, setIsCustomSourcesExpanded] = useState(false);
   const [customUrls, setCustomUrls] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [followUpQuery, setFollowUpQuery] = useState('');
+  const [chatHistory, setChatHistory] = useState([]);
+  const [selectedSources, setSelectedSources] = useState([]);
   const chatEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -25,213 +27,161 @@ export default function VerifiedSearch() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [chatHistory]);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
+  // Helper function to get current sources
+  const getCurrentSources = () => {
+    const sources = [];
+    if (customMode === 'verified') {
+      sources.push({
+        type: 'Market Data Analytics',
+        sources: VERIFIED_SOURCES['Market Data Analytics']
+      });
+      sources.push({
+        type: 'VC & Startups',
+        sources: [...VERIFIED_SOURCES['VC & Startups'], ...VERIFIED_SOURCES['VC Firms']]
+      });
+    }
+    return sources;
+  };
+
+  // Helper function to perform search with current settings
+  const performSearchWithCurrentSettings = async (searchQuery = query) => {
+    if (!searchQuery.trim()) return;
+
     setLoading(true);
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append('query', searchQuery);
-      formData.append('model', selectedModel);
-      formData.append('customUrls', JSON.stringify(customUrls));
-      
-      uploadedFiles.forEach(file => {
-        formData.append('files', file);
-      });
-
-      console.log('Sending request to: /api/verifiedSearch');
-      console.log('FormData:', {
-        query: searchQuery,
+      const searchResults = await performSearch(searchQuery, {
+        mode: SearchModes.VERIFIED,
         model: selectedModel,
         customUrls,
-        files: uploadedFiles.map(f => f.name)
+        files: uploadedFiles,
+        sources: getCurrentSources(),
+        context: chatHistory.length > 0 ? chatHistory[chatHistory.length - 1].response.content : ''
       });
 
-      const response = await fetch('/api/verifiedSearch', {
-        method: 'POST',
-        body: formData
-      });
+      // Add new result to chat history
+      setChatHistory(prev => [{
+        query: searchQuery,
+        response: {
+          summary: searchResults.summary || {
+            content: 'No results found',
+            sourceMap: {}
+          },
+          model: selectedModel
+        },
+        timestamp: new Date().toISOString()
+      }, ...prev]);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Search failed: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('Response data:', data);
-      
-      if (data && data.summary) {
-        setResults(data);
-        setMessages(prev => [...prev, 
-          { role: 'user', content: searchQuery },
-          { role: 'assistant', content: data.summary, sources: data.sources }
-        ]);
-      } else {
-        throw new Error('Invalid response format');
-      }
+      setQuery('');
     } catch (error) {
+      setError(error.message || 'Failed to perform search');
       console.error('Search error:', error);
-      setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFollowUpSubmit = async (e) => {
-    e.preventDefault();
-    if (!followUpQuery.trim()) return;
+  const handleSearch = async () => {
+    await performSearchWithCurrentSettings();
+  };
 
-    setLoading(true);
-    setError(null);
+  const handleFollowUpSearch = async (followUpQuery) => {
+    await performSearchWithCurrentSettings(followUpQuery);
+  };
 
-    try {
-      const response = await fetch('/api/verifiedSearch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: followUpQuery,
-          model: selectedModel,
-          mode: customMode,
-          previousMessages: messages
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Follow-up search failed');
+  const handleSourceToggle = (source) => {
+    setSelectedSources(prev => {
+      if (prev.includes(source)) {
+        return prev.filter(s => s !== source);
+      } else {
+        return [...prev, source];
       }
+    });
+  };
 
-      const data = await response.json();
-      setMessages(prev => [...prev, { role: 'user', content: followUpQuery }, { role: 'assistant', content: data.summary, sources: data.sources }]);
-      setFollowUpQuery('');
-    } catch (err) {
-      setError(err.message);
-      console.error('Follow-up Search Error:', err);
-    } finally {
-      setLoading(false);
-    }
+  const handleCustomSourceAdd = (url) => {
+    setCustomUrls(prev => [...prev, url]);
+  };
+
+  const handleFileUpload = (files) => {
+    setUploadedFiles(files);
   };
 
   return (
-    <SearchErrorBoundary>
-      <div className="space-y-6">
-        <form onSubmit={handleSearch} className="space-y-4">
-          <div className="flex gap-4">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Enter your search query"
-              className="flex-1 px-6 py-3 text-lg border rounded-lg shadow-sm
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <ModelSelector selectedModel={selectedModel} setSelectedModel={setSelectedModel} />
+    <div className="space-y-4">
+      {/* Main search section with source selector */}
+      <div className="space-y-2">
+        {/* Search bar with prominent styling */}
+        <div className="w-full max-w-4xl mx-auto bg-white rounded-xl shadow-lg">
+          <div className="flex items-stretch">
+            <div className="flex-1 flex items-center px-4">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search verified sources..."
+                className="flex-1 px-3 py-4 text-lg bg-transparent outline-none placeholder-gray-400"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !loading) {
+                    performSearchWithCurrentSettings();
+                  }
+                }}
+              />
+            </div>
+
+            {/* Model selector */}
+            <div className="relative bg-gray-50 border-l border-gray-100">
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="h-full px-4 py-4 bg-transparent border-none outline-none text-gray-600"
+              >
+                <option value="gemma-7b">Gemma-7B</option>
+                <option value="mixtral-8x7b">Mixtral-8x7B</option>
+                <option value="deepseek-70b">DeepSeek-70B</option>
+              </select>
+            </div>
+
+            {/* Search button */}
             <button
-              type="submit"
-              className="px-8 py-3 bg-blue-600 text-white text-lg rounded-lg
-                hover:bg-blue-700 transition-colors shadow-sm"
+              onClick={() => performSearchWithCurrentSettings()}
               disabled={loading}
+              className="px-6 py-4 bg-blue-600 text-white rounded-r-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
               {loading ? 'Searching...' : 'Search'}
             </button>
           </div>
+        </div>
 
-          <div className="flex gap-4 justify-center">
-            <button
-              type="button"
-              onClick={() => setCustomMode('custom')}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                customMode === 'custom' ? 'bg-blue-600 text-white' : 'bg-gray-100'
-              }`}
-            >
-              Custom Sources
-            </button>
-            <button
-              type="button"
-              onClick={() => setCustomMode('combined')}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                customMode === 'combined' ? 'bg-blue-600 text-white' : 'bg-gray-100'
-              }`}
-            >
-              Custom + Verified Sources
-            </button>
-          </div>
-
-          {(customMode === 'custom' || customMode === 'combined') && (
-            <div className="space-y-4">
-              <FileUpload onUpload={(files) => setUploadedFiles([...uploadedFiles, ...files])} />
-              <UrlInput onSubmit={(url) => setCustomUrls([...customUrls, url])} />
-              
-              {(customUrls.length > 0 || uploadedFiles.length > 0) && (
-                <div className="bg-white p-4 rounded-lg border">
-                  <h4 className="font-medium mb-2">Added Sources</h4>
-                  {customUrls.map((url, i) => (
-                    <div key={i} className="text-sm text-gray-600">{url}</div>
-                  ))}
-                  {uploadedFiles.map((file, i) => (
-                    <div key={i} className="text-sm text-gray-600">{file.name}</div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </form>
-
-        {error && (
-          <div className="text-red-600 text-center">{error}</div>
-        )}
-
-        {/* Chat Messages */}
-        {messages.length > 0 && (
-          <div className="mt-8 space-y-6">
-            {messages.map((message, index) => (
-              <div key={index} className={`p-4 rounded-lg ${
-                message.role === 'user' ? 'bg-blue-50' : 'bg-white shadow'
-              }`}>
-                <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: marked(message.content) }} />
-                {message.sources && (
-                  <div className="mt-4 space-y-2">
-                    <h4 className="font-medium text-gray-700">Sources:</h4>
-                    {message.sources.map((source, idx) => (
-                      <div key={idx} className="text-sm">
-                        <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
-                          {source.title || source.url}
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-            <div ref={chatEndRef} />
-          </div>
-        )}
-
-        {/* Follow-up Question Input */}
-        {messages.length > 0 && (
-          <form onSubmit={handleFollowUpSubmit} className="mt-4">
-            <div className="flex gap-4">
-              <input
-                type="text"
-                value={followUpQuery}
-                onChange={(e) => setFollowUpQuery(e.target.value)}
-                placeholder="Ask a follow-up question..."
-                className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="submit"
-                disabled={loading || !followUpQuery.trim()}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              >
-                {loading ? 'Sending...' : 'Send'}
-              </button>
-            </div>
-          </form>
-        )}
+        {/* Source selector with subdued styling */}
+        <div className="w-full max-w-4xl mx-auto bg-gray-50/80 rounded-lg">
+          <SourceSelector
+            mode={SearchModes.VERIFIED}
+            selectedSources={selectedSources}
+            onSourceToggle={handleSourceToggle}
+            onCustomSourceAdd={handleCustomSourceAdd}
+            onFileUpload={handleFileUpload}
+            isLoading={loading}
+          />
+        </div>
       </div>
-    </SearchErrorBoundary>
+
+      {/* Search Results and Chat History */}
+      <div className="w-full max-w-4xl mx-auto">
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
+
+        <div className="bg-white rounded-xl shadow-sm overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+          <SearchResults results={chatHistory} />
+          <div ref={chatEndRef} />
+        </div>
+      </div>
+    </div>
   );
 }

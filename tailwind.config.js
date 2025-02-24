@@ -3,6 +3,7 @@ module.exports = {
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {
@@ -33,7 +34,9 @@ module.exports = {
         fadeIn: 'fadeIn 0.2s ease-out forwards',
         slideUp: 'slideUp 0.5s ease-out forwards',
         pulse: 'pulse 2s ease-in-out infinite',
-        shimmer: 'shimmer 1.5s infinite'
+        shimmer: 'shimmer 1.5s infinite',
+        'fade-in': 'fadeIn 0.3s ease-out',
+        'slide-up': 'slideUp 0.4s ease-out'
       }
     }
   },

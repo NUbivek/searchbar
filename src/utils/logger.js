@@ -4,6 +4,11 @@ export const logger = {
       console.log('[Debug]', ...args);
     }
   },
+  info: (...args) => {
+    if (process.env.NEXT_PUBLIC_ENABLE_LOGGING === 'true') {
+      console.log('[Info]', ...args);
+    }
+  },
   error: (...args) => {
     console.error('[Error]', ...args);
   },
