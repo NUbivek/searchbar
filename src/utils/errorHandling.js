@@ -1,6 +1,14 @@
+/**
+ * @fileoverview Error handling utilities for API requests including custom error types,
+ * retry mechanisms, and rate limiting handlers.
+ */
+
 import axios from 'axios';
 
-// Retry configuration
+/**
+ * Configuration for retry mechanism
+ * @constant {Object}
+ */
 const RETRY_CONFIG = {
   maxRetries: 3,
   initialDelay: 1000, // 1 second
@@ -8,8 +16,16 @@ const RETRY_CONFIG = {
   factor: 2 // Exponential backoff factor
 };
 
-// Custom error types
+/**
+ * Base class for API-related errors
+ * @extends Error
+ */
 export class APIError extends Error {
+  /**
+   * @param {string} message - Error message
+   * @param {number} status - HTTP status code
+   * @param {string} source - Source of the error (e.g., 'linkedin', 'twitter')
+   */
   constructor(message, status, source) {
     super(message);
     this.name = 'APIError';
@@ -18,7 +34,15 @@ export class APIError extends Error {
   }
 }
 
+/**
+ * Error class for rate limit exceeded scenarios
+ * @extends APIError
+ */
 export class RateLimitError extends APIError {
+  /**
+   * @param {string} source - Source that triggered the rate limit
+   * @param {number} retryAfter - Time in milliseconds to wait before retrying
+   */
   constructor(source, retryAfter) {
     super('Rate limit exceeded', 429, source);
     this.name = 'RateLimitError';
@@ -26,7 +50,14 @@ export class RateLimitError extends APIError {
   }
 }
 
-// Retry mechanism with exponential backoff
+/**
+ * Executes an operation with retry logic and exponential backoff
+ * @async
+ * @param {Function} operation - Async function to execute
+ * @param {Object} [options={}] - Override default retry configuration
+ * @returns {Promise<*>} Result of the operation
+ * @throws {APIError} When max retries are exhausted or on fatal errors
+ */
 export async function withRetry(operation, options = {}) {
   const config = { ...RETRY_CONFIG, ...options };
   let lastError;

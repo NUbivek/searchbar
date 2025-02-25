@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect } from 'react';
-import { SOURCE_TYPES, SOURCES_CONFIG } from '@/config/constants';
+import { SourceTypes, MODEL_OPTIONS } from '../utils/constants';
 import { Upload, X, Plus, Link, FileText, Globe } from 'lucide-react';
 
 const OpenResearchPanel = ({ 
@@ -13,12 +13,15 @@ const OpenResearchPanel = ({
   setUrls,
   newUrl = '',
   setNewUrl,
-  isValidUrl
+  isValidUrl,
+  loading = false,
+  selectedModel = MODEL_OPTIONS[0].id,
+  setSelectedModel
 }) => {
   // Initialize sources with web selected by default
   useEffect(() => {
-    setSelectedSources({
-      web: true,
+    const defaultSources = {
+      web: true, // Web is always enabled by default
       linkedin: false,
       x: false,
       reddit: false,
@@ -26,20 +29,22 @@ const OpenResearchPanel = ({
       crunchbase: false,
       pitchbook: false,
       medium: false,
-      upload: false
-    });
-  }, []); // Empty dependency array means this runs once on mount
+      verified: true // Verified sources enabled by default
+    };
+    
+    setSelectedSources(prev => ({
+      ...defaultSources,
+      ...prev // Keep any existing selections
+    }));
+  }, []); // Run once on mount
 
   const handleSourceToggle = useCallback((sourceType, e) => {
     e.preventDefault();
     e.stopPropagation();
     
     setSelectedSources(prev => {
-      // Create a copy of the current state
       const newState = { ...prev };
-      // Toggle the clicked source
       newState[sourceType] = !prev[sourceType];
-      console.log('Toggling source:', sourceType, 'New state:', newState);
       return newState;
     });
   }, [setSelectedSources]);
@@ -51,127 +56,139 @@ const OpenResearchPanel = ({
 
   // Add upload option to source types
   const allSourceTypes = {
-    ...SOURCE_TYPES,
+    ...SourceTypes,
     'upload': 'Upload Files & URLs'
   };
 
+  const handleAddUrl = useCallback(() => {
+    if (newUrl && isValidUrl(newUrl)) {
+      setUrls(prev => [...prev, newUrl]);
+      setNewUrl('');
+    }
+  }, [newUrl, isValidUrl, setUrls, setNewUrl]);
+
+  const handleFileUpload = useCallback((e) => {
+    if (!loading) {
+      setUploadedFiles(Array.from(e.target.files));
+    }
+  }, [loading, setUploadedFiles]);
+
   return (
-    <div className="space-y-6">
-      {/* Source Selection */}
-      <div className="bg-white rounded-xl p-6 shadow-lg">
-        <h2 className="text-lg font-semibold text-blue-800 mb-4">
-          Select Search Source
-        </h2>
+    <div className="flex flex-col space-y-4 p-4 bg-white rounded-lg shadow">
+      {/* Search input and model selection */}
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          placeholder="Enter your search query"
+          className="flex-1 p-2 border rounded-lg"
+        />
+        <div className="relative">
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="p-2 border rounded-lg appearance-none pr-8 bg-white"
+          >
+            {MODEL_OPTIONS.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.icon} {model.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <button
-          onClick={() => setSelectedSources({ ...selectedSources, web: true })}
-          className={`p-3 rounded-lg flex items-center gap-2
-            ${selectedSources['web'] 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-            }`}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          disabled={loading}
         >
-          <Globe size={18} />
-          <span className="font-medium">Web Search</span>
+          Search
         </button>
       </div>
 
-      {/* Upload Panel - Only show when upload source is selected */}
-      {selectedSources['upload'] && (
-        <div className="bg-white rounded-xl p-6 shadow-lg">
-          <h2 className="text-lg font-semibold text-blue-800 mb-4">
-            Upload Files & URLs
-          </h2>
-          <div className="space-y-6">
-            {/* File Upload Section */}
-            <div>
-              <label 
-                htmlFor="fileUpload" 
-                className="flex items-center gap-2 px-4 py-3 bg-slate-50 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-50 border-2 border-dashed border-blue-200"
+      {/* Source Selection */}
+      <div className="space-y-4">
+        {/* First row: Main sources */}
+        <div className="flex justify-between gap-2">
+          {Object.entries(SourceTypes).map(([key, source]) => {
+            // Skip Market Data and VC Startups as they're for verified sources
+            if (key === 'MARKET_DATA' || key === 'VC_STARTUPS') return null;
+            
+            return (
+              <button
+                key={source}
+                onClick={(e) => handleSourceToggle(source.toLowerCase(), e)}
+                disabled={loading}
+                className={`px-4 py-2 rounded-full text-sm ${
+                  selectedSources[source.toLowerCase()]
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
-                <Upload size={20} />
-                <span>Choose Files</span>
-                <input
-                  id="fileUpload"
-                  name="files"
-                  type="file"
-                  multiple
-                  onChange={(e) => setUploadedFiles(Array.from(e.target.files))}
-                  className="hidden"
-                  accept=".txt,.pdf,.xlsx,.csv,.json"
-                />
-              </label>
-              {uploadedFiles.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <FileText size={16} className="text-blue-600" />
-                        <span className="text-sm text-slate-700 truncate">{file.name}</span>
-                      </div>
-                      <button
-                        onClick={() => setUploadedFiles(files => files.filter((_, i) => i !== index))}
-                        className="p-1 hover:bg-slate-200 rounded-full"
-                      >
-                        <X size={16} className="text-slate-500" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                {source}
+              </button>
+            );
+          })}
+        </div>
 
-            {/* URL Input Section */}
-            <div>
-              <div className="flex gap-2">
-                <label htmlFor="urlInput" className="sr-only">
-                  Enter URL
-                </label>
-                <input
-                  id="urlInput"
-                  name="url"
-                  type="url"
-                  value={newUrl}
-                  onChange={(e) => setNewUrl(e.target.value)}
-                  placeholder="Enter URL..."
-                  className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  onClick={() => {
-                    if (newUrl && isValidUrl(newUrl)) {
-                      setUrls(prev => [...prev, newUrl]);
-                      setNewUrl('');
-                    }
-                  }}
-                  disabled={!newUrl || !isValidUrl(newUrl)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                >
-                  <Plus size={20} />
-                </button>
-              </div>
-              {urls.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  {urls.map((url, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Link size={16} className="text-blue-600" />
-                        <span className="text-sm text-slate-700 truncate">{url}</span>
-                      </div>
-                      <button
-                        onClick={() => setUrls(urls => urls.filter((_, i) => i !== index))}
-                        className="p-1 hover:bg-slate-200 rounded-full"
-                      >
-                        <X size={16} className="text-slate-500" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+        {/* Second row: Custom Sources with toggle */}
+        <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-lg font-medium">Custom Sources</h3>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Include Verified Sources</span>
+            <button
+              onClick={(e) => handleSourceToggle('verified', e)}
+              className={`w-11 h-6 rounded-full transition-colors relative ${
+                selectedSources.verified ? 'bg-blue-600' : 'bg-gray-200'
+              }`}
+            >
+              <span 
+                className={`block w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${
+                  selectedSources.verified ? 'left-6' : 'left-1'
+                }`} 
+              />
+            </button>
           </div>
         </div>
-      )}
+
+        {/* Third row: Files + URL section */}
+        <div className="space-y-2">
+          {/* URL input */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              placeholder="Enter URL"
+              className="flex-1 p-2 border rounded-lg"
+            />
+            <button
+              onClick={handleAddUrl}
+              disabled={!isValidUrl(newUrl)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              Add
+            </button>
+          </div>
+
+          {/* File upload */}
+          <div className="flex items-center gap-2">
+            <label className="cursor-pointer px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+              <input
+                type="file"
+                multiple
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              Choose Files
+            </label>
+            <span className="text-sm text-gray-500">
+              {uploadedFiles.length > 0
+                ? `${uploadedFiles.length} file(s) selected`
+                : 'No file chosen'}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default OpenResearchPanel; 
+export default OpenResearchPanel;

@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { SearchModes } from '../utils/constants';
 import FileUpload from './FileUpload';
 import UrlInput from './UrlInput';
+import ModelSelector from './ModelSelector';
 
 export default function SearchInterface({ onSearch }) {
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState(SearchModes.VERIFIED);
-  const [customMode, setCustomMode] = useState('verified'); // 'custom' or 'combined'
+  const [customMode, setCustomMode] = useState('combined'); // Default to combined mode
   const [customUrls, setCustomUrls] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [selectedModel, setSelectedModel] = useState('gemma-7b');
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -16,7 +18,8 @@ export default function SearchInterface({ onSearch }) {
       mode,
       customMode,
       customUrls,
-      uploadedFiles
+      uploadedFiles,
+      model: selectedModel
     });
   };
 
@@ -31,20 +34,26 @@ export default function SearchInterface({ onSearch }) {
   return (
     <div className="space-y-6">
       <form onSubmit={handleSearch} className="space-y-4">
-        <div className="flex gap-4">
+        <div className="relative flex items-center">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Enter your search query"
-            className="flex-1 px-4 py-2 border rounded-lg"
+            className="flex-1 px-4 py-2 border rounded-lg pr-[240px]"
           />
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg"
-          >
-            Search
-          </button>
+          <div className="absolute right-2 flex items-center gap-2">
+            <ModelSelector
+              selectedModel={selectedModel}
+              setSelectedModel={setSelectedModel}
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Search
+            </button>
+          </div>
         </div>
 
         <div className="flex gap-4">
@@ -52,7 +61,7 @@ export default function SearchInterface({ onSearch }) {
             onClick={() => setMode(SearchModes.VERIFIED)}
             className={`px-4 py-2 rounded-lg ${
               mode === SearchModes.VERIFIED ? 'bg-blue-600 text-white' : 'bg-gray-100'
-            }`}
+            } hover:bg-blue-200 transition-colors`}
           >
             Verified Sources
           </button>
@@ -60,7 +69,7 @@ export default function SearchInterface({ onSearch }) {
             onClick={() => setMode(SearchModes.OPEN)}
             className={`px-4 py-2 rounded-lg ${
               mode === SearchModes.OPEN ? 'bg-blue-600 text-white' : 'bg-gray-100'
-            }`}
+            } hover:bg-blue-200 transition-colors`}
           >
             Open Research
           </button>
@@ -84,7 +93,7 @@ export default function SearchInterface({ onSearch }) {
               onClick={() => setCustomMode('custom')}
               className={`px-4 py-2 rounded-lg ${
                 customMode === 'custom' ? 'bg-blue-600 text-white' : 'bg-gray-100'
-              }`}
+              } hover:bg-blue-200 transition-colors`}
             >
               Custom Sources
             </button>
@@ -92,7 +101,7 @@ export default function SearchInterface({ onSearch }) {
               onClick={() => setCustomMode('combined')}
               className={`px-4 py-2 rounded-lg ${
                 customMode === 'combined' ? 'bg-blue-600 text-white' : 'bg-gray-100'
-              }`}
+              } hover:bg-blue-200 transition-colors`}
             >
               Custom + Verified Sources
             </button>

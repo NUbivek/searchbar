@@ -1,8 +1,9 @@
 import { VC_FIRMS, MARKET_DATA_SOURCES, searchAcrossDataSources } from './dataSources';
-import { processWithLLM } from './llmProcessing';
+import { searchGovernmentData } from './governmentData';
+import { VERIFIED_DATA_SOURCES, searchVerifiedSources as searchVerifiedSourcesInternal } from './verifiedDataSources';
 import { logger } from './logger';
-import { processFiles } from './fileProcessing';
-import { searchCustomUrls } from './customSearch';
+import { withRetry } from './errorHandling';
+import axios from 'axios';
 
 export async function searchVerifiedSources(query, options = {}) {
   const searchId = Math.random().toString(36).substring(7);
@@ -11,73 +12,104 @@ export async function searchVerifiedSources(query, options = {}) {
   const { model, mode = 'verified', customUrls = [], uploadedFiles = [] } = options;
 
   try {
+    // Validate inputs
     if (!query) {
       throw new Error('Query is required');
     }
 
+    // Initialize results array
     let results = [];
-    
-    // Handle different search modes
-    switch (mode) {
-      case 'verified':
-        // Search only verified sources
-        results = await searchAcrossDataSources(query, {
-          sources: MARKET_DATA_SOURCES,
-          vcFirms: VC_FIRMS
-        });
-        break;
-        
-      case 'custom':
-        // Search only user's custom sources
-        if (uploadedFiles.length > 0) {
-          const fileResults = await processFiles(uploadedFiles, query);
-          results.push(...fileResults);
-        }
-        if (customUrls.length > 0) {
-          const urlResults = await searchCustomUrls(customUrls, query);
-          results.push(...urlResults);
-        }
-        break;
-        
-      case 'combined':
-        // Search both verified and custom sources
-        const [verifiedResults, fileResults, urlResults] = await Promise.all([
-          searchAcrossDataSources(query, {
-            sources: MARKET_DATA_SOURCES,
-            vcFirms: VC_FIRMS
-          }),
-          uploadedFiles.length > 0 ? processFiles(uploadedFiles, query) : [],
-          customUrls.length > 0 ? searchCustomUrls(customUrls, query) : []
-        ]);
-        
-        results = [...verifiedResults, ...fileResults, ...urlResults];
-        break;
-        
-      default:
-        throw new Error('Invalid search mode');
+
+    // Verify data sources are loaded with retry
+    const getDataSources = withRetry(async () => {
+      if (!VC_FIRMS || !MARKET_DATA_SOURCES) {
+        throw new Error('Data sources unavailable');
+      }
+      return { VC_FIRMS, MARKET_DATA_SOURCES };
+    }, 3);
+
+    await getDataSources();
+
+    // Search based on mode
+    if (mode === 'verified' || mode === 'combined') {
+      logger.debug('Searching verified sources and government data...');
+
+      // Search government and financial data sources
+      const govResults = await searchGovernmentData(query);
+      if (govResults.length > 0) {
+        results.push(...govResults.map(result => ({
+          ...result,
+          verified: true,
+          relevance: 0.9  // High relevance for government data
+        })));
+      }
+
+      // Search additional verified sources
+      const additionalResults = searchVerifiedSourcesInternal(query)
+        .map(source => ({
+          source: source.name,
+          type: source.specialty?.[0] || 'Research',
+          content: `${source.name} - ${source.focus?.join(', ') || 'No focus specified'}`,
+          url: source.research_portals?.public || source.handles?.linkedin || source.handles?.x || '#',
+          verified: true
+        }));
+
+      if (additionalResults.length > 0) {
+        results.push(...additionalResults);
+      }
+
+      // Search market data with retry
+      const marketResults = await withRetry(() => 
+        searchAcrossDataSources(query, {
+          verifiedOnly: true,
+          categories: ['financial', 'industry', 'consulting']
+        }), 3);
+      
+      if (marketResults && marketResults.length > 0) {
+        results.push(...marketResults);
+      }
+
+      // Search VC firms
+      const vcResults = Object.entries(VC_FIRMS)
+        .filter(([_, firm]) => matchesQuery(firm, query))
+        .map(([_, firm]) => ({
+          source: firm.name,
+          type: 'VC Firm',
+          content: `${firm.name} - ${firm.focus?.join(', ') || 'No focus specified'}`,
+          url: firm.handles?.linkedin || firm.handles?.x || '#',
+          verified: true
+        }));
+      
+      if (vcResults.length > 0) {
+        results.push(...vcResults);
+      }
+
+      logger.debug('Verified search results:', {
+        marketResultsCount: marketResults?.length || 0,
+        vcResultsCount: vcResults.length
+      });
     }
 
-    // Process results with selected LLM model
-    const processedResults = await processWithLLM(results, model);
-
-    // Format results with source links
-    return {
-      results: processedResults.results.map(result => ({
-        ...result,
-        sourceUrl: result.url,
-        sourceName: result.source,
-        contributors: result.contributors || [],
-        timestamp: result.timestamp,
-        category: result.category || 'General'
-      })),
-      summary: processedResults.summary,
-      metadata: {
-        totalSources: results.length,
-        searchId,
-        mode,
-        model
+    // Process results with LLM if available
+    if (results.length > 0 && model) {
+      try {
+        const llmResponse = await axios.post('/api/llm/process', {
+          query,
+          sources: results,
+          model: model.toLowerCase(),
+          context: ''
+        });
+        results = results.map(result => ({
+          ...result,
+          llmProcessed: llmResponse.data.content
+        }));
+      } catch (error) {
+        logger.error(`[${searchId}] LLM processing failed:`, error);
+        // Continue with unprocessed results
       }
-    };
+    }
+
+    return results;
 
   } catch (error) {
     logger.error(`[${searchId}] Search failed:`, error);
@@ -85,7 +117,16 @@ export async function searchVerifiedSources(query, options = {}) {
   }
 }
 
+// Improved query matching with fuzzy search
 function matchesQuery(obj, query) {
-  const searchStr = JSON.stringify(obj).toLowerCase();
-  return query.toLowerCase().split(' ').every(term => searchStr.includes(term));
+  const searchTerms = query.toLowerCase().split(' ');
+  const objString = JSON.stringify(obj).toLowerCase();
+  
+  return searchTerms.every(term => 
+    objString.includes(term) || 
+    // Add fuzzy matching for terms longer than 4 characters
+    (term.length > 4 && [...objString].some((_, i) => 
+      objString.slice(i).startsWith(term.slice(0, -1))
+    ))
+  );
 }

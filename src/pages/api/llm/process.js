@@ -1,54 +1,128 @@
-import axios from 'axios';
 import { logger } from '../../../utils/logger';
 
-const MODEL_CONFIGS = {
-  'perplexity': {
-    apiEndpoint: 'https://api.perplexity.ai/chat/completions',
-    headers: (apiKey) => ({
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    }),
-    formatRequest: (prompt) => ({
-      model: 'pplx-7b-chat',
-      messages: [{ role: 'user', content: prompt }]
-    })
-  },
-  'gemma-2.0': {
-    apiEndpoint: 'https://api.together.xyz/inference',
-    headers: (apiKey) => ({
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    }),
-    formatRequest: (prompt) => ({
-      model: 'google/gemma-2b',
-      prompt,
-      max_tokens: 2000
-    })
-  },
+const SUPPORTED_MODELS = {
   'mixtral-8x7b': {
-    apiEndpoint: 'https://api.together.xyz/inference',
-    headers: (apiKey) => ({
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    }),
-    formatRequest: (prompt) => ({
-      model: 'mistralai/mixtral-8x7b',
-      prompt,
-      max_tokens: 2000
-    })
+    provider: 'together',
+    model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+    temperature: 0.7,
+    max_tokens: 1024,
+    top_p: 0.7,
+    top_k: 50,
+    repetition_penalty: 1,
+    stop: ['</s>', '[/INST]']
+  },
+  'gemma-2-9b': {
+    provider: 'together',
+    model: 'google/gemma-2-9b-it',
+    temperature: 0.7,
+    max_tokens: 1024,
+    top_p: 0.7,
+    top_k: 50,
+    repetition_penalty: 1,
+    stop: ['<end_of_turn>']
   },
   'deepseek-70b': {
-    apiEndpoint: 'https://api.together.xyz/inference',
-    headers: (apiKey) => ({
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    }),
-    formatRequest: (prompt) => ({
-      model: 'deepseek-ai/deepseek-70b',
-      prompt,
-      max_tokens: 2000
-    })
+    provider: 'together',
+    model: 'meta-llama/Llama-2-70b-chat-hf',
+    temperature: 0.7,
+    max_tokens: 1024,
+    top_p: 0.7,
+    top_k: 50,
+    repetition_penalty: 1,
+    stop: ['</s>', '<|end_of_text|>', '[/INST]']
   }
+};
+
+async function processWithTogether(prompt, config) {
+  const API_KEY = process.env.TOGETHER_API_KEY;
+  if (!API_KEY) {
+    throw new Error('Together API key not found');
+  }
+
+  try {
+    logger.info(`Processing with Together API using model: ${config.model}`);
+    
+    const response = await fetch('https://api.together.xyz/inference', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify({
+        model: config.model,
+        prompt: prompt,
+        temperature: config.temperature,
+        max_tokens: config.max_tokens,
+        top_p: config.top_p,
+        top_k: config.top_k,
+        repetition_penalty: config.repetition_penalty,
+        stop: config.stop
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error(`Together API error: ${response.status}`, { 
+        errorDetails: errorText,
+        model: config.model
+      });
+      throw new Error(`Together API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.output.choices[0].text.trim();
+  } catch (error) {
+    logger.error('Error processing with Together API:', error);
+    throw error;
+  }
+}
+
+async function processWithProvider(prompt, config) {
+  switch (config.provider) {
+    case 'together':
+      return processWithTogether(prompt, config);
+    default:
+      throw new Error(`Unsupported provider: ${config.provider}`);
+  }
+}
+
+function formatSources(results) {
+  return results.map((result, index) => {
+    const sourceNum = index + 1;
+    return `[${sourceNum}] ${result.title || 'Untitled'}\nURL: ${result.url || 'N/A'}\nSource: ${result.source}\nContent: ${result.content}\n`;
+  }).join('\n');
+}
+
+function createPrompt(results, query, context = '') {
+  const contextSection = context ? `\nPrevious Context:\n${context}\n` : '';
+
+  return `You are an AI research assistant analyzing search results. Given the following query and sources, 
+provide a comprehensive but concise summary that answers the query. Focus on key insights and patterns.
+
+Query: "${query}"
+${contextSection}
+
+Sources:
+${formatSources(results)}
+
+Requirements:
+1. Provide a direct and focused answer to the query
+2. Use appropriate citations [1], [2], etc. when referencing information
+3. Format the response in markdown with proper headings and lists
+4. Include relevant links for companies, user handles, author names, etc.
+5. Organize information into logical categories
+6. Keep the response concise and focused on the query
+7. Suggest 3 relevant follow-up questions based on the findings
+
+Response:`;
+}
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
 };
 
 export default async function handler(req, res) {
@@ -57,78 +131,128 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { results, models, apiKeys } = req.body;
-    
-    if (!results || !models || !apiKeys) {
-      return res.status(400).json({ error: 'Missing required parameters' });
+    const { query, sources, model = 'mixtral-8x7b', context = '' } = req.body;
+
+    if (!query) {
+      return res.status(400).json({ error: 'Query is required' });
     }
 
-    const processedResults = {
-      summary: `Found ${results.length} relevant results`,
-      contentMap: {}
-    };
+    if (!sources || !Array.isArray(sources)) {
+      return res.status(400).json({ error: 'Sources array is required' });
+    }
 
-    // Process with selected models
-    for (let i = 0; i < results.length; i++) {
-      const result = results[i];
-      const model = models[i];
-      const apiKey = apiKeys[i];
+    // Process with LLM
+    let modelConfig = SUPPORTED_MODELS[model.toLowerCase()];
+    if (!modelConfig) {
+      logger.warn('Unsupported model, falling back to mixtral-8x7b', { requestedModel: model });
+      modelConfig = SUPPORTED_MODELS['mixtral-8x7b'];
+    }
 
-      const modelConfig = MODEL_CONFIGS[model.toLowerCase()];
-      if (!modelConfig) {
-        return res.status(400).json({ error: 'Invalid model selection' });
+    const prompt = createPrompt(sources, query, context);
+    
+    try {
+      const result = await processWithProvider(prompt, modelConfig);
+      
+      // Extract follow-up questions
+      const followUpMatch = result.match(/Follow-up questions:([\s\S]*?)(?:\n\n|$)/i);
+      const followUpQuestions = followUpMatch ? 
+        followUpMatch[1].match(/\d+\.\s*(.*?)(?=\n|$)/g)?.map(q => q.replace(/^\d+\.\s*/, '')) || [] 
+        : [];
+
+      // Extract source references and build source map
+      const sourceMap = {};
+      const refRegex = /\[(\d+)\]/g;
+      let match;
+      while ((match = refRegex.exec(result)) !== null) {
+        const index = parseInt(match[1]) - 1;
+        if (index >= 0 && index < sources.length) {
+          const source = sources[index];
+          sourceMap[`source_${index + 1}`] = {
+            url: source.url || '',
+            title: source.title || 'Untitled',
+            source: source.source || 'Unknown'
+          };
+        }
       }
 
-      // Call the appropriate LLM API
-      const response = await axios.post(
-        modelConfig.apiEndpoint,
-        modelConfig.formatRequest(result.content),
-        { headers: modelConfig.headers(apiKey) }
-      );
-
-      // Process and format the response
-      const processedResult = {
-        summary: response.data.choices?.[0]?.message?.content || response.data.choices?.[0]?.text,
-        categories: extractCategories(response.data.choices?.[0]?.message?.content || response.data.choices?.[0]?.text),
-        suggestions: generateFollowupQuestions(response.data.choices?.[0]?.message?.content || response.data.choices?.[0]?.text)
+      const processedResults = {
+        content: result,
+        sourceMap,
+        followUpQuestions,
+        model: modelConfig.model
       };
 
-      processedResults.contentMap[result.url] = processedResult;
-    }
+      // Log success
+      logger.info('LLM processing completed', {
+        query,
+        model: modelConfig.model,
+        sourceCount: sources.length,
+        followUpCount: followUpQuestions.length
+      });
 
-    res.status(200).json(processedResults);
+      return res.status(200).json(processedResults);
+    } catch (modelError) {
+      // If the requested model fails and it's not already mixtral, try mixtral as fallback
+      if (model.toLowerCase() !== 'mixtral-8x7b') {
+        logger.warn(`Model ${model} failed, falling back to mixtral-8x7b`, { error: modelError.message });
+        
+        try {
+          const fallbackConfig = SUPPORTED_MODELS['mixtral-8x7b'];
+          const fallbackResult = await processWithProvider(prompt, fallbackConfig);
+          
+          // Extract follow-up questions for fallback
+          const followUpMatch = fallbackResult.match(/Follow-up questions:([\s\S]*?)(?:\n\n|$)/i);
+          const followUpQuestions = followUpMatch ? 
+            followUpMatch[1].match(/\d+\.\s*(.*?)(?=\n|$)/g)?.map(q => q.replace(/^\d+\.\s*/, '')) || [] 
+            : [];
+
+          // Extract source references and build source map for fallback
+          const sourceMap = {};
+          const refRegex = /\[(\d+)\]/g;
+          let match;
+          while ((match = refRegex.exec(fallbackResult)) !== null) {
+            const index = parseInt(match[1]) - 1;
+            if (index >= 0 && index < sources.length) {
+              const source = sources[index];
+              sourceMap[`source_${index + 1}`] = {
+                url: source.url || '',
+                title: source.title || 'Untitled',
+                source: source.source || 'Unknown'
+              };
+            }
+          }
+
+          const processedResults = {
+            content: fallbackResult,
+            sourceMap,
+            followUpQuestions,
+            model: fallbackConfig.model,
+            note: `Originally requested model (${model}) failed, using Mixtral as fallback.`
+          };
+
+          logger.info('LLM processing completed with fallback model', {
+            query,
+            originalModel: model,
+            fallbackModel: fallbackConfig.model,
+            sourceCount: sources.length,
+            followUpCount: followUpQuestions.length
+          });
+
+          return res.status(200).json(processedResults);
+        } catch (fallbackError) {
+          // If even the fallback fails, throw the original error
+          throw modelError;
+        }
+      } else {
+        // If mixtral was the original model and it failed, rethrow the error
+        throw modelError;
+      }
+    }
   } catch (error) {
     logger.error('LLM processing error:', error);
-    res.status(500).json({ error: 'Processing failed' });
+    return res.status(500).json({
+      error: 'Processing failed',
+      details: error.message
+    });
   }
-}
-
-function extractCategories(text) {
-  // Extract logical categories from the LLM output
-  const categories = [];
-  const lines = text.split('\n');
-  
-  let currentCategory = null;
-  for (const line of lines) {
-    if (line.match(/^#+\s/)) {
-      currentCategory = line.replace(/^#+\s/, '').trim();
-      categories.push(currentCategory);
-    }
-  }
-  
-  return categories;
-}
-
-function generateFollowupQuestions(text) {
-  // Generate follow-up questions based on the content
-  const questions = [];
-  const lines = text.split('\n');
-  
-  for (const line of lines) {
-    if (line.includes('?') && line.length > 20) {
-      questions.push(line.trim());
-    }
-  }
-  
-  return questions.slice(0, 5); // Return top 5 questions
 }

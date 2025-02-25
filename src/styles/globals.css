@@ -3,140 +3,279 @@
 @tailwind utilities;
 
 /* Base Styles */
+:root {
+  --primary: #4BA3F5;
+  --primary-hover: #3994e8;
+  --primary-active: #2d87db;
+  --surface: #ffffff;
+  --text: #334155;
+  --text-light: #64748B;
+  --border: #e5e7eb;
+  --hover: #f8fafc;
+}
+
 @layer base {
-  :root {
-    --primary: #4BA3F5;
-    --primary-hover: #3994e8;
-    --primary-active: #2d87db;
-    --surface: #ffffff;
-    --text: #334155;
-    --text-light: #64748B;
-    --border: #e5e7eb;
-    --hover: #f8fafc;
-  }
-
   body {
-    @apply text-gray-900 bg-white antialiased;
-  }
-
-  /* Modern Scrollbar */
-  ::-webkit-scrollbar {
-    @apply w-1.5;
-  }
-  
-  ::-webkit-scrollbar-track {
-    @apply bg-gray-100;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full hover:bg-gray-400 transition-colors;
+    @apply text-gray-700 bg-white;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
+/* Modern Scrollbar */
+::-webkit-scrollbar {
+  width: 0.375rem;
+}
+
+::-webkit-scrollbar-track {
+  background-color: #f3f4f6;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 9999px;
+  transition: background-color 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
 /* Component Styles */
-@layer components {
-  /* Tab Navigation */
-  .tab-container {
-    @apply flex p-1.5 bg-[--hover] rounded-2xl
-           border border-[--border] shadow-sm
-           mx-auto;
-  }
+/* Tab Navigation */
+.tab-container {
+  display: flex;
+  padding: 0.375rem;
+  background-color: var(--hover);
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  margin: 0 auto;
+}
 
-  .tab-button {
-    @apply flex-1 px-8 py-3 text-[15px] rounded-xl
-           transition-all duration-200 font-medium
-           relative overflow-hidden;
-  }
+.tab-button {
+  flex: 1;
+  padding: 0.75rem 2rem;
+  font-size: 0.9375rem;
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
+}
 
-  .tab-button-active {
-    @apply bg-[--surface] text-[--text]
-           shadow-[0_2px_4px_rgba(0,0,0,0.04)]
-           transform scale-[1.01];
-  }
+.tab-button-active {
+  background-color: var(--primary);
+  color: white;
+}
 
-  .tab-button-inactive {
-    @apply text-[--text-light] hover:text-[--text]
-           hover:bg-white/50;
-  }
+.tab-button-inactive {
+  color: var(--text-light);
+}
 
-  /* Form Controls */
-  .select-field {
-    @apply w-full px-4 py-2.5 text-[16px] bg-[--surface] 
-           border border-[--border] rounded-lg
-           focus:outline-none focus:ring-2 focus:ring-[--primary]/10
-           hover:border-[--primary]/30 transition-all;
-  }
+.tab-button-inactive:hover {
+  color: var(--text);
+  background-color: white/50;
+}
 
-  .input-field {
-    @apply flex-1 px-4 py-2.5 text-[16px] bg-[--surface]
-           border border-[--border] rounded-lg
-           focus:outline-none focus:ring-2 focus:ring-[--primary]/10
-           hover:border-[--primary]/30 transition-all
-           placeholder:text-[--text-light];
-  }
+.tab-button-inactive:hover {
+  color: var(--text);
+  background-color: white/50;
+}
 
-  .search-button {
-    @apply px-6 py-2.5 bg-[--primary] text-white text-[16px] rounded-lg
-           font-medium hover:opacity-90 active:scale-[0.98] 
-           transition-all shadow-sm;
-  }
+/* Form Controls */
+.select-field {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
 
-  /* Source Buttons */
-  .source-button-container {
-    @apply grid grid-cols-2 sm:grid-cols-4 gap-2;
-  }
+.select-field:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(75, 163, 245, 0.2);
+}
 
-  .source-button {
-    @apply p-3 text-[14px] rounded-lg border border-[--border]
-           transition-all flex items-center justify-center gap-2
-           hover:border-[--primary]/30 hover:bg-[--hover]
-           active:scale-[0.98];
-  }
+.input-field {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
 
-  .source-button-active {
-    @apply bg-[--primary] text-white border-[--primary]
-           hover:bg-[--primary]/90 hover:border-[--primary];
-  }
+.input-field:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(75, 163, 245, 0.2);
+}
 
-  /* Upload Button */
-  .upload-button {
-    @apply flex-1 px-4 py-2.5 text-[16px] bg-[--surface]
-           border border-[--border] rounded-lg
-           flex items-center justify-center gap-2
-           hover:bg-[--hover] hover:border-[--primary]/30
-           active:scale-[0.98] transition-all;
-  }
+.input-field::placeholder {
+  color: var(--text-light);
+}
 
-  /* Animations */
-  .animate-fade-in {
-    @apply animate-[fadeIn_0.3s_ease-out];
-  }
+.search-button {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary);
+  color: white;
+  font-size: 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
 
-  .animate-slide-up {
-    @apply animate-[slideUp_0.3s_ease-out];
-  }
+.search-button:hover {
+  opacity: 0.9;
+}
 
-  /* Loading States */
-  .loading-shimmer {
-    @apply relative overflow-hidden before:absolute before:inset-0
-           before:bg-gradient-to-r before:from-transparent 
-           before:via-white/20 before:to-transparent
-           before:animate-shimmer;
-  }
+.search-button:active {
+  transform: scale(0.98);
+}
 
-  /* Add a test class */
-  .test-component {
-    @apply bg-blue-500 text-white p-4 rounded-lg;
-  }
+/* Source Buttons */
+.source-button-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
 
-  .btn-primary {
-    @apply bg-[#4BA3F5] text-white hover:bg-[#3994e8] active:bg-[#2d87db]
-           transition-all duration-200;
+.source-button {
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.source-button:hover {
+  border-color: var(--primary);
+  background-color: var(--hover);
+}
+
+.source-button:active {
+  transform: scale(0.98);
+}
+
+.source-button-active {
+  background-color: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.source-button-active:hover {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Upload Button */
+.upload-button {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.upload-button:hover {
+  background-color: var(--hover);
+  border-color: var(--primary);
+}
+
+.upload-button:active {
+  transform: scale(0.98);
+}
+
+/* Animations */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
   }
-  
-  .input-focus {
-    @apply focus:border-[#4BA3F5] focus:ring-2 focus:ring-[#4BA3F5]/20;
+  to {
+    opacity: 1;
   }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(10px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Loading States */
+.loading-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.loading-shimmer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to right, transparent, white/20, transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Add a test class */
+.test-component {
+  background-color: #4BA3F5;
+  color: white;
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+.btn-primary {
+  background-color: #4BA3F5;
+  color: white;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: #3994e8;
+}
+
+.btn-primary:active {
+  background-color: #2d87db;
+}
+
+.input-focus {
+  border-color: #4BA3F5;
+  box-shadow: 0 0 0 2px rgba(75, 163, 245, 0.2);
 }
 
 @keyframes slideDown {
