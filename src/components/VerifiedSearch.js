@@ -10,16 +10,23 @@ import SourceSelector from './SourceSelector';
 
 export default function VerifiedSearch() {
   const [query, setQuery] = useState('');
-  const [selectedModel, setSelectedModel] = useState('gemma-7b');
-  const [customMode, setCustomMode] = useState('verified');
+  const [selectedModel, setSelectedModel] = useState('mixtral-8x7b');
+  const [customMode, setCustomMode] = useState('combined'); // Initialize with combined mode
   const [isCustomSourcesExpanded, setIsCustomSourcesExpanded] = useState(false);
   const [customUrls, setCustomUrls] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [chatHistory, setChatHistory] = useState([]);
-  const [selectedSources, setSelectedSources] = useState([]);
+  const [selectedSources, setSelectedSources] = useState(['verified']); // Initialize with verified selected
   const chatEndRef = useRef(null);
+
+  // Ensure verified sources are always included in combined mode
+  useEffect(() => {
+    if (customMode === 'combined' && !selectedSources.includes('verified')) {
+      setSelectedSources(prev => [...prev, 'verified']);
+    }
+  }, [customMode, selectedSources]);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });

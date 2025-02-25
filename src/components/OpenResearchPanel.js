@@ -20,18 +20,23 @@ const OpenResearchPanel = ({
 }) => {
   // Initialize sources with web selected by default
   useEffect(() => {
-    setSelectedSources({
-      [SourceTypes.WEB.toLowerCase()]: true, // Default to web
-      [SourceTypes.LINKEDIN.toLowerCase()]: false,
-      [SourceTypes.TWITTER.toLowerCase()]: false,
-      [SourceTypes.REDDIT.toLowerCase()]: false,
-      [SourceTypes.SUBSTACK.toLowerCase()]: false,
-      [SourceTypes.CRUNCHBASE.toLowerCase()]: false,
-      [SourceTypes.PITCHBOOK.toLowerCase()]: false,
-      [SourceTypes.MEDIUM.toLowerCase()]: false,
-      upload: false
-    });
-  }, []); // Empty dependency array means this runs once on mount
+    const defaultSources = {
+      web: true, // Web is always enabled by default
+      linkedin: false,
+      x: false,
+      reddit: false,
+      substack: false,
+      crunchbase: false,
+      pitchbook: false,
+      medium: false,
+      verified: true // Verified sources enabled by default
+    };
+    
+    setSelectedSources(prev => ({
+      ...defaultSources,
+      ...prev // Keep any existing selections
+    }));
+  }, []); // Run once on mount
 
   const handleSourceToggle = useCallback((sourceType, e) => {
     e.preventDefault();

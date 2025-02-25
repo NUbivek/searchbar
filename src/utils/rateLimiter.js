@@ -103,4 +103,7 @@ const rateLimiter = new RateLimiter();
 
 // Export the rate limiter instance, class and helper function
 export { RateLimiter, rateLimiter };
-export const rateLimit = async (source) => rateLimiter.checkLimit(source);
+export const rateLimit = async (source) => {
+  // Rate limiting disabled as requested
+  return true;
+};

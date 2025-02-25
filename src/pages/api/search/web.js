@@ -135,6 +135,7 @@ export default async function handler(req, res) {
         throw new Error('Serper API key not configured');
       }
 
+      logger.info(`[${searchId}] Using Serper API key: ${serperApiKey}`);
       response = await withRetry(() => axios.post(
         'https://google.serper.dev/search', 
         { 
@@ -148,9 +149,19 @@ export default async function handler(req, res) {
             'X-API-KEY': serperApiKey,
             'Content-Type': 'application/json'
           },
-          timeout: REQUEST_TIMEOUT
+          timeout: REQUEST_TIMEOUT,
+          validateStatus: function (status) {
+            return status >= 200 && status < 500;
+          }
         }
-      ));
+      )).catch(error => {
+        logger.error(`[${searchId}] Serper API error:`, error.response?.data || error.message);
+        throw error;
+      });
+
+      if (response.status !== 200) {
+        throw new Error(`Serper API returned status ${response.status}: ${JSON.stringify(response.data)}`);
+      }
     }
 
     const sources = [];

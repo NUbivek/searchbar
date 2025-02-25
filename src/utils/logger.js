@@ -1,4 +1,4 @@
-export const logger = {
+const logger = {
   debug: (...args) => {
     if (process.env.NEXT_PUBLIC_ENABLE_LOGGING === 'true') {
       console.log('[Debug]', ...args);
@@ -16,3 +16,5 @@ export const logger = {
     console.warn('[Warning]', ...args);
   }
 };
+
+module.exports = { logger };

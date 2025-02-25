@@ -7,7 +7,7 @@ import ModelSelector from './ModelSelector';
 export default function SearchInterface({ onSearch }) {
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState(SearchModes.VERIFIED);
-  const [customMode, setCustomMode] = useState('verified'); // 'custom' or 'combined'
+  const [customMode, setCustomMode] = useState('combined'); // Default to combined mode
   const [customUrls, setCustomUrls] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [selectedModel, setSelectedModel] = useState('gemma-7b');

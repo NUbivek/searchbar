@@ -3,49 +3,80 @@ import { logger } from '../../../utils/logger';
 const SUPPORTED_MODELS = {
   'mixtral-8x7b': {
     provider: 'together',
-    modelId: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
-    maxTokens: 4096,
-    temperature: 0.7
+    model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+    temperature: 0.7,
+    max_tokens: 1024,
+    top_p: 0.7,
+    top_k: 50,
+    repetition_penalty: 1,
+    stop: ['</s>', '[/INST]']
+  },
+  'gemma-2-9b': {
+    provider: 'together',
+    model: 'google/gemma-2-9b-it',
+    temperature: 0.7,
+    max_tokens: 1024,
+    top_p: 0.7,
+    top_k: 50,
+    repetition_penalty: 1,
+    stop: ['<end_of_turn>']
   },
   'deepseek-70b': {
     provider: 'together',
-    modelId: 'deepseek-ai/deepseek-coder-70b-instruct',
-    maxTokens: 4096,
-    temperature: 0.7
-  },
-  'gemma-7b': {
-    provider: 'together',
-    modelId: 'google/gemma-7b-it',
-    maxTokens: 4096,
-    temperature: 0.7
+    model: 'deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free',
+    temperature: 0.7,
+    max_tokens: 1024,
+    top_p: 0.7,
+    top_k: 50,
+    repetition_penalty: 1,
+    stop: ['</s>']
   }
 };
 
 async function processWithTogether(prompt, config) {
-  const response = await fetch('https://api.together.xyz/inference', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.TOGETHER_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: config.modelId,
-      prompt: prompt,
-      max_tokens: config.maxTokens,
-      temperature: config.temperature,
-      top_p: 0.7,
-      top_k: 50,
-      repetition_penalty: 1.1,
-      stop: ["</s>", "[/INST]"]
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`Together API error: ${response.statusText}`);
+  const API_KEY = process.env.TOGETHER_API_KEY;
+  if (!API_KEY) {
+    throw new Error('Together API key not found');
   }
 
-  const data = await response.json();
-  return data.output.choices[0].text;
+  try {
+    const response = await fetch('https://api.together.xyz/inference', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify({
+        model: config.model,
+        prompt: prompt,
+        temperature: config.temperature,
+        max_tokens: config.max_tokens,
+        top_p: config.top_p,
+        top_k: config.top_k,
+        repetition_penalty: config.repetition_penalty,
+        stop: config.stop
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Together API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.output.choices[0].text.trim();
+  } catch (error) {
+    logger.error('Error processing with Together API:', error);
+    throw error;
+  }
+}
+
+async function processWithProvider(prompt, config) {
+  switch (config.provider) {
+    case 'together':
+      return processWithTogether(prompt, config);
+    default:
+      throw new Error(`Unsupported provider: ${config.provider}`);
+  }
 }
 
 function formatSources(results) {
@@ -104,14 +135,14 @@ export default async function handler(req, res) {
     }
 
     // Process with LLM
-    const modelConfig = SUPPORTED_MODELS[model.toLowerCase()];
+    let modelConfig = SUPPORTED_MODELS[model.toLowerCase()];
     if (!modelConfig) {
       logger.warn('Unsupported model, falling back to mixtral-8x7b', { requestedModel: model });
       modelConfig = SUPPORTED_MODELS['mixtral-8x7b'];
     }
 
     const prompt = createPrompt(sources, query, context);
-    const result = await processWithTogether(prompt, modelConfig);
+    const result = await processWithProvider(prompt, modelConfig);
 
     // Extract follow-up questions
     const followUpMatch = result.match(/Follow-up questions:([\s\S]*?)(?:\n\n|$)/i);
@@ -139,13 +170,13 @@ export default async function handler(req, res) {
       content: result,
       sourceMap,
       followUpQuestions,
-      model: modelConfig.modelId
+      model: modelConfig.model
     };
 
     // Log success
     logger.info('LLM processing completed', {
       query,
-      model: modelConfig.modelId,
+      model: modelConfig.model,
       sourceCount: sources.length,
       followUpCount: followUpQuestions.length
     });

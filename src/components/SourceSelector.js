@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SearchModes, SourceTypes } from '../utils/constants';
 import { ChevronDown, ChevronUp, Upload, Link, X } from 'lucide-react';
 
@@ -7,7 +7,17 @@ export default function SourceSelector({ mode, selectedSources, onSourceToggle, 
   const [customUrl, setCustomUrl] = useState('');
   const [addedUrls, setAddedUrls] = useState([]);
   const [addedFiles, setAddedFiles] = useState([]);
-  
+
+  // Initialize with web and verified sources selected
+  useEffect(() => {
+    if (mode === SearchModes.OPEN && !selectedSources.includes('web')) {
+      onSourceToggle('web');
+    }
+    if (!selectedSources.includes('verified')) {
+      onSourceToggle('verified');
+    }
+  }, [mode]); // Only run when mode changes
+
   const mainSources = [
     SourceTypes.WEB,
     SourceTypes.LINKEDIN,

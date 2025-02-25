@@ -12,69 +12,62 @@ export default async function handler(req, res) {
   }
 
   try {
-    const clientId = process.env.REDDIT_CLIENT_ID;
-    const clientSecret = process.env.REDDIT_CLIENT_SECRET;
+    const clientId = process.env.LINKEDIN_CLIENT_ID;
+    const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
     
     if (!clientId || !clientSecret) {
-      throw new Error('Reddit credentials not configured');
+      throw new Error('LinkedIn credentials not configured');
     }
 
     // First, get an access token
     const tokenResponse = await axios.post(
-      'https://www.reddit.com/api/v1/access_token',
+      'https://www.linkedin.com/oauth/v2/accessToken',
       new URLSearchParams({
-        grant_type: 'client_credentials'
+        grant_type: 'client_credentials',
+        client_id: clientId,
+        client_secret: clientSecret
       }).toString(),
       {
-        auth: {
-          username: clientId,
-          password: clientSecret
-        },
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'Searchbar/1.0.0 (by /u/BivekAdhikari)'
+          'Content-Type': 'application/x-www-form-urlencoded'
         }
       }
     );
 
     const accessToken = tokenResponse.data.access_token;
 
-    // Use the access token to search Reddit
+    // Use the access token to search LinkedIn
     const searchResponse = await axios.get(
-      'https://oauth.reddit.com/search',
+      'https://api.linkedin.com/v2/search',
       {
         params: {
           q: query,
-          sort: 'relevance',
-          limit: 10,
-          t: 'month'
+          count: 10,
+          start: 0
         },
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'User-Agent': 'Searchbar/1.0.0 (by /u/BivekAdhikari)'
+          'X-Restli-Protocol-Version': '2.0.0',
+          'LinkedIn-Version': '202401'
         }
       }
     );
 
-    const sources = searchResponse.data.data.children.map((post, index) => ({
-      type: 'RedditResult',
-      content: post.data.selftext || post.data.title || '',
-      url: `https://reddit.com${post.data.permalink}`,
-      timestamp: new Date(post.data.created_utc * 1000).toISOString(),
-      title: post.data.title || '',
+    // Process and format the results
+    const sources = searchResponse.data.elements?.map((result, index) => ({
+      type: 'LinkedInResult',
+      content: result.text || result.description || '',
+      url: result.url || `https://www.linkedin.com/feed/update/${result.id}`,
+      timestamp: result.created?.time || new Date().toISOString(),
+      title: result.title || '',
       confidence: 1,
-      sourceId: `reddit-${index}`,
-      metadata: {
-        score: post.data.score,
-        subreddit: post.data.subreddit,
-        author: post.data.author
-      }
-    }));
+      sourceId: `linkedin-${index}`
+    })) || [];
 
     return res.status(200).json({ sources });
 
   } catch (error) {
-    // If Reddit API fails, fallback to Serper
+    // If LinkedIn API fails, fallback to Serper
     try {
       const serperApiKey = process.env.SERPER_API_KEY;
       if (!serperApiKey) {
@@ -84,7 +77,7 @@ export default async function handler(req, res) {
       const response = await axios.post(
         'https://google.serper.dev/search',
         {
-          q: `site:reddit.com ${query}`,
+          q: `site:linkedin.com ${query}`,
           num: 10
         },
         {
@@ -101,13 +94,13 @@ export default async function handler(req, res) {
         const organicResults = response.data.organic
           .filter(result => result.link && result.title)
           .map((result, index) => ({
-            type: 'RedditResult',
+            type: 'LinkedInResult',
             content: result.snippet || '',
             url: result.link,
             timestamp: new Date().toISOString(),
             title: result.title,
             confidence: 1,
-            sourceId: `reddit-${index}`
+            sourceId: `linkedin-${index}`
           }));
         sources.push(...organicResults);
       }
@@ -115,7 +108,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ sources });
 
     } catch (fallbackError) {
-      logger.error('Reddit search and fallback failed:', { original: error, fallback: fallbackError });
+      logger.error('LinkedIn search and fallback failed:', { original: error, fallback: fallbackError });
       return res.status(500).json({ message: 'Search failed', error: error.message });
     }
   }

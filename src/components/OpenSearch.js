@@ -10,7 +10,7 @@ import { SearchModes } from '../utils/constants';
 
 export default function OpenSearch() {
   const [query, setQuery] = useState('');
-  const [selectedSources, setSelectedSources] = useState([]);
+  const [selectedSources, setSelectedSources] = useState(['web']); 
   const [selectedModel, setSelectedModel] = useState('mixtral-8x7b');
   const [customUrls, setCustomUrls] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -55,39 +55,30 @@ export default function OpenSearch() {
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append('query', searchQuery);
-      formData.append('model', selectedModel);
-      formData.append('sources', JSON.stringify(selectedSources));
-      formData.append('urls', JSON.stringify(customUrls));
-      
-      // Append files if any
-      uploadedFiles.forEach((file) => {
-        formData.append('files', file);
+      const response = await axios.post('/api/search/open', {
+        query: searchQuery,
+        sources: selectedSources,
+        model: selectedModel,
+        customUrls,
+        uploadedFiles
       });
 
-      const response = await axios.post('/api/openSearch', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      if (response.data.error) {
+        throw new Error(response.data.error);
+      }
 
-      setChatHistory(prev => [...prev, {
-        role: 'user',
-        content: searchQuery
-      }, {
-        role: 'assistant',
-        content: response.data.content,
-        sources: response.data.sourceMap
-      }]);
-
-    } catch (err) {
-      logger.error('Search error:', err);
-      setError(err.response?.data?.error || 'An error occurred during search');
+      setChatHistory(prev => [
+        ...prev,
+        { role: 'user', content: searchQuery },
+        { role: 'assistant', content: '', sources: response.data.sources || [] }
+      ]);
+    } catch (error) {
+      logger.error('[Error] Search error:', error);
+      setError(error.message || 'Search failed');
     } finally {
       setLoading(false);
     }
-  }, [query, selectedModel, selectedSources, customUrls, uploadedFiles]);
+  }, [query, selectedSources, selectedModel, customUrls, uploadedFiles]);
 
   return (
     <div className="space-y-4">
