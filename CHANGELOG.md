@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2025-02-25
+
+### Fixed
+- Fixed critical issue with Verified Sources search not displaying results
+- Resolved data format inconsistencies between different search components
+- Fixed content rendering issues in search results
+
+### Improved
+- Enhanced SearchResultsWrapper with robust format detection and conversion
+- Improved LLMResults component with better error handling and content processing
+- Added comprehensive debug logging throughout search components
+- Implemented smarter content extraction and formatting for different data types
+
+### Technical Changes
+- Added format conversion between chat history and search results formats
+- Implemented proper synthesizedAnswer format handling for different content types
+- Enhanced type checking throughout search components
+- Added fallbacks for missing content and improved error handling
+
+## [0.4.0] - 2025-02-25
+
+### Added
+- Enhanced markdown styling for LLM responses with special formatting for Key Takeaways and Further Considerations
+- Improved table styling for better data presentation
+- Custom scrollbar styling for search results
+
+### Changed
+- Updated DeepSeek model to use DeepSeek-R1-Distill-Qwen-1.5B for better performance
+- Restructured LLM prompt to generate more categorical and direct responses
+- Enhanced UI for search results and LLM responses with improved visual hierarchy
+- Optimized follow-up question interface with better styling
+
+### Improved
+- LLM responses now organized into logical categories with Key Takeaways section
+- Better visual separation between different types of content
+- More intuitive navigation through search results
+
 ## [0.3.0] - 2025-02-25
 
 ### Added

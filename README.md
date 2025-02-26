@@ -68,6 +68,24 @@ A sophisticated search application that integrates multiple data sources, includ
 - `logger.js`: Structured logging
 - `combinedSearch.js`: Multi-source search orchestration
 
+## Search Components
+
+The application uses a sophisticated multi-component search architecture:
+
+### Core Components
+- **SearchResults**: Central component for displaying all search results
+- **LLMResults**: Displays AI-synthesized answers with sources
+- **TraditionalResults**: Displays web search results in a traditional format
+- **SearchResultsWrapper**: Adapter component that handles format conversion between different data structures
+
+### Recent Improvements (v0.5.0)
+- Fixed critical issues with Verified Sources search results display
+- Enhanced format conversion between chat history and search results
+- Improved error handling and content processing
+- Added comprehensive debug logging throughout search components
+
+For detailed documentation on search components, see [SEARCH_COMPONENTS.md](./docs/SEARCH_COMPONENTS.md).
+
 ## Setup
 
 1. **Clone and Install**:
