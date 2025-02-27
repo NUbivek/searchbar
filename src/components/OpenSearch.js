@@ -248,6 +248,7 @@ export default function OpenSearch() {
             results={chatHistory} 
             onFollowUpSearch={handleFollowUpSearch}
             loading={loading}
+            query={query}
           />
           <div ref={chatEndRef} />
         </div>

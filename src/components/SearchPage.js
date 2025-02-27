@@ -129,6 +129,7 @@ export default function SearchPage() {
           results={searchResults}
           isLoading={isLoading}
           error={error}
+          query={query}
         />
       </SearchErrorBoundary>
     </div>

@@ -5,13 +5,13 @@ import SearchResults from './search/SearchResults';
  * Wrapper component for SearchResults that handles different data formats
  * This component specifically handles the chat history format from VerifiedSearch
  */
-export default function SearchResultsWrapper({ results, onFollowUpSearch, isLoading, error }) {
+export default function SearchResultsWrapper({ results, onFollowUpSearch, isLoading, error, query = '' }) {
   // Debug log
-  console.log("SearchResultsWrapper received:", { results });
+  console.log("SearchResultsWrapper received:", { results, query });
   
   // If no results, pass through
   if (!results || results.length === 0) {
-    return <SearchResults results={[]} onFollowUpSearch={onFollowUpSearch} isLoading={isLoading} error={error} />;
+    return <SearchResults results={[]} onFollowUpSearch={onFollowUpSearch} isLoading={isLoading} error={error} query={query} />;
   }
   
   // Check if we're dealing with chat history format
@@ -33,6 +33,7 @@ export default function SearchResultsWrapper({ results, onFollowUpSearch, isLoad
             onFollowUpSearch={onFollowUpSearch}
             isLoading={isLoading}
             error={error}
+            query={query}
           />
         );
       }
@@ -48,54 +49,32 @@ export default function SearchResultsWrapper({ results, onFollowUpSearch, isLoad
             onFollowUpSearch={onFollowUpSearch}
             isLoading={isLoading}
             error={error}
+            query={query}
           />
         );
       }
       
-      // If content is an object with summary/content, convert to synthesizedAnswer format
-      if (latestAssistantMessage.content && typeof latestAssistantMessage.content === 'object') {
-        // Create a synthesized result that SearchResults component expects
-        const synthesizedResult = {
-          synthesizedAnswer: {
-            summary: latestAssistantMessage.content.content || latestAssistantMessage.content.summary || '',
-            sections: [],
-            sources: latestAssistantMessage.content.sources || []
-          }
-        };
-        
-        return (
-          <SearchResults 
-            results={[synthesizedResult]} 
-            onFollowUpSearch={onFollowUpSearch}
-            isLoading={isLoading}
-            error={error}
-          />
-        );
-      }
-      
-      // If content is a string, convert to synthesizedAnswer format
-      if (latestAssistantMessage.content && typeof latestAssistantMessage.content === 'string') {
-        // Create a synthesized result
-        const synthesizedResult = {
-          synthesizedAnswer: {
-            summary: latestAssistantMessage.content,
-            sections: [],
-            sources: []
-          }
-        };
-        
-        return (
-          <SearchResults 
-            results={[synthesizedResult]} 
-            onFollowUpSearch={onFollowUpSearch}
-            isLoading={isLoading}
-            error={error}
-          />
-        );
-      }
+      // Otherwise, just pass the whole chat history
+      return (
+        <SearchResults 
+          results={results} 
+          onFollowUpSearch={onFollowUpSearch}
+          isLoading={isLoading}
+          error={error}
+          query={query}
+        />
+      );
     }
   }
   
-  // Default case - pass through the results as is
-  return <SearchResults results={results} onFollowUpSearch={onFollowUpSearch} isLoading={isLoading} error={error} />;
+  // If not chat history, just pass through
+  return (
+    <SearchResults 
+      results={results} 
+      onFollowUpSearch={onFollowUpSearch}
+      isLoading={isLoading}
+      error={error}
+      query={query}
+    />
+  );
 }

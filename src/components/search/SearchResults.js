@@ -6,7 +6,7 @@ import FollowUpChat from './FollowUpChat';
 /**
  * Main search results component that coordinates display of different result types
  */
-export default function SearchResults({ results, onFollowUpSearch, isLoading, error = null }) {
+export default function SearchResults({ results, onFollowUpSearch, isLoading, error = null, query = '' }) {
   const [expandedContent, setExpandedContent] = useState(false);
   const [previousSearches, setPreviousSearches] = useState([]);
   const resultsContainerRef = useRef(null);
@@ -23,8 +23,17 @@ export default function SearchResults({ results, onFollowUpSearch, isLoading, er
   
   // Debug log
   useEffect(() => {
-    console.log("SearchResults component received:", { results, resultsArray });
-  }, [results]);
+    console.log("SearchResults component received:", { 
+      resultsCount: resultsArray.length, 
+      query: query || 'No query provided',
+      isLoading,
+      error: error || 'No error',
+      hasSynthesizedAnswer: hasSynthesizedAnswer(),
+      resultsStructure: JSON.stringify(resultsArray.slice(0, 2)).substring(0, 500) + '...',
+      resultsType: Array.isArray(resultsArray) ? 'array' : typeof resultsArray,
+      firstItemProperties: resultsArray.length > 0 ? Object.keys(resultsArray[0] || {}) : []
+    });
+  }, [results, query, isLoading, error]);
   
   // No results case
   if (!resultsArray || resultsArray.length === 0) {
@@ -112,12 +121,9 @@ export default function SearchResults({ results, onFollowUpSearch, isLoading, er
     }
   }
 
-  // Check if we have a synthesized answer from LLM
+  // Check if we have a synthesized answer
   const hasSynthesizedAnswer = () => {
-    return resultsArray.some(result => 
-      result.synthesizedAnswer || 
-      (result.type === 'assistant' && result.content)
-    );
+    return resultsArray.some(result => result.type === 'synthesized' || result.synthesized);
   };
 
   // Get the synthesized answer if it exists
@@ -162,21 +168,39 @@ export default function SearchResults({ results, onFollowUpSearch, isLoading, er
     );
   };
 
+  // Debug log for LLMResults
+  console.log("About to render LLMResults with query:", query);
+
   return (
-    <div className="w-full max-w-4xl mx-auto mt-4 bg-white rounded-xl shadow-md overflow-hidden">
+    <div 
+      ref={resultsContainerRef}
+      className="w-full max-w-4xl mx-auto mt-4 bg-white rounded-xl shadow-md overflow-hidden"
+    >
       {/* Scrollable results container */}
       <div className="overflow-y-auto" style={{ maxHeight: '70vh' }}>
         <div className="p-4 space-y-6">
-          {/* Current Search Results - Always at the top */}
-          <div className="space-y-6">
+          <div>
             {/* LLM Synthesized Results */}
-            {hasSynthesizedAnswer() && (
-              <LLMResults 
-                answer={getSynthesizedAnswer()} 
-                expanded={expandedContent}
-                onToggleExpand={() => setExpandedContent(!expandedContent)}
-              />
-            )}
+            <LLMResults 
+              results={resultsArray} 
+              query={query} 
+            />
+            
+            {/* Debug information */}
+            <div style={{
+              padding: '10px',
+              margin: '10px 0',
+              backgroundColor: '#f3f4f6',
+              border: '1px solid #d1d5db',
+              borderRadius: '4px',
+              fontSize: '12px'
+            }}>
+              <p>SearchResults Debug:</p>
+              <p>Results Array Length: {resultsArray.length}</p>
+              <p>Query: {query}</p>
+              <p>Results Type: {Array.isArray(resultsArray) ? 'array' : typeof resultsArray}</p>
+              <p>First Item Type: {resultsArray.length > 0 ? (resultsArray[0].type || 'unknown') : 'N/A'}</p>
+            </div>
             
             {/* Traditional Web Results */}
             {getTraditionalResults().length > 0 && (

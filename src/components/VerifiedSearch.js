@@ -327,6 +327,7 @@ export default function VerifiedSearch() {
             results={chatHistory} 
             onFollowUpSearch={handleFollowUpSearch}
             loading={loading}
+            query={query}
           />
           <div ref={chatEndRef} />
         </div>
