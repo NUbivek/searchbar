@@ -2,11 +2,15 @@
 
 Welcome to the documentation for the Research Hub Search Application. This directory contains detailed documentation on various aspects of the application.
 
+> **IMPORTANT**: For a comprehensive guide to the search and UI flow in all circumstances, please refer to the [USER FLOW DOCUMENTATION](../USER_FLOW.md) first.
+
 ## Documentation Index
 
 ### Core Documentation
 
 - [Main README](../README.md) - Overview of the application, setup instructions, and basic usage
+- [User Flow Documentation](../USER_FLOW.md) - Comprehensive guide to search and UI flow in all circumstances
+- [Application Architecture](../ARCHITECTURE.md) - Comprehensive overview of system architecture
 - [Pre-Commit Checklist](./PRE_COMMIT_CHECKLIST.md) - Checklist to review before committing code
 - [Changelog](../CHANGELOG.md) - History of changes to the application
 
@@ -15,6 +19,12 @@ Welcome to the documentation for the Research Hub Search Application. This direc
 - [LLM Integration](./LLM_INTEGRATION.md) - Details on the Large Language Model integration
 - [Carta Integration](./CARTA_INTEGRATION.md) - Information about the Carta source integration
 - [Error Handling](./ERROR_HANDLING.md) - Documentation on error handling strategies
+- [Search Components](./SEARCH_COMPONENTS.md) - Details on search component architecture
+- [Metrics System](./METRICS_SYSTEM.md) - Documentation on the search result scoring system
+
+### Architecture Documentation
+
+- [Application Architecture](../ARCHITECTURE.md) - Comprehensive overview of system architecture
 
 ### API Documentation
 

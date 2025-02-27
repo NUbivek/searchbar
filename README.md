@@ -1,5 +1,7 @@
 # Research Hub Search Application
 
+> **IMPORTANT**: For a comprehensive guide to the search and UI flow in all circumstances, please refer to the [USER FLOW DOCUMENTATION](./USER_FLOW.md) first.
+
 A sophisticated search application that integrates multiple data sources, including verified platforms, market data, and open research sources, to provide comprehensive research capabilities.
 
 ## Features
@@ -36,6 +38,7 @@ A sophisticated search application that integrates multiple data sources, includ
 - Modern, responsive UI with Tailwind CSS
 - Smart stock symbol extraction
 - Market data visualization
+- Advanced search result scoring system
 
 ### LLM Integration
 - **Mixtral-8x7b**: Primary LLM model for processing search results
@@ -55,6 +58,7 @@ A sophisticated search application that integrates multiple data sources, includ
   - `FileUpload.js`: File processing
   - `UrlInput.js`: Custom URL handling
   - `MarketData.js`: Stock and financial data display
+  - `MetricsCalculator.js`: Search result scoring system
 
 ### Backend
 - **API Routes** (`/src/pages/api/`):
@@ -67,6 +71,8 @@ A sophisticated search application that integrates multiple data sources, includ
 - `rateLimiter.js`: API request throttling
 - `logger.js`: Structured logging
 - `combinedSearch.js`: Multi-source search orchestration
+- `calculatorUtils.js`: Metrics calculation utilities
+- `contextDetector.js`: Query context detection
 
 ## Search Components
 
@@ -85,6 +91,24 @@ The application uses a sophisticated multi-component search architecture:
 - Added comprehensive debug logging throughout search components
 
 For detailed documentation on search components, see [SEARCH_COMPONENTS.md](./docs/SEARCH_COMPONENTS.md).
+
+## Search Metrics System
+
+The application uses a sophisticated metrics system to evaluate search results:
+
+### Metrics Components
+- **MetricsCalculator**: Central component for calculating all metrics
+- **RelevanceCalculator**: Calculates how well results match the query
+- **AccuracyCalculator**: Evaluates factual correctness and reliability
+- **CredibilityCalculator**: Assesses source trustworthiness
+
+### Key Features
+- Context-aware scoring based on query type (financial, medical, etc.)
+- User preference integration for personalized results
+- Threshold-based filtering to ensure quality
+- Visual indicators for result quality (colors and labels)
+
+For detailed documentation on the metrics system, see [METRICS_SYSTEM.md](./docs/METRICS_SYSTEM.md).
 
 ## Setup
 
