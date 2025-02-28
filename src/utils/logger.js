@@ -13,7 +13,7 @@ const logger = {
    */
   debug: (...args) => {
     if (process.env.NEXT_PUBLIC_ENABLE_LOGGING === 'true') {
-      console.log('[Debug]', ...args);
+      console.debug('[DEBUG]', ...args);
     }
   },
 
@@ -23,7 +23,7 @@ const logger = {
    */
   info: (...args) => {
     if (process.env.NEXT_PUBLIC_ENABLE_LOGGING === 'true') {
-      console.log('[Info]', ...args);
+      console.info('[INFO]', ...args);
     }
   },
 
@@ -32,7 +32,7 @@ const logger = {
    * @param {...*} args - Arguments to log
    */
   error: (...args) => {
-    console.error('[Error]', ...args);
+    console.error('[ERROR]', ...args);
   },
 
   /**
@@ -40,8 +40,13 @@ const logger = {
    * @param {...*} args - Arguments to log
    */
   warn: (...args) => {
-    console.warn('[Warning]', ...args);
+    console.warn('[WARN]', ...args);
   }
 };
 
-module.exports = { logger };
+// Export the logger object and individual methods
+export { logger };
+export const debug = logger.debug;
+export const info = logger.info;
+export const warn = logger.warn;
+export const error = logger.error;

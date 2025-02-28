@@ -132,7 +132,7 @@ export async function searchSources(query, options) {
       case 'Reddit':
         return searchReddit(query);
       case 'Web':
-        return searchWeb(query);
+        return deepWebSearch(query);
       default:
         return scrapeSource(source, query);
     }

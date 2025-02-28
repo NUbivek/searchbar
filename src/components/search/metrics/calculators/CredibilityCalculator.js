@@ -12,9 +12,15 @@ import {
 import {
   DISPLAY_THRESHOLD,
   PRESTIGIOUS_INSTITUTIONS as PRESTIGIOUS_INSTITUTIONS_DATA,
-  RESEARCH_ORGANIZATIONS as RESEARCH_ORGANIZATIONS_DATA,
-  PROFESSIONAL_CREDENTIALS as PROFESSIONAL_CREDENTIALS_DATA
+  RESEARCH_ORGANIZATIONS as RESEARCH_ORGANIZATIONS_DATA
 } from '../../utils/calculatorData';
+
+// Define professional credentials since they're not in calculatorData
+const PROFESSIONAL_CREDENTIALS_DATA = [
+  'phd', 'md', 'jd', 'mba', 'cpa', 'cfa', 'frm', 'pmp',
+  'professor', 'doctor', 'attorney', 'scientist', 'researcher',
+  'analyst', 'expert', 'specialist', 'fellow', 'director'
+];
 
 // Constants for weighting different factors
 const WEIGHTS = {
@@ -43,29 +49,29 @@ const PROFESSIONAL_CREDENTIALS = PROFESSIONAL_CREDENTIALS_DATA;
  * @returns {number} - The credibility score (0-100)
  */
 const calculateCredibilityScore = (result, options = {}) => {
-  if (!result || !result.url) {
-    return 0;
-  }
+  if (!result) return 0;
   
-  // Calculate source reputation score
-  const sourceScore = calculateSourceReputation(result.url, result.domain);
+  // Extract relevant data from result
+  const { url, domain, author, authorDetails = {}, citations = [], references = [] } = result;
   
-  // Calculate author expertise score
-  const authorScore = calculateAuthorExpertise(result.author, result.authorDetails);
+  // Ensure source is a string
+  const source = typeof result.source === 'string' ? result.source : String(result.source || '');
   
-  // Calculate citation quality score
-  const citationScore = calculateCitationQuality(result.citations, result.references);
+  // Ensure content is a string
+  const content = typeof result.content === 'string' ? result.content : String(result.content || '');
   
-  // Calculate verification factors score
-  const verificationScore = calculateVerificationFactors(result);
+  // Calculate individual component scores
+  const sourceReputationScore = calculateSourceReputation(url, domain);
+  const authorExpertiseScore = calculateAuthorExpertise(author, authorDetails);
+  const citationQualityScore = calculateCitationQuality(citations, references);
+  const verificationFactorsScore = calculateVerificationFactors({...result, source, content});
   
   // Calculate weighted score
-  const weightedScore = (
-    sourceScore * WEIGHTS.SOURCE_REPUTATION +
-    authorScore * WEIGHTS.AUTHOR_EXPERTISE +
-    citationScore * WEIGHTS.CITATION_QUALITY +
-    verificationScore * WEIGHTS.VERIFICATION_FACTORS
-  );
+  const weightedScore = 
+    (sourceReputationScore * WEIGHTS.SOURCE_REPUTATION) +
+    (authorExpertiseScore * WEIGHTS.AUTHOR_EXPERTISE) +
+    (citationQualityScore * WEIGHTS.CITATION_QUALITY) +
+    (verificationFactorsScore * WEIGHTS.VERIFICATION_FACTORS);
   
   // Normalize to 0-100 scale
   return normalizeScore(weightedScore * 100);
@@ -82,23 +88,26 @@ const calculateSourceReputation = (url, domain) => {
   
   let score = 0.5; // Default score
   
+  // Ensure url is a string before calling toLowerCase
+  const urlLower = typeof url === 'string' ? url.toLowerCase() : String(url).toLowerCase();
+  
   // Check for academic domains
-  if (matchesDomain(url, ['edu', 'ac.uk', 'edu.au'])) {
+  if (matchesDomain(urlLower, ['edu', 'ac.uk', 'edu.au'])) {
     score += 0.3;
   }
   
   // Check for government domains
-  if (matchesDomain(url, ['gov', 'mil'])) {
+  if (matchesDomain(urlLower, ['gov', 'mil'])) {
     score += 0.25;
   }
   
   // Check for established news sources
-  if (matchesDomain(url, ['nytimes.com', 'wsj.com', 'reuters.com', 'bloomberg.com', 'ft.com', 'economist.com'])) {
+  if (matchesDomain(urlLower, ['nytimes.com', 'wsj.com', 'reuters.com', 'bloomberg.com', 'ft.com', 'economist.com'])) {
     score += 0.2;
   }
   
   // Check for scientific journals
-  if (matchesDomain(url, ['nature.com', 'science.org', 'cell.com', 'nejm.org', 'thelancet.com'])) {
+  if (matchesDomain(urlLower, ['nature.com', 'science.org', 'cell.com', 'nejm.org', 'thelancet.com'])) {
     score += 0.3;
   }
   
@@ -112,53 +121,59 @@ const calculateSourceReputation = (url, domain) => {
  * @param {Object} authorDetails - The author details
  * @returns {number} - The author expertise score (0-1)
  */
-const calculateAuthorExpertise = (author, authorDetails) => {
-  if (!author) return 0.5; // Default middle score if no author
+const calculateAuthorExpertise = (author, authorDetails = {}) => {
+  // If no author, return low score
+  if (!author) return 0.3;
   
-  let score = 0.5;
+  // Ensure author is a string
+  const authorName = typeof author === 'string' ? author.toLowerCase() : String(author).toLowerCase();
   
-  // Factor 1: Author has credentials (if available)
-  if (authorDetails.credentials) {
-    score += 0.2;
-  }
+  let score = 0.5; // Default score
   
-  // Factor 2: Author has relevant expertise in the field
-  if (authorDetails.expertise) {
-    score += 0.2;
-  }
-  
-  // Factor 3: Author is verified or from a reputable organization
-  if (authorDetails.verified) {
-    score += 0.15;
-  }
-  
-  // Factor 4: Author's affiliation
-  if (authorDetails.affiliation) {
-    const affiliation = authorDetails.affiliation.toLowerCase();
-    
-    // Check for prestigious affiliations
-    if (affiliation.includes('professor') || 
-        affiliation.includes('phd') || 
-        affiliation.includes('researcher') ||
-        affiliation.includes('scientist') ||
-        affiliation.includes('analyst') ||
-        affiliation.includes('economist')) {
-      score += 0.1;
-    }
-    
-    // Check for official positions
-    if (affiliation.includes('ceo') || 
-        affiliation.includes('cfo') || 
-        affiliation.includes('director') ||
-        affiliation.includes('founder') ||
-        affiliation.includes('executive') ||
-        affiliation.includes('official')) {
-      score += 0.1;
+  // Check for professional credentials in author name
+  for (const credential of PROFESSIONAL_CREDENTIALS) {
+    if (authorName.includes(credential)) {
+      score += 0.15;
+      break;
     }
   }
   
-  // Cap at 1.0
-  return Math.min(score, 1.0);
+  // Check author details if available
+  if (authorDetails) {
+    // Ensure affiliation is a string
+    const affiliation = typeof authorDetails.affiliation === 'string' 
+      ? authorDetails.affiliation.toLowerCase() 
+      : String(authorDetails.affiliation || '').toLowerCase();
+    
+    // Check for prestigious institution affiliation
+    for (const institution of PRESTIGIOUS_INSTITUTIONS) {
+      if (affiliation.includes(institution)) {
+        score += 0.2;
+        break;
+      }
+    }
+    
+    // Check for research organization affiliation
+    for (const organization of RESEARCH_ORGANIZATIONS) {
+      if (affiliation.includes(organization)) {
+        score += 0.15;
+        break;
+      }
+    }
+    
+    // Check for verified status
+    if (authorDetails.verified) {
+      score += 0.15;
+    }
+    
+    // Check for publication count
+    if (authorDetails.publicationCount > 10) {
+      score += 0.1;
+    }
+  }
+  
+  // Normalize score to 0-1 range
+  return Math.min(Math.max(score, 0), 1);
 };
 
 /**
@@ -249,7 +264,8 @@ const detectPeerReview = (result) => {
   
   // Check if source is a peer-reviewed journal
   if (result.source) {
-    const sourceLower = result.source.toLowerCase();
+    // Ensure source is a string before calling toLowerCase
+    const sourceLower = typeof result.source === 'string' ? result.source.toLowerCase() : String(result.source).toLowerCase();
     
     // Academic journal indicators
     const journalIndicators = [
@@ -264,7 +280,8 @@ const detectPeerReview = (result) => {
   
   // Check content for peer review mentions
   if (result.content) {
-    const contentLower = result.content.toLowerCase();
+    // Ensure content is a string before calling toLowerCase
+    const contentLower = typeof result.content === 'string' ? result.content.toLowerCase() : String(result.content).toLowerCase();
     
     // Peer review terminology
     const peerReviewTerms = [
@@ -298,52 +315,56 @@ const detectPeerReview = (result) => {
  * @param {Object} authorDetails - The author details
  * @returns {number} - The author verification score (0-1)
  */
-const verifyAuthor = (author, source, authorDetails) => {
-  if (!author) return 0.4;
+const verifyAuthor = (author, source, authorDetails = {}) => {
+  if (!author) return 0;
   
-  let score = 0.5;
-  const authorLower = author.toLowerCase();
+  // Ensure author is a string
+  const authorName = typeof author === 'string' ? author.toLowerCase() : String(author).toLowerCase();
   
-  // Check for professional credentials in author name
-  if (PROFESSIONAL_CREDENTIALS.some(credential => 
-      authorLower.includes(` ${credential}`) || 
-      authorLower.includes(`, ${credential}`) || 
-      authorLower.includes(`(${credential})`))) {
-    score += 0.15;
+  // Ensure source is a string
+  const sourceName = typeof source === 'string' ? source.toLowerCase() : String(source || '').toLowerCase();
+  
+  let score = 0.4; // Default score
+  
+  // Check if author has an institutional email
+  if (authorDetails.email) {
+    // Ensure email is a string
+    const email = typeof authorDetails.email === 'string' 
+      ? authorDetails.email.toLowerCase() 
+      : String(authorDetails.email || '').toLowerCase();
+    
+    if (email.includes('.edu') || email.includes('.gov') || email.includes('.org')) {
+      score += 0.2;
+    }
   }
   
-  // Check if author is from a prestigious institution
-  if (authorDetails.affiliation) {
-    const affiliationLower = authorDetails.affiliation.toLowerCase();
+  // Check for author verification on the platform
+  if (authorDetails.verified) {
+    score += 0.2;
+  }
+  
+  // Check if author is affiliated with the source
+  if (sourceName && authorDetails.affiliation) {
+    // Ensure affiliation is a string
+    const affiliation = typeof authorDetails.affiliation === 'string' 
+      ? authorDetails.affiliation.toLowerCase() 
+      : String(authorDetails.affiliation || '').toLowerCase();
     
-    if (PRESTIGIOUS_INSTITUTIONS.some(institution => affiliationLower.includes(institution))) {
-      score += 0.15;
-    } else if (RESEARCH_ORGANIZATIONS.some(org => affiliationLower.includes(org))) {
+    if (sourceName.includes(affiliation) || affiliation.includes(sourceName)) {
       score += 0.1;
     }
   }
   
-  // Check for verified profiles
-  if (authorDetails.profiles) {
-    // Check for academic profiles
-    if (authorDetails.profiles.some(profile => 
-        /scholar\.google|orcid\.org|researchgate|academia\.edu|publons/i.test(profile))) {
-      score += 0.1;
-    }
-    
-    // Check for verified social/professional profiles
-    if (authorDetails.profiles.some(profile => 
-        /linkedin\.com|twitter\.com.*verified|github\.com/i.test(profile))) {
-      score += 0.05;
+  // Check for social media verification
+  if (authorDetails.socialProfiles) {
+    const verifiedProfiles = authorDetails.socialProfiles.filter(profile => profile.verified).length;
+    if (verifiedProfiles > 0) {
+      score += Math.min(verifiedProfiles * 0.05, 0.15);
     }
   }
   
-  // Check if author has published multiple works
-  if (authorDetails.publicationCount && authorDetails.publicationCount > 5) {
-    score += 0.05;
-  }
-  
-  return Math.min(score, 1.0);
+  // Normalize score to 0-1 range
+  return Math.min(Math.max(score, 0), 1);
 };
 
 /**
@@ -356,7 +377,8 @@ const assessInstitutionalAffiliation = (result) => {
   
   // Check for institutional affiliation in content
   if (result.content) {
-    const contentLower = result.content.toLowerCase();
+    // Ensure content is a string before calling toLowerCase
+    const contentLower = typeof result.content === 'string' ? result.content.toLowerCase() : String(result.content).toLowerCase();
     
     // Check for prestigious academic institutions
     if (PRESTIGIOUS_INSTITUTIONS.some(institution => contentLower.includes(institution))) {
@@ -381,7 +403,8 @@ const assessInstitutionalAffiliation = (result) => {
   
   // Check source domain for institutional affiliation
   if (result.source) {
-    const sourceLower = result.source.toLowerCase();
+    // Ensure source is a string before calling toLowerCase
+    const sourceLower = typeof result.source === 'string' ? result.source.toLowerCase() : String(result.source).toLowerCase();
     
     if (/\.edu$|\.gov$|\.org$|\.ac\.[a-z]{2}$/i.test(sourceLower)) {
       score += 0.1;
@@ -400,7 +423,8 @@ const assessTransparency = (result) => {
   let score = 0.5;
   
   if (result.content) {
-    const contentLower = result.content.toLowerCase();
+    // Ensure content is a string before calling toLowerCase
+    const contentLower = typeof result.content === 'string' ? result.content.toLowerCase() : String(result.content).toLowerCase();
     
     // Check for methodology descriptions
     if (/methodology|methods|data collection|research design|study design|approach|procedure/i.test(contentLower)) {
@@ -445,7 +469,9 @@ const isHighQualitySource = (source) => {
     'cambridge', 'princeton', 'yale', 'columbia', 'chicago', 'caltech'
   ];
   
-  const sourceLower = source.toLowerCase();
+  // Ensure source is a string before calling toLowerCase
+  const sourceLower = typeof source === 'string' ? source.toLowerCase() : String(source).toLowerCase();
+  
   return highQualitySources.some(quality => sourceLower.includes(quality));
 };
 
@@ -463,8 +489,11 @@ const isModerateQualitySource = (source) => {
     'mdpi', 'hindawi', 'taylor & francis', 'emerald', 'bmc'
   ];
   
-  const sourceLower = source.toLowerCase();
+  // Ensure source is a string before calling toLowerCase
+  const sourceLower = typeof source === 'string' ? source.toLowerCase() : String(source).toLowerCase();
+  
   return moderateQualitySources.some(quality => sourceLower.includes(quality));
 };
 
+export const calculateCredibility = calculateCredibilityScore;
 export default calculateCredibilityScore;

@@ -51,7 +51,7 @@ const OpenResearchPanel = ({
 
   // Log source changes for debugging
   useEffect(() => {
-    console.log('Selected sources updated:', selectedSources);
+    // Removed console.log statement
   }, [selectedSources]);
 
   // Add upload option to source types

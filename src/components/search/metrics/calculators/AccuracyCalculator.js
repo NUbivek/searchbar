@@ -17,9 +17,7 @@
  */
 
 import { 
-  containsNumbers, 
-  containsDates, 
-  containsSpecificDetails, 
+  containsSpecificDetails,
   containsPreciseData,
   normalizeScore,
   matchesDomain
@@ -27,9 +25,12 @@ import {
 
 import {
   DISPLAY_THRESHOLD,
-  SOURCE_CATEGORIES,
   FACT_CHECKING_SOURCES
-} from '../../utils/calculatorData';
+} from '../data/accuracyData';
+
+import {
+  SOURCE_CATEGORIES
+} from '../utils/calculatorData';
 
 // Constants for weighting different factors
 const WEIGHTS = {
@@ -42,85 +43,61 @@ const WEIGHTS = {
 // Minimum threshold for accuracy score (70%)
 const ACCURACY_THRESHOLD = DISPLAY_THRESHOLD;
 
-// Source categorization by reliability
-const SOURCE_CATEGORIES = SOURCE_CATEGORIES;
-
-// Fact-checking organizations and their domains
-const FACT_CHECKING_SOURCES = FACT_CHECKING_SOURCES;
-
 /**
  * Calculate the accuracy score for a search result
- * @param {Object} result - The search result object
- * @param {Object} options - Additional options for calculation
+ * @param {Object} result - Search result to calculate accuracy for
+ * @param {Array} allResults - All search results for cross-reference
  * @returns {number} - Accuracy score (0-100)
  */
 export const calculateAccuracyScore = (result, options = {}) => {
-  if (!result) {
-    return 0;
-  }
+  if (!result) return 0;
   
-  // Calculate data verification score
-  const dataVerificationScore = calculateDataVerificationScore(result, options);
+  // Initialize scores for each factor
+  let dataVerificationScore = calculateDataVerificationScore(result);
+  let sourceReliabilityScore = calculateSourceReliabilityScore(result, options);
+  let factualConsistencyScore = calculateFactualConsistencyScore(result, options);
+  let externalValidationScore = calculateExternalValidationScore(result, options);
   
-  // Calculate source reliability score
-  const sourceReliabilityScore = calculateSourceReliabilityScore(result.source, options);
-  
-  // Calculate factual consistency score
-  const factualConsistencyScore = calculateFactualConsistencyScore(result, options);
-  
-  // Calculate external validation score (new)
-  const externalValidationScore = calculateExternalValidationScore(result, options);
-  
-  // Calculate weighted average
-  const weightedScore = 
+  // Apply weights to each factor
+  const weightedScore = (
     (dataVerificationScore * WEIGHTS.DATA_VERIFICATION) +
     (sourceReliabilityScore * WEIGHTS.SOURCE_RELIABILITY) +
     (factualConsistencyScore * WEIGHTS.FACTUAL_CONSISTENCY) +
-    (externalValidationScore * WEIGHTS.EXTERNAL_VALIDATION);
+    (externalValidationScore * WEIGHTS.EXTERNAL_VALIDATION)
+  );
   
-  // Convert to percentage and round to nearest integer
+  // Convert to 0-100 scale
   const finalScore = Math.round(weightedScore * 100);
   
-  // Ensure score is at least at the threshold for displayed results
-  return Math.max(finalScore, ACCURACY_THRESHOLD);
+  // Apply threshold
+  return finalScore < ACCURACY_THRESHOLD ? ACCURACY_THRESHOLD : finalScore;
 };
 
 /**
- * Calculate data verification score based on various factors
- * @param {Object} result - The search result
- * @param {Object} options - Additional options
+ * Calculate data verification score based on verifiable data points
+ * @param {Object} result - Search result to calculate score for
  * @returns {number} - Score between 0-1
  */
-const calculateDataVerificationScore = (result, options) => {
-  let score = 0.5; // Start with a baseline score
+const calculateDataVerificationScore = (result) => {
+  let score = 0.5; // Base score
   
-  // Factor 1: Contains verifiable data points (numbers, statistics, dates)
-  const hasVerifiableData = result.content && 
-    (containsNumbers(result.content) || containsDates(result.content));
-  if (hasVerifiableData) {
+  // Factor 1: Contains numbers or statistics
+  if (result.content) {
+    if (/\d+([.,]\d+)?%?/.test(result.content)) {
+      score += 0.1;
+    }
+  }
+  
+  // Factor 2: Contains dates
+  if (result.content) {
+    if (/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{1,2},? \d{4}\b|\b\d{4}\b|\b(yesterday|today|last week|last month|last year)\b/i.test(result.content)) {
+      score += 0.1;
+    }
+  }
+  
+  // Factor 3: Contains citations or references
+  if (result.content && /\[\d+\]|\(\d{4}\)|\bcited\b|\breference\b/i.test(result.content)) {
     score += 0.1;
-  }
-  
-  // Factor 2: Data recency (if applicable)
-  if (result.timestamp || result.date) {
-    const dataDate = new Date(result.timestamp || result.date);
-    const now = new Date();
-    const ageInMonths = (now - dataDate) / (1000 * 60 * 60 * 24 * 30);
-    
-    // More granular recency scoring
-    if (ageInMonths < 1) score += 0.15;
-    else if (ageInMonths < 3) score += 0.10;
-    else if (ageInMonths < 6) score += 0.05;
-    else if (ageInMonths < 12) score += 0.02;
-  }
-  
-  // Factor 3: Cross-referenced with other sources (if available)
-  if (options.crossReferencedSources) {
-    const crossRefCount = typeof options.crossReferencedSources === 'number' 
-      ? options.crossReferencedSources 
-      : options.crossReferencedSources.length || 0;
-    
-    score += Math.min(crossRefCount * 0.05, 0.15);
   }
   
   // Factor 4: Contains specific details and precision
@@ -128,27 +105,22 @@ const calculateDataVerificationScore = (result, options) => {
     if (containsSpecificDetails(result.content)) {
       score += 0.05;
     }
-    
-    // Check for data precision (e.g., exact numbers vs. rounded)
     if (containsPreciseData(result.content)) {
       score += 0.05;
     }
   }
   
   // Factor 5: Data is from primary research or official reports
-  if (result.dataSource) {
-    const isPrimarySource = isPrimaryDataSource(result.dataSource);
-    if (isPrimarySource) {
-      score += 0.1;
-    }
+  if (result.source && isPrimaryDataSource(result.source)) {
+    score += 0.1;
   }
   
-  // Cap at 1.0
-  return Math.min(score, 1.0);
+  // Normalize score to 0-1 range
+  return normalizeScore(score);
 };
 
 /**
- * Calculate source reliability score with enhanced categorization
+ * Calculate source reliability score
  * @param {string} source - The source of the result
  * @param {Object} options - Additional options
  * @returns {number} - Score between 0-1
@@ -156,7 +128,8 @@ const calculateDataVerificationScore = (result, options) => {
 const calculateSourceReliabilityScore = (source, options = {}) => {
   if (!source) return 0.5; // Default middle score if no source
   
-  const sourceLower = source.toLowerCase();
+  // Ensure source is a string before calling toLowerCase
+  const sourceLower = typeof source === 'string' ? source.toLowerCase() : String(source).toLowerCase();
   
   // Check for verified badge or official status
   if (options.isVerified || options.isOfficial) {
@@ -206,7 +179,7 @@ const calculateSourceReliabilityScore = (source, options = {}) => {
 };
 
 /**
- * Calculate factual consistency score with enhanced factors
+ * Calculate factual consistency score
  * @param {Object} result - The search result
  * @param {Object} options - Additional options
  * @returns {number} - Score between 0-1
@@ -253,7 +226,7 @@ const calculateFactualConsistencyScore = (result, options) => {
 };
 
 /**
- * Calculate external validation score based on fact-checking and cross-referencing
+ * Calculate external validation score
  * @param {Object} result - The search result
  * @param {Object} options - Additional options
  * @returns {number} - Score between 0-1
@@ -285,7 +258,7 @@ const calculateExternalValidationScore = (result, options = {}) => {
 };
 
 /**
- * Calculate fact-check score based on known fact-checking sources
+ * Calculate fact-check score
  * @param {Object} result - The search result
  * @returns {number} - Score between 0-1
  */
@@ -295,7 +268,7 @@ const calculateFactCheckScore = (result) => {
   
   // Check if the source itself is a fact-checking organization
   if (result.source) {
-    const sourceLower = result.source.toLowerCase();
+    const sourceLower = typeof result.source === 'string' ? result.source.toLowerCase() : String(result.source).toLowerCase();
     if (FACT_CHECKING_SOURCES.some(factChecker => sourceLower.includes(factChecker))) {
       score = 0.9; // High score for fact-checking sources
     }
@@ -325,7 +298,7 @@ const calculateFactCheckScore = (result) => {
 };
 
 /**
- * Validate citations for accuracy and verifiability
+ * Validate citations
  * @param {Array} citations - List of citations
  * @returns {number} - Score between 0-1
  */
@@ -340,7 +313,7 @@ const validateCitations = (citations) => {
     
     // Check if citation has a verifiable source
     if (citation.source) {
-      const sourceLower = citation.source.toLowerCase();
+      const sourceLower = typeof citation.source === 'string' ? citation.source.toLowerCase() : String(citation.source).toLowerCase();
       
       // Higher score for academic or institutional sources
       if (/\.edu|\.gov|\.org/.test(sourceLower)) {
@@ -541,71 +514,26 @@ const assessStatisticalSignificance = (content) => {
 // Helper functions
 
 /**
- * Check if text contains numbers or statistics
- * @param {string} text - Text to analyze
- * @returns {boolean} - Whether text contains numbers
- */
-const containsNumbers = (text) => {
-  return /\d+([.,]\d+)?%?/.test(text);
-};
-
-/**
- * Check if text contains dates
- * @param {string} text - Text to analyze
- * @returns {boolean} - Whether text contains dates
- */
-const containsDates = (text) => {
-  // Enhanced date pattern detection
-  return /\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]* \d{1,2},? \d{4}\b|\b\d{4}\b|\b(yesterday|today|last week|last month|last year)\b/i.test(text);
-};
-
-/**
  * Check if text contains contradictions
  * @param {string} text - Text to analyze
  * @returns {boolean} - Whether text contains contradictions
  */
 const containsContradictions = (text) => {
-  // Simple contradiction detection based on common patterns
-  // In a real implementation, this would use more sophisticated NLP
+  // Look for contradictory statements
   const contradictionPatterns = [
-    /but later.*contrary/i,
-    /initially.*however/i,
-    /claimed.*false/i,
-    /reported.*incorrect/i,
-    /said.*not true/i,
-    /stated.*contradicted/i,
-    /according to.*but actually/i
+    /\bbut\b.*\bhowever\b/i,
+    /\bnot\b.*\bbut\b/i,
+    /\bcontrary\b/i,
+    /\bcontradict\b/i,
+    /\boppose\b/i,
+    /\bdespite\b/i,
+    /\balthough\b/i,
+    /\bwhile\b.*\bin contrast\b/i,
+    /\bon the other hand\b/i,
+    /\bnevertheless\b/i
   ];
   
   return contradictionPatterns.some(pattern => pattern.test(text));
-};
-
-/**
- * Check if text contains specific details
- * @param {string} text - Text to analyze
- * @returns {boolean} - Whether text contains specific details
- */
-const containsSpecificDetails = (text) => {
-  // Look for specific details like names, locations, exact measurements
-  const specificDetailPatterns = [
-    /\b[A-Z][a-z]+ [A-Z][a-z]+\b/, // Names (simple pattern)
-    /\$\d+([.,]\d+)?( million| billion)?/, // Dollar amounts
-    /\d+([.,]\d+)? (percent|%)/, // Percentages
-    /\d+([.,]\d+)? (kg|mg|g|lb|oz|km|mi|m|ft|in)/, // Measurements
-    /\b[A-Z][a-z]+(, [A-Z][a-z]+)?\b/ // Proper nouns
-  ];
-  
-  return specificDetailPatterns.some(pattern => pattern.test(text));
-};
-
-/**
- * Check if text contains precise data
- * @param {string} text - Text to analyze
- * @returns {boolean} - Whether text contains precise data
- */
-const containsPreciseData = (text) => {
-  // Look for precise numbers (with decimal points)
-  return /\d+\.\d+/.test(text);
 };
 
 /**
@@ -616,23 +544,18 @@ const containsPreciseData = (text) => {
 const isPrimaryDataSource = (source) => {
   if (!source) return false;
   
-  const primarySourcePatterns = [
-    /official report/i,
-    /primary research/i,
-    /original data/i,
-    /survey results/i,
-    /clinical trial/i,
-    /financial statement/i,
-    /earnings report/i,
-    /quarterly report/i,
-    /annual report/i,
-    /10-K/i,
-    /10-Q/i,
-    /press release/i,
-    /white paper/i
+  // Check if source is a government or educational institution
+  if (/\.gov|\.edu|\.org/.test(source)) {
+    return true;
+  }
+  
+  // Check if source is a known primary research institution
+  const primarySources = [
+    'research', 'study', 'report', 'data', 'statistics',
+    'survey', 'analysis', 'findings', 'results', 'publication'
   ];
   
-  return primarySourcePatterns.some(pattern => pattern.test(source));
+  return primarySources.some(term => source.toLowerCase().includes(term));
 };
 
 /**
@@ -653,7 +576,7 @@ const assessCitationQuality = (citations) => {
     const source = typeof citation === 'string' ? citation : citation.source;
     if (!source) continue;
     
-    const sourceLower = source.toLowerCase();
+    const sourceLower = typeof source === 'string' ? source.toLowerCase() : String(source).toLowerCase();
     
     // Check against highly reliable sources
     if (SOURCE_CATEGORIES.HIGHLY_RELIABLE.some(reliable => sourceLower.includes(reliable))) {
@@ -695,4 +618,5 @@ const containsNuancedLanguage = (text) => {
   return nuancePatterns.some(pattern => pattern.test(text));
 };
 
+export const calculateAccuracy = calculateAccuracyScore;
 export default calculateAccuracyScore;

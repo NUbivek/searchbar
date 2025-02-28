@@ -18,14 +18,6 @@ export default async function handler(req, res) {
   try {
     const { query, model, customMode, customUrls, uploadedFiles } = req.body;
     
-    console.log('Request parameters:', {
-      query,
-      model,
-      customMode,
-      hasCustomUrls: !!customUrls?.length,
-      hasUploadedFiles: !!uploadedFiles?.length
-    });
-
     if (!query) {
       return res.status(400).json({ error: 'Query is required' });
     }
@@ -35,11 +27,6 @@ export default async function handler(req, res) {
       mode: customMode,
       customUrls: customUrls || [],
       uploadedFiles: uploadedFiles || []
-    });
-
-    console.log('Search completed with results:', {
-      hasResults: !!results,
-      resultCount: results?.sources?.length
     });
 
     return res.status(200).json(results);

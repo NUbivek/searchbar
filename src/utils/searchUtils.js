@@ -1,8 +1,16 @@
-const { logger } = require('./logger');
-const { searchWeb } = require('./deepWebSearch');
+import { debug, info, error, warn } from './logger';
+const { deepWebSearch } = require('./deepWebSearch');
 const { sourceHandlers, performSearch: sourcePerformSearch } = require('./sourceIntegration');
 const axios = require('axios');
 const { SearchModes, SourceTypes } = require('./constants');
+
+// Create a logger object for compatibility
+const log = {
+  debug,
+  info,
+  error,
+  warn
+};
 
 // Constants for verified sources
 const VERIFIED_SOURCES = {
@@ -74,7 +82,7 @@ async function processResults(query, results, model = 'mixtral-8x7b', context = 
       sourceMap: response.data.sourceMap || {}
     };
   } catch (error) {
-    logger.error('LLM processing error:', error);
+    log.error('LLM processing error:', error);
     // Return a fallback response
     return {
       content: `Found ${results.length} results for "${query}". Unable to generate summary.`,
@@ -90,7 +98,7 @@ async function performVerifiedSearch(query, options = {}) {
     const results = await sourceHandlers.verified(query, options);
     return results;
   } catch (error) {
-    logger.error('Error in performVerifiedSearch:', error);
+    log.error('Error in performVerifiedSearch:', error);
     throw error;
   }
 }
@@ -107,7 +115,7 @@ async function performSearch(query, sources, options = {}) {
     
     // Check if we're using verified sources
     if (normalizedSources.includes('verified')) {
-      logger.info('Performing verified search with query:', query);
+      log.info('Performing verified search with query:', query);
       return await performVerifiedSearch(query, options);
     }
     
@@ -121,18 +129,18 @@ async function performSearch(query, sources, options = {}) {
             results.push(...sourceResults);
           }
         } catch (error) {
-          logger.error(`Error searching ${source}:`, error);
+          log.error(`Error searching ${source}:`, error);
           // Continue with other sources even if one fails
         }
       } else {
-        logger.warn(`No handler found for source: ${source}`);
+        log.warn(`No handler found for source: ${source}`);
       }
     });
     
     await Promise.all(promises);
     return results;
   } catch (error) {
-    logger.error('Error in performSearch:', error);
+    log.error('Error in performSearch:', error);
     throw error;
   }
 }
@@ -147,7 +155,7 @@ async function handleCustomSources(query, customUrls = [], files = []) {
       const urlResults = await sourceHandlers.custom(query, customUrls);
       results.push(...urlResults);
     } catch (error) {
-      logger.error(`Error processing custom URLs:`, error);
+      log.error(`Error processing custom URLs:`, error);
     }
   }
 
@@ -157,7 +165,7 @@ async function handleCustomSources(query, customUrls = [], files = []) {
       const fileResults = await sourceHandlers.file(query, files);
       results.push(...fileResults);
     } catch (error) {
-      logger.error(`Error processing files:`, error);
+      log.error(`Error processing files:`, error);
     }
   }
 
@@ -173,11 +181,11 @@ async function searchOpenSources(query, selectedSources = []) {
     const searchPromises = selectedSources.map(source => {
       const handler = sourceHandlers[source.toLowerCase()];
       if (!handler) {
-        logger.warn(`No handler found for source: ${source}`);
+        log.warn(`No handler found for source: ${source}`);
         return Promise.resolve([]);
       }
       return handler(query).catch(error => {
-        logger.error(`Error searching ${source}:`, error);
+        log.error(`Error searching ${source}:`, error);
         return [];
       });
     });
@@ -206,7 +214,7 @@ async function searchOpenSources(query, selectedSources = []) {
     const summary = await processResults(query, validResults);
     return { summary, results: validResults };
   } catch (error) {
-    logger.error('Open search error:', error);
+    log.error('Open search error:', error);
     throw error;
   }
 }
@@ -240,7 +248,7 @@ async function searchVerifiedSources(query, options = {}) {
     const searchPromises = sources.map(source => 
       sourceHandlers.custom({ url: source.url, query })
         .catch(error => {
-          logger.error(`Error searching ${source.name}:`, error);
+          log.error(`Error searching ${source.name}:`, error);
           return [];
         })
     );
@@ -269,7 +277,7 @@ async function searchVerifiedSources(query, options = {}) {
     const summary = await processResults(query, validResults, model, context);
     return { summary, results: validResults };
   } catch (error) {
-    logger.error('Verified search error:', error);
+    log.error('Verified search error:', error);
     throw error;
   }
 }
@@ -300,13 +308,13 @@ async function performSimpleSearch(query, sources = ['web'], options = {}) {
         const customResults = await handleCustomSources(query, customUrls || [], uploadedFiles || []);
         results = [...results, ...customResults];
       } catch (customError) {
-        logger.error('Error processing custom sources:', customError);
+        log.error('Error processing custom sources:', customError);
       }
     }
 
     return results;
   } catch (error) {
-    logger.error('Error in performSimpleSearch:', error);
+    log.error('Error in performSimpleSearch:', error);
     return [];
   }
 }
@@ -337,13 +345,13 @@ async function performSimpleVerifiedSearch(query, sources = ['fmp', 'sec'], opti
         const customResults = await handleCustomSources(query, customUrls || [], uploadedFiles || []);
         results = [...results, ...customResults];
       } catch (customError) {
-        logger.error('Error processing custom sources:', customError);
+        log.error('Error processing custom sources:', customError);
       }
     }
 
     return results;
   } catch (error) {
-    logger.error('Error in performSimpleVerifiedSearch:', error);
+    log.error('Error in performSimpleVerifiedSearch:', error);
     return [];
   }
 }

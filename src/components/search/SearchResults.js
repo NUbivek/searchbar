@@ -21,20 +21,6 @@ export default function SearchResults({ results, onFollowUpSearch, isLoading, er
     }
   }, [results]);
   
-  // Debug log
-  useEffect(() => {
-    console.log("SearchResults component received:", { 
-      resultsCount: resultsArray.length, 
-      query: query || 'No query provided',
-      isLoading,
-      error: error || 'No error',
-      hasSynthesizedAnswer: hasSynthesizedAnswer(),
-      resultsStructure: JSON.stringify(resultsArray.slice(0, 2)).substring(0, 500) + '...',
-      resultsType: Array.isArray(resultsArray) ? 'array' : typeof resultsArray,
-      firstItemProperties: resultsArray.length > 0 ? Object.keys(resultsArray[0] || {}) : []
-    });
-  }, [results, query, isLoading, error]);
-  
   // No results case
   if (!resultsArray || resultsArray.length === 0) {
     return (
@@ -168,9 +154,6 @@ export default function SearchResults({ results, onFollowUpSearch, isLoading, er
     );
   };
 
-  // Debug log for LLMResults
-  console.log("About to render LLMResults with query:", query);
-
   return (
     <div 
       ref={resultsContainerRef}
@@ -185,22 +168,6 @@ export default function SearchResults({ results, onFollowUpSearch, isLoading, er
               results={resultsArray} 
               query={query} 
             />
-            
-            {/* Debug information */}
-            <div style={{
-              padding: '10px',
-              margin: '10px 0',
-              backgroundColor: '#f3f4f6',
-              border: '1px solid #d1d5db',
-              borderRadius: '4px',
-              fontSize: '12px'
-            }}>
-              <p>SearchResults Debug:</p>
-              <p>Results Array Length: {resultsArray.length}</p>
-              <p>Query: {query}</p>
-              <p>Results Type: {Array.isArray(resultsArray) ? 'array' : typeof resultsArray}</p>
-              <p>First Item Type: {resultsArray.length > 0 ? (resultsArray[0].type || 'unknown') : 'N/A'}</p>
-            </div>
             
             {/* Traditional Web Results */}
             {getTraditionalResults().length > 0 && (

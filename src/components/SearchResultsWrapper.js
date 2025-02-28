@@ -6,9 +6,6 @@ import SearchResults from './search/SearchResults';
  * This component specifically handles the chat history format from VerifiedSearch
  */
 export default function SearchResultsWrapper({ results, onFollowUpSearch, isLoading, error, query = '' }) {
-  // Debug log
-  console.log("SearchResultsWrapper received:", { results, query });
-  
   // If no results, pass through
   if (!results || results.length === 0) {
     return <SearchResults results={[]} onFollowUpSearch={onFollowUpSearch} isLoading={isLoading} error={error} query={query} />;

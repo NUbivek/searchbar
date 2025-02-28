@@ -2,156 +2,189 @@ import axios from 'axios';
 import { load } from 'cheerio';
 import { logger } from './logger';
 
-export async function searchWeb(query, options = {}) {
-  const {
-    numResults = 10,
-    includeKnowledgeGraph = true,
-    includeAnswerBox = true
+// Enhanced Serper API search with retry logic
+export async function deepWebSearch(query, options = {}) {
+  const { 
+    maxResults = 10, 
+    maxRetries = 3, 
+    initialBackoff = 1000, // 1 second
+    apiKey = process.env.SERPER_API_KEY 
   } = options;
 
-  const SERPER_API_KEY = process.env.SERPER_API_KEY;
-  if (!SERPER_API_KEY) {
-    throw new Error('SERPER_API_KEY environment variable is not set');
+  // Validate inputs
+  if (!query) {
+    console.error('ERROR: No query provided for deep web search');
+    throw new Error('Search query is required');
   }
 
-  try {
-    const response = await axios.post('https://google.serper.dev/search', 
-      { 
-        q: query,
-        num: numResults,
-        gl: 'us',
-        hl: 'en'
-      },
-      { 
-        headers: { 
-          'X-API-KEY': SERPER_API_KEY,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    if (!response.data) {
-      logger.error(`Serper API error: No data in response`);
-      return [];
-    }
-
-    const data = response.data;
-    const results = [];
-
-    // Process organic results
-    if (data.organic) {
-      results.push(...data.organic.map(result => ({
-        title: result.title,
-        content: result.snippet,
-        url: result.link,
-        source: 'Web',
-        type: 'WebResult',
-        timestamp: new Date().toISOString()
-      })));
-    }
-
-    // Process knowledge graph if present and requested
-    if (includeKnowledgeGraph && data.knowledgeGraph) {
-      results.push({
-        title: data.knowledgeGraph.title || 'Knowledge Graph',
-        content: data.knowledgeGraph.description || '',
-        url: data.knowledgeGraph.link || '#',
-        source: 'Web',
-        type: 'KnowledgeGraph',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // Process answer box if present and requested
-    if (includeAnswerBox && data.answerBox) {
-      results.push({
-        title: data.answerBox.title || 'Featured Snippet',
-        content: data.answerBox.snippet || data.answerBox.answer || '',
-        url: data.answerBox.link || '#',
-        source: 'Web',
-        type: 'AnswerBox',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // Filter out any results without content
-    return results.filter(r => r.content && r.content.trim() !== '');
-
-  } catch (error) {
-    logger.error('Web search error:', error);
-    return [];
+  if (!apiKey) {
+    console.error('ERROR: No API key provided for Serper API');
+    throw new Error('Serper API key is required');
   }
-}
 
-async function enrichResults(results) {
-  return Promise.all(results.map(async result => {
+  console.log(`DEBUG: Starting deep web search for query: "${query}"`);
+  
+  // Initialize retry counter and backoff time
+  let retries = 0;
+  let backoffTime = initialBackoff;
+  
+  while (retries <= maxRetries) {
     try {
-      if (!result.url || result.url === '#') return result;
-
-      const response = await axios.get(result.url);
-      const $ = load(response.data);
-
-      // Extract full content
-      const fullContent = $('body').text().trim();
+      console.log(`DEBUG: Attempt ${retries + 1}/${maxRetries + 1} for Serper API search`);
       
-      // Extract metadata
-      const metadata = {
-        description: $('meta[name="description"]').attr('content'),
-        keywords: $('meta[name="keywords"]').attr('content'),
-        author: $('meta[name="author"]').attr('content')
-      };
-
-      return {
-        ...result,
-        fullContent,
-        metadata,
-        enriched: true
-      };
+      // Make the API request
+      const response = await axios.post('https://google.serper.dev/search', 
+        { 
+          q: query,
+          gl: 'us',
+          hl: 'en',
+          autocorrect: true
+        },
+        { 
+          headers: { 
+            'X-API-KEY': apiKey,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      // Process the response
+      const results = processSerperResponse(response.data, query);
+      console.log(`DEBUG: Successfully retrieved ${results.length} results from Serper API`);
+      
+      return results;
     } catch (error) {
-      return result;
+      retries++;
+      
+      // Log the error with more details
+      console.error(`ERROR: Serper API search failed (attempt ${retries}/${maxRetries + 1}):`, error.message);
+      if (error.response) {
+        console.error(`ERROR: Response status: ${error.response.status}`);
+        console.error(`ERROR: Response data:`, JSON.stringify(error.response.data));
+      }
+      
+      // If we've reached max retries, throw the error
+      if (retries > maxRetries) {
+        console.error('ERROR: Max retries reached for Serper API search');
+        throw new Error(`Web search failed after ${maxRetries + 1} attempts: ${error.message}`);
+      }
+      
+      // Otherwise, wait and retry with exponential backoff
+      console.log(`DEBUG: Retrying in ${backoffTime}ms...`);
+      await new Promise(resolve => setTimeout(resolve, backoffTime));
+      
+      // Increase backoff time for next retry (exponential backoff)
+      backoffTime *= 2;
     }
-  }));
+  }
 }
 
-function rankAndDeduplicate(results) {
-  // Remove duplicates based on URL
-  const uniqueResults = results.reduce((acc, current) => {
-    const exists = acc.find(item => item.url === current.url);
-    if (!exists) {
-      acc.push(current);
+// Process the Serper API response
+function processSerperResponse(data, originalQuery) {
+  const results = [];
+  
+  try {
+    // Process organic results
+    if (data.organic && Array.isArray(data.organic)) {
+      data.organic.forEach(item => {
+        results.push({
+          title: item.title || 'Untitled',
+          url: item.link || '',
+          snippet: item.snippet || '',
+          source: 'web',
+          type: 'organic',
+          relevanceScore: calculateRelevance(item, originalQuery)
+        });
+      });
     }
-    return acc;
-  }, []);
-
-  // Sort by score
-  return uniqueResults
-    .map(result => ({ ...result, score: calculateScore(result) }))
-    .sort((a, b) => b.score - a.score);
+    
+    // Process knowledge graph if available
+    if (data.knowledgeGraph) {
+      const kg = data.knowledgeGraph;
+      results.push({
+        title: kg.title || 'Knowledge Graph',
+        url: kg.website || '',
+        snippet: kg.description || '',
+        source: 'knowledge_graph',
+        type: 'knowledge_graph',
+        relevanceScore: 0.95 // Knowledge graph is usually highly relevant
+      });
+    }
+    
+    // Process answer box if available
+    if (data.answerBox) {
+      const answer = data.answerBox;
+      results.push({
+        title: answer.title || 'Answer',
+        url: answer.link || '',
+        snippet: answer.answer || answer.snippet || '',
+        source: 'answer_box',
+        type: 'answer_box',
+        relevanceScore: 0.98 // Answer box is usually the most relevant
+      });
+    }
+    
+    // Process related searches if available
+    if (data.relatedSearches && Array.isArray(data.relatedSearches)) {
+      data.relatedSearches.forEach(item => {
+        results.push({
+          title: `Related: ${item.query}`,
+          url: '',
+          snippet: `Related search query: ${item.query}`,
+          source: 'related_search',
+          type: 'related_search',
+          relevanceScore: 0.7
+        });
+      });
+    }
+    
+    // Sort by relevance
+    return results.sort((a, b) => b.relevanceScore - a.relevanceScore);
+  } catch (error) {
+    console.error('ERROR: Failed to process Serper API response:', error);
+    
+    // Return any results we managed to extract before the error
+    if (results.length > 0) {
+      console.log(`DEBUG: Returning ${results.length} partial results despite processing error`);
+      return results;
+    }
+    
+    // If we couldn't extract any results, throw an error
+    throw new Error(`Failed to process search results: ${error.message}`);
+  }
 }
 
-function calculateScore(result) {
-  let score = 0;
+// Calculate relevance score based on result content and query
+function calculateRelevance(result, query) {
+  let score = 0.8; // Base score
   
-  // Base score for verified sources
-  if (result.verified) score += 2;
+  const queryTerms = query.toLowerCase().split(/\s+/);
   
-  // Score for content completeness
-  if (result.fullContent) score += 2;
-  if (result.metadata?.description) score += 1;
-  if (result.metadata?.keywords) score += 1;
-  if (result.metadata?.author) score += 1;
-  
-  // Score for result type
-  switch (result.type) {
-    case 'abstract':
-      score += 3;
-      break;
-    case 'related':
-      score += 1;
-      break;
-    default:
-      break;
+  // Check title for query terms
+  if (result.title) {
+    const titleLower = result.title.toLowerCase();
+    queryTerms.forEach(term => {
+      if (titleLower.includes(term)) {
+        score += 0.05;
+      }
+    });
   }
   
-  return score;
+  // Check snippet for query terms
+  if (result.snippet) {
+    const snippetLower = result.snippet.toLowerCase();
+    queryTerms.forEach(term => {
+      if (snippetLower.includes(term)) {
+        score += 0.03;
+      }
+    });
+  }
+  
+  // Adjust score based on position (if available)
+  if (result.position) {
+    score -= (result.position * 0.01); // Lower position is better
+  }
+  
+  // Cap the score at 0.99
+  return Math.min(score, 0.99);
 }

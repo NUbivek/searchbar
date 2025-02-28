@@ -1,7 +1,15 @@
 const axios = require('axios');
 const { DATA_PROVIDERS } = require('./dataSources');
-const { logger } = require('./logger');
+import { debug, info, error, warn } from './logger';
 const { withRetry } = require('./errorHandling');
+
+// Create a logger object for compatibility
+const log = {
+  debug,
+  info,
+  error,
+  warn
+};
 
 // Rate limiting utility
 const rateLimiter = new Map();
@@ -57,7 +65,7 @@ const searchFREDData = async (query, options = {}) => {
             url: `https://fred.stlouisfed.org/series/${series.id}`
         }));
     } catch (error) {
-        logger.error('FRED API error:', error);
+        log.error('FRED API error:', error);
         return [];
     }
 };
@@ -67,7 +75,7 @@ const searchTDAmeritrade = async (symbol) => {
     const td = DATA_PROVIDERS.financial_data.tdameritrade;
     
     if (!checkRateLimit(td)) {
-        logger.warn('TD Ameritrade rate limit reached');
+        log.warn('TD Ameritrade rate limit reached');
         return [];
     }
 
@@ -91,7 +99,7 @@ const searchTDAmeritrade = async (symbol) => {
             url: `https://research.tdameritrade.com/grid/public/research/stocks/summary?symbol=${sym}`
         }));
     } catch (error) {
-        logger.error('TD Ameritrade API error:', error);
+        log.error('TD Ameritrade API error:', error);
         return [];
     }
 };
@@ -102,8 +110,8 @@ const getMarketData = async (symbol) => {
     const fmp = DATA_PROVIDERS.financial_data.fmp;
 
     // Debug logging
-    logger.info('FMP API key:', process.env.FMP_API_KEY ? 'Present' : 'Not found');
-    logger.info('Making request to FMP API for symbol:', symbol);
+    log.info('FMP API key:', process.env.FMP_API_KEY ? 'Present' : 'Not found');
+    log.info('Making request to FMP API for symbol:', symbol);
 
     try {
         const url = `${fmp.base_url}${fmp.endpoints.quote.replace('{symbol}', symbol)}`;
@@ -112,14 +120,14 @@ const getMarketData = async (symbol) => {
             apikey: process.env.FMP_API_KEY // Explicitly set API key
         };
 
-        logger.info('FMP API URL:', url);
-        logger.info('FMP API params:', { ...params, apikey: '[REDACTED]' });
+        log.info('FMP API URL:', url);
+        log.info('FMP API params:', { ...params, apikey: '[REDACTED]' });
 
         const response = await withRetry(async () => {
             return await axios.get(url, { params });
         }, 3);
         
-        logger.info('FMP API response:', response.data);
+        log.info('FMP API response:', response.data);
 
         if (response.data?.[0]) {
             results.push({
@@ -134,10 +142,10 @@ const getMarketData = async (symbol) => {
             });
         }
     } catch (error) {
-        logger.error('FMP API error:', error.message);
-        logger.error('FMP API error response:', error.response?.data);
+        log.error('FMP API error:', error.message);
+        log.error('FMP API error response:', error.response?.data);
         if (error.response?.status === 401) {
-            logger.error('Invalid FMP API key');
+            log.error('Invalid FMP API key');
         }
     }
 
@@ -162,7 +170,7 @@ const searchSECFilings = async (query) => {
             url: `https://www.sec.gov/edgar/browse/?CIK=${company.cik}`
         }));
     } catch (error) {
-        logger.error('SEC EDGAR API error:', error);
+        log.error('SEC EDGAR API error:', error);
         return [];
     }
 };
@@ -186,29 +194,34 @@ const searchCensusData = async (query, datasetYear = '2023') => {
             url: result.url
         }));
     } catch (error) {
-        logger.error('Census Bureau API error:', error);
+        log.error('Census Bureau API error:', error);
         return [];
     }
 };
 
 // Combined search function
-const searchGovernmentData = async (query) => {
-    const results = [];
-    
-    // Search SEC EDGAR
-    const secResults = await searchSECFilings(query);
-    results.push(...secResults);
-    
-    // Search Census data
-    const censusResults = await searchCensusData(query);
-    results.push(...censusResults);
-    
-    // Search FRED data
-    const fredResults = await searchFREDData(query);
-    results.push(...fredResults);
-    
-    return results;
-};
+async function searchGovernmentData(query) {
+    try {
+        const [fredResults, secResults, censusResults] = await Promise.all([
+            searchFREDData(query),
+            searchSECFilings(query),
+            searchCensusData(query)
+        ]);
+
+        // Combine all results
+        const results = [
+            ...fredResults,
+            ...secResults,
+            ...censusResults
+        ];
+
+        log.info(`Found ${results.length} government data results for query: ${query}`);
+        return results;
+    } catch (error) {
+        log.error('Government data search error:', error);
+        return [];
+    }
+}
 
 module.exports = {
     searchFREDData,

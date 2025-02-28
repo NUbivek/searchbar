@@ -1,90 +1,86 @@
 import React from 'react';
 
 /**
- * Component for displaying category tabs
+ * CategoryTabs component displays tabs for each category
  * @param {Object} props Component props
- * @param {Array} props.categories Array of category objects
- * @param {string} props.activeCategory ID of the active category
- * @param {Function} props.onTabChange Function to call when tab is changed
- * @returns {JSX.Element} Category tabs component
+ * @param {Array} props.categories List of categories to display
+ * @param {string} props.activeCategory Current active category
+ * @param {Function} props.onCategoryChange Callback when category is selected
+ * @param {string} props.position Position of the tabs (top or bottom)
+ * @returns {JSX.Element} Rendered tabs
  */
-const CategoryTabs = ({ categories, activeCategory, onTabChange }) => {
-  // Debug log
-  console.log("CategoryTabs rendering with:", { 
-    categoriesCount: categories.length, 
-    activeCategory,
-    categoryNames: categories.map(c => c.name),
-    categoryIds: categories.map(c => c.id)
-  });
-
-  // If there's only one category, don't show tabs
-  if (!categories || categories.length <= 1) {
-    console.log("CategoryTabs: Only one or no categories, not rendering tabs");
-    return (
-      <div style={{
-        padding: '10px',
-        margin: '10px 0',
-        backgroundColor: '#ecfdf5',
-        border: '1px solid #6ee7b7',
-        borderRadius: '4px',
-        fontSize: '12px'
-      }}>
-        <p>CategoryTabs Debug:</p>
-        <p>Categories Count: {categories?.length || 0}</p>
-        <p>Active Category: {activeCategory || 'None'}</p>
-        <p>Categories: {categories?.map(c => c.name)?.join(', ') || 'None'}</p>
-      </div>
-    );
+const CategoryTabs = ({ categories, activeCategory, onCategoryChange, position = 'top' }) => {
+  // Ensure categories is always an array
+  const categoriesArray = Array.isArray(categories) ? categories : [];
+  
+  // If no categories, don't render anything
+  if (categoriesArray.length === 0) {
+    return null;
   }
-
-  // Tab styles
-  const tabStyles = {
-    tabsContainer: {
-      display: 'flex',
-      flexWrap: 'wrap',
-      borderBottom: '1px solid #e5e7eb',
-      marginBottom: '16px'
-    },
-    tab: (isActive) => ({
-      padding: '8px 16px',
-      fontSize: '14px',
-      fontWeight: isActive ? '600' : '400',
-      color: isActive ? '#1a56db' : '#4b5563',
-      borderBottom: isActive ? '2px solid #1a56db' : '2px solid transparent',
-      cursor: 'pointer',
-      marginRight: '8px',
-      transition: 'all 0.2s ease'
-    }),
-    tabCount: {
-      fontSize: '12px',
-      color: '#6b7280',
-      marginLeft: '4px',
-      padding: '2px 6px',
-      backgroundColor: '#f3f4f6',
-      borderRadius: '12px'
-    }
+  
+  // Determine if we have a valid active category
+  const hasValidActiveCategory = categoriesArray.some(cat => cat.id === activeCategory);
+  
+  // If no valid active category, use the first one
+  const effectiveActiveCategory = hasValidActiveCategory 
+    ? activeCategory 
+    : (categoriesArray.length > 0 ? categoriesArray[0].id : null);
+  
+  // If still no valid category, don't render anything
+  if (!effectiveActiveCategory) {
+    return null;
+  }
+  
+  // Determine the tab style based on position
+  const tabsStyle = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    listStyle: 'none',
+    padding: 0,
+    margin: position === 'top' ? '0 0 15px 0' : '15px 0 0 0',
+    borderBottom: position === 'top' ? '1px solid #e0e0e0' : 'none',
+    borderTop: position === 'bottom' ? '1px solid #e0e0e0' : 'none',
   };
-
+  
   return (
-    <div style={tabStyles.tabsContainer}>
-      {categories.map((category) => {
-        const isActive = category.id === activeCategory;
-        console.log(`Tab ${category.name}: isActive=${isActive}, id=${category.id}, activeCategory=${activeCategory}`);
-        
-        return (
-          <div
-            key={category.id}
-            style={tabStyles.tab(isActive)}
-            onClick={() => onTabChange(category.id)}
-          >
-            {category.name}
-            {category.count !== undefined && (
-              <span style={tabStyles.tabCount}>{category.count}</span>
-            )}
-          </div>
-        );
-      })}
-    </div>
+    <ul className="category-tabs" style={tabsStyle}>
+      {categoriesArray.map(category => (
+        <li 
+          key={category.id}
+          onClick={() => onCategoryChange(category.id)}
+          style={{
+            padding: '8px 16px',
+            marginRight: '5px',
+            cursor: 'pointer',
+            backgroundColor: category.id === effectiveActiveCategory ? '#f0f0f0' : 'transparent',
+            borderRadius: '4px 4px 0 0',
+            fontWeight: category.id === effectiveActiveCategory ? 'bold' : 'normal',
+            borderBottom: category.id === effectiveActiveCategory && position === 'top' 
+              ? '2px solid #007bff' 
+              : 'none',
+            borderTop: category.id === effectiveActiveCategory && position === 'bottom' 
+              ? '2px solid #007bff' 
+              : 'none',
+            position: 'relative',
+            top: position === 'bottom' ? '1px' : '0',
+          }}
+        >
+          {category.name}
+          {category.content && category.content.length > 0 && (
+            <span style={{ 
+              marginLeft: '5px', 
+              backgroundColor: '#007bff', 
+              color: 'white', 
+              borderRadius: '50%', 
+              padding: '2px 6px',
+              fontSize: '0.75em'
+            }}>
+              {category.content.length}
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 };
 

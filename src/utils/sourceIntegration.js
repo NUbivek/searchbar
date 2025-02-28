@@ -2,7 +2,7 @@ const axios = require('axios');
 const logger = require('./logger');
 const { searchCompany, getFilings } = require('./edgarUtils');
 const { MARKET_DATA_SOURCES, VC_FIRMS } = require('./dataSources');
-const { searchWeb, enrichResults } = require('./deepWebSearch');
+const { deepWebSearch, enrichResults } = require('./deepWebSearch');
 const { 
   VERIFIED_DATA_SOURCES, 
   getVerifiedSourcesByCategory, 

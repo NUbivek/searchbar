@@ -1,7 +1,7 @@
-import { logger } from './logger';
-import { searchWeb } from './deepWebSearch';
-import { SourceTypes } from './constants';
 import axios from 'axios';
+import { deepWebSearch } from './deepWebSearch';
+import { debug, info, error, warn } from './logger';
+import { SourceTypes } from './constants';
 
 const searchWithSerper = async (query, domain, searchId) => {
   const apiKey = process.env.SERPER_API_KEY;
@@ -38,7 +38,7 @@ const searchWithSerper = async (query, domain, searchId) => {
         title: result.title
       }));
   } catch (error) {
-    logger.error(`[${searchId}] Serper API error for ${domain}:`, error.message);
+    error(`[${searchId}] Serper API error for ${domain}:`, error.message);
     return [{
       source: domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1),
       type: 'SearchError',
@@ -50,7 +50,7 @@ const searchWithSerper = async (query, domain, searchId) => {
 };
 
 export async function searchOpenSources(query, sources = [SourceTypes.WEB], searchId = Math.random().toString(36).substring(7)) {
-  logger.debug(`[${searchId}] Starting open search`, { query, sources });
+  debug(`[${searchId}] Starting open search`, { query, sources });
 
   try {
     const results = [];
@@ -62,7 +62,11 @@ export async function searchOpenSources(query, sources = [SourceTypes.WEB], sear
 
         switch (source) {
           case 'Web':
-            sourceResults = await searchWeb(query, searchId);
+            // If no results from custom sources, try web search as fallback
+            if (sourceResults.length === 0) {
+              debug(`No results from ${source}, falling back to web search...`);
+              sourceResults = await deepWebSearch(query, searchId);
+            }
             break;
 
           case SourceTypes.LINKEDIN:
@@ -94,7 +98,7 @@ export async function searchOpenSources(query, sources = [SourceTypes.WEB], sear
             break;
 
           default:
-            logger.warn(`[${searchId}] Unsupported source type: ${source}`);
+            warn(`[${searchId}] Unsupported source type: ${source}`);
             return;
         }
 
@@ -102,7 +106,7 @@ export async function searchOpenSources(query, sources = [SourceTypes.WEB], sear
           results.push(...sourceResults);
         }
       } catch (error) {
-        logger.error(`[${searchId}] Error searching ${source}:`, error.message);
+        error(`[${searchId}] Error searching ${source}:`, error.message);
         results.push({
           source,
           type: 'SearchError',
@@ -116,7 +120,7 @@ export async function searchOpenSources(query, sources = [SourceTypes.WEB], sear
     // Wait for all searches to complete
     await Promise.all(searchPromises);
 
-    logger.debug(`[${searchId}] Open search completed`, { 
+    debug(`[${searchId}] Open search completed`, { 
       resultsCount: results.length,
       sources: sources.join(', ')
     });
@@ -124,7 +128,7 @@ export async function searchOpenSources(query, sources = [SourceTypes.WEB], sear
     return results;
 
   } catch (error) {
-    logger.error(`[${searchId}] Open search error:`, error.message);
+    error(`[${searchId}] Open search error:`, error.message);
     throw error;
   }
 }

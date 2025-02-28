@@ -9,16 +9,39 @@ import {
   containsDates, 
   containsSpecificDetails, 
   containsPreciseData,
-  calculateRecencyScore as utilsCalculateRecencyScore,
   matchesDomain,
   normalizeScore
 } from '../../utils/calculatorUtils';
 
 import {
   DISPLAY_THRESHOLD,
-  TOPIC_CATEGORIES,
-  DOMAIN_SPECIFIC_SOURCES
+  TOPIC_CATEGORIES
 } from '../../utils/calculatorData';
+
+// Define domain specific sources since they're not in calculatorData
+const DOMAIN_SPECIFIC_SOURCES = {
+  'finance': ['bloomberg.com', 'wsj.com', 'ft.com', 'cnbc.com', 'reuters.com'],
+  'tech': ['techcrunch.com', 'wired.com', 'theverge.com', 'cnet.com', 'arstechnica.com'],
+  'business': ['hbr.org', 'forbes.com', 'inc.com', 'entrepreneur.com', 'businessinsider.com']
+};
+
+// Define recency score calculation function
+const calculateRecencyScore = (date) => {
+  if (!date) return 0.5; // Default score if no date
+  
+  const now = new Date();
+  const pubDate = new Date(date);
+  const diffInDays = Math.floor((now - pubDate) / (1000 * 60 * 60 * 24));
+  
+  if (diffInDays < 7) return 1.0;       // Within a week
+  if (diffInDays < 30) return 0.9;      // Within a month
+  if (diffInDays < 90) return 0.8;      // Within 3 months
+  if (diffInDays < 180) return 0.7;     // Within 6 months
+  if (diffInDays < 365) return 0.6;     // Within a year
+  if (diffInDays < 730) return 0.4;     // Within 2 years
+  if (diffInDays < 1095) return 0.3;    // Within 3 years
+  return 0.2;                           // Older than 3 years
+};
 
 // Constants for weighting different factors
 const WEIGHTS = {
@@ -28,14 +51,8 @@ const WEIGHTS = {
   DOMAIN_RELEVANCE: 0.10, // New factor for domain-specific relevance
 };
 
-// Minimum threshold for relevance score (70%)
-const RELEVANCE_THRESHOLD = DISPLAY_THRESHOLD;
-
-// Domain-specific high-value sources
-const DOMAIN_SPECIFIC_SOURCES = DOMAIN_SPECIFIC_SOURCES;
-
-// Topic categories for better matching
-const TOPIC_CATEGORIES = TOPIC_CATEGORIES;
+// Minimum threshold for relevance score (40%)
+const RELEVANCE_THRESHOLD = 0.4; // Lowered from previous value
 
 /**
  * Calculate the relevance score for a search result
@@ -44,38 +61,48 @@ const TOPIC_CATEGORIES = TOPIC_CATEGORIES;
  * @param {Object} options - Additional options for personalization
  * @returns {number} - Relevance score (0-100)
  */
-export const calculateRelevanceScore = (result, query, options = {}) => {
-  if (!result || !query) {
-    return 0;
-  }
-
+const calculateRelevanceScore = (result, query, options = {}) => {
+  if (!result) return 0;
+  
+  // Ensure query is a string
+  const normalizedQuery = typeof query === 'string' ? query : String(query || '');
+  
+  // Special handling for generic queries (short, common terms)
+  const isGenericQuery = normalizedQuery.length < 5 || 
+                         ['ai', 'ml', 'tech', 'news', 'data', 'web', 'app', 'cloud']
+                         .includes(normalizedQuery.toLowerCase());
+  
   // Calculate query match score
-  const queryMatchScore = calculateQueryMatchScore(result, query);
+  const queryMatchScore = calculateQueryMatchScore(result, normalizedQuery);
   
   // Calculate recency score
-  const recencyScore = utilsCalculateRecencyScore(result.timestamp || result.date || new Date());
+  const recencyScore = calculateRecencyScore(result.date);
   
   // Calculate content quality score
-  const contentQualityScore = calculateContentQualityScore(result, query);
+  const contentQualityScore = calculateContentQualityScore(result, normalizedQuery);
   
-  // Calculate domain-specific relevance score (new)
-  const domainRelevanceScore = calculateDomainRelevanceScore(result, query, options);
+  // Calculate domain relevance score
+  const domainRelevanceScore = calculateDomainRelevanceScore(result, normalizedQuery, options);
   
-  // Calculate weighted average
-  const weightedScore = 
+  // For generic queries, boost the base score
+  const genericQueryBoost = isGenericQuery ? 0.15 : 0;
+  
+  // Calculate weighted score
+  let weightedScore = 
     (queryMatchScore * WEIGHTS.QUERY_MATCH) +
     (recencyScore * WEIGHTS.RECENCY) +
     (contentQualityScore * WEIGHTS.CONTENT_QUALITY) +
-    (domainRelevanceScore * WEIGHTS.DOMAIN_RELEVANCE);
+    (domainRelevanceScore * WEIGHTS.DOMAIN_RELEVANCE) +
+    genericQueryBoost;
+  
+  // Ensure score doesn't exceed 1.0
+  weightedScore = Math.min(weightedScore, 1.0);
   
   // Apply personalization boost if applicable
   const personalizedScore = applyPersonalizationBoost(weightedScore, result, options);
   
-  // Convert to percentage and round to nearest integer
-  const finalScore = Math.round(personalizedScore * 100);
-  
-  // Ensure score is at least at the threshold for displayed results
-  return Math.max(finalScore, RELEVANCE_THRESHOLD);
+  // Normalize to 0-100 scale
+  return normalizeScore(personalizedScore * 100);
 };
 
 /**
@@ -85,19 +112,27 @@ export const calculateRelevanceScore = (result, query, options = {}) => {
  * @returns {number} - Score between 0-1
  */
 const calculateQueryMatchScore = (result, query) => {
-  const normalizedQuery = query.toLowerCase().trim();
+  // Ensure query is a string
+  const normalizedQuery = typeof query === 'string' ? query.toLowerCase().trim() : String(query || '').toLowerCase().trim();
   const queryTerms = normalizedQuery.split(/\s+/);
   
   // Check title match
   const titleMatch = result.title ? 
-    queryTerms.filter(term => result.title.toLowerCase().includes(term)).length / queryTerms.length : 0;
+    queryTerms.filter(term => {
+      const title = typeof result.title === 'string' ? result.title.toLowerCase() : String(result.title || '').toLowerCase();
+      return title.includes(term);
+    }).length / queryTerms.length : 0;
   
   // Check content match
   const contentMatch = result.content ? 
-    queryTerms.filter(term => result.content.toLowerCase().includes(term)).length / queryTerms.length : 0;
+    queryTerms.filter(term => {
+      const content = typeof result.content === 'string' ? result.content.toLowerCase() : String(result.content || '').toLowerCase();
+      return content.includes(term);
+    }).length / queryTerms.length : 0;
   
   // Check exact phrase match (higher weight)
-  const exactPhraseMatch = result.content && result.content.toLowerCase().includes(normalizedQuery) ? 1 : 0;
+  const exactPhraseMatch = result.content ? 
+    (typeof result.content === 'string' ? result.content.toLowerCase() : String(result.content || '').toLowerCase()).includes(normalizedQuery) ? 1 : 0 : 0;
   
   // Check topic relevance - if the query and content are in the same topic category
   const topicRelevance = calculateTopicRelevance(normalizedQuery, result);
@@ -125,7 +160,9 @@ const calculateQueryMatchScore = (result, query) => {
  * @returns {number} - Score between 0-1
  */
 const calculateSemanticSimilarity = (queryTerms, keyPhrases) => {
-  if (!keyPhrases || keyPhrases.length === 0) return 0;
+  if (!queryTerms || !keyPhrases || queryTerms.length === 0 || keyPhrases.length === 0) {
+    return 0;
+  }
   
   // Count how many query terms appear in key phrases
   let matchCount = 0;
@@ -134,7 +171,7 @@ const calculateSemanticSimilarity = (queryTerms, keyPhrases) => {
     for (const phrase of keyPhrases) {
       if (phrase.toLowerCase().includes(term)) {
         matchCount++;
-        break; // Count each term only once
+        break; // Count each query term only once
       }
     }
   }
@@ -149,48 +186,45 @@ const calculateSemanticSimilarity = (queryTerms, keyPhrases) => {
  * @returns {number} - Score between 0-1
  */
 const calculateTopicRelevance = (query, result) => {
-  // Determine query topics
-  const queryTopics = [];
+  if (!query || !result.content) {
+    return 0.5; // Neutral score if missing data
+  }
+  
+  const queryLower = query.toLowerCase();
+  const contentLower = result.content.toLowerCase();
+  
+  // Check if query and content share topic categories
+  let maxTopicScore = 0;
+  
   for (const [topic, keywords] of Object.entries(TOPIC_CATEGORIES)) {
-    if (keywords.some(keyword => query.includes(keyword))) {
-      queryTopics.push(topic);
-    }
-  }
-  
-  // If no specific topics detected in query, return middle score
-  if (queryTopics.length === 0) return 0.5;
-  
-  // Check if result has topic metadata
-  if (result.topics && result.topics.length > 0) {
-    // Check for direct topic matches
-    const matchingTopics = queryTopics.filter(queryTopic => 
-      result.topics.some(resultTopic => resultTopic.toUpperCase() === queryTopic)
-    );
+    // Check if query is related to this topic
+    const queryTopicScore = keywords.some(keyword => queryLower.includes(keyword)) ? 1 : 0;
     
-    if (matchingTopics.length > 0) {
-      return 0.8 + (Math.min(matchingTopics.length, 3) * 0.05); // Up to 0.95 for multiple matches
-    }
-  }
-  
-  // If no explicit topics, check content for topic keywords
-  if (result.content) {
-    const contentLower = result.content.toLowerCase();
-    let keywordMatches = 0;
-    
-    for (const topic of queryTopics) {
+    if (queryTopicScore > 0) {
+      // Check how many topic keywords appear in content
+      let contentKeywordCount = 0;
       const keywords = TOPIC_CATEGORIES[topic];
+      
       for (const keyword of keywords) {
         if (contentLower.includes(keyword)) {
-          keywordMatches++;
+          contentKeywordCount++;
         }
       }
+      
+      // Calculate content topic score based on keyword density
+      const contentTopicScore = Math.min(contentKeywordCount / 5, 1); // Cap at 5 keywords
+      
+      // Combined score for this topic
+      const topicScore = (queryTopicScore * 0.5) + (contentTopicScore * 0.5);
+      
+      // Keep track of highest topic score
+      if (topicScore > maxTopicScore) {
+        maxTopicScore = topicScore;
+      }
     }
-    
-    // Score based on keyword density
-    return Math.min(0.5 + (keywordMatches * 0.05), 0.9);
   }
   
-  return 0.5; // Default middle score
+  return maxTopicScore > 0 ? maxTopicScore : 0.5; // Default to neutral if no topic match
 };
 
 /**
@@ -201,149 +235,55 @@ const calculateTopicRelevance = (query, result) => {
  * @returns {number} - Score between 0-1
  */
 const calculateSourceTopicAlignment = (query, source, sourceType) => {
-  if (!source) return 0.5;
+  // Ensure query is a string
+  const normalizedQuery = typeof query === 'string' ? query.toLowerCase() : String(query || '').toLowerCase();
   
-  // Financial data sources for financial queries
-  const financialSources = [
-    'bloomberg', 'wsj', 'ft.com', 'cnbc', 'marketwatch',
-    'yahoo.finance', 'investing.com', 'morningstar', 'seeking alpha',
-    'nasdaq', 'nyse', 'sec.gov', 'federalreserve', 'treasury.gov',
-    'imf.org', 'worldbank.org', 'bis.org', 'oecd.org'
-  ];
+  // Ensure source is a string
+  const normalizedSource = typeof source === 'string' ? source.toLowerCase() : String(source || '').toLowerCase();
   
-  // Business sources for business queries
-  const businessSources = [
-    'hbr.org', 'forbes', 'inc.com', 'entrepreneur.com', 'fastcompany',
-    'businessinsider', 'fortune.com', 'mckinsey.com', 'bcg.com', 'bain.com'
-  ];
+  // Default score
+  let score = 0.5;
   
-  // Tech sources for tech queries
-  const techSources = [
-    'techcrunch', 'wired', 'cnet', 'theverge', 'arstechnica',
-    'zdnet', 'venturebeat', 'engadget', 'gizmodo', 'slashdot'
-  ];
-  
-  // Real estate sources for real estate queries
-  const realEstateSources = [
-    'zillow', 'redfin', 'realtor.com', 'trulia', 'loopnet',
-    'crexi', 'costar', 'nareit.com', 'nar.realtor'
-  ];
-  
-  // Determine query topics
-  let queryTopics = [];
-  for (const [topic, keywords] of Object.entries(TOPIC_CATEGORIES)) {
-    if (keywords.some(keyword => query.includes(keyword))) {
-      queryTopics.push(topic);
+  // Check if source is domain-specific for the query topic
+  for (const [domain, sources] of Object.entries(DOMAIN_SPECIFIC_SOURCES)) {
+    // Check if query is related to this domain
+    if (TOPIC_CATEGORIES[domain] && 
+        TOPIC_CATEGORIES[domain].some(keyword => normalizedQuery.includes(keyword))) {
+      
+      // Check if source is specialized in this domain
+      if (sources.some(domainSource => normalizedSource.includes(domainSource))) {
+        score += 0.3;
+        break;
+      }
     }
   }
   
-  // If no specific topics detected, return middle score
-  if (queryTopics.length === 0) return 0.5;
-  
-  // Check source type first (most reliable indicator)
+  // Check if source type matches query intent
   if (sourceType) {
-    // Direct matches between source type and query topic
-    const sourceTypeLower = sourceType.toLowerCase();
+    // Ensure sourceType is a string
+    const normalizedSourceType = typeof sourceType === 'string' ? sourceType.toLowerCase() : String(sourceType || '').toLowerCase();
     
-    if (queryTopics.includes('FINANCE') && 
-        (sourceTypeLower === 'financial_data' || sourceTypeLower === 'financial_news')) {
-      return 0.9;
-    }
-    
-    if (queryTopics.includes('BUSINESS') && 
-        (sourceTypeLower === 'business_news' || sourceTypeLower === 'business_journal')) {
-      return 0.9;
-    }
-    
-    if (queryTopics.includes('TECHNOLOGY') && sourceTypeLower === 'tech_news') {
-      return 0.9;
+    // News sources for current events
+    if ((normalizedQuery.includes('latest') || 
+         normalizedQuery.includes('news') || 
+         normalizedQuery.includes('recent') || 
+         normalizedQuery.includes('update')) && 
+        (normalizedSourceType.includes('news') || normalizedSourceType.includes('media'))) {
+      score += 0.2;
     }
     
-    if (queryTopics.includes('REAL_ESTATE') && sourceTypeLower === 'real_estate') {
-      return 0.9;
-    }
-    
-    if (queryTopics.includes('CRYPTO') && sourceTypeLower === 'crypto_news') {
-      return 0.9;
-    }
-  }
-  
-  // Check source domain against specialized sources
-  const sourceLower = source.toLowerCase();
-  
-  if (queryTopics.includes('FINANCE') || queryTopics.includes('ECONOMICS')) {
-    if (financialSources.some(s => sourceLower.includes(s))) {
-      return 0.85;
+    // Academic sources for research topics
+    if ((normalizedQuery.includes('research') || 
+         normalizedQuery.includes('study') || 
+         normalizedQuery.includes('analysis') || 
+         normalizedQuery.includes('paper')) && 
+        (normalizedSourceType.includes('academic') || normalizedSourceType.includes('journal') || normalizedSourceType.includes('research'))) {
+      score += 0.2;
     }
   }
   
-  if (queryTopics.includes('BUSINESS')) {
-    if (businessSources.some(s => sourceLower.includes(s))) {
-      return 0.85;
-    }
-  }
-  
-  if (queryTopics.includes('TECHNOLOGY')) {
-    if (techSources.some(s => sourceLower.includes(s))) {
-      return 0.85;
-    }
-  }
-  
-  if (queryTopics.includes('REAL_ESTATE')) {
-    if (realEstateSources.some(s => sourceLower.includes(s))) {
-      return 0.85;
-    }
-  }
-  
-  // Default score if no special alignment found
-  return 0.5;
-};
-
-/**
- * Calculate recency score based on timestamp
- * @param {Date|string} timestamp - The result timestamp
- * @returns {number} - Score between 0-1
- */
-const calculateRecencyScore = (timestamp) => {
-  const resultDate = timestamp instanceof Date ? timestamp : new Date(timestamp);
-  const now = new Date();
-  
-  // Invalid date check
-  if (isNaN(resultDate.getTime())) {
-    return 0.5; // Default to middle score if date is invalid
-  }
-  
-  // Get the year of the content
-  const contentYear = resultDate.getFullYear();
-  const currentYear = now.getFullYear();
-  
-  // PRIORITY: Sources from 2022 or newer get significantly higher scores
-  // Current year (2025) content gets maximum score
-  if (contentYear === currentYear) return 1.0;
-  
-  // Last year (2024) content gets very high score
-  if (contentYear === currentYear - 1) return 0.9;
-  
-  // 2023 content gets high score
-  if (contentYear === 2023) return 0.8;
-  
-  // 2022 content gets good score
-  if (contentYear === 2022) return 0.7;
-  
-  // For content older than 2022, calculate based on age in days with a much lower base score
-  const ageInDays = (now - resultDate) / (1000 * 60 * 60 * 24);
-  
-  // 2021 content gets moderate score
-  if (contentYear === 2021) return 0.5;
-  
-  // 2020 content gets lower score
-  if (contentYear === 2020) return 0.4;
-  
-  // 2019 content gets minimal score
-  if (contentYear === 2019) return 0.3;
-  
-  // Content from 2018 or older gets very low score
-  return 0.2;
+  // Normalize score to 0-1 range
+  return Math.min(Math.max(score, 0), 1);
 };
 
 /**
@@ -353,23 +293,23 @@ const calculateRecencyScore = (timestamp) => {
  * @returns {number} - Score between 0-1
  */
 const calculateContentQualityScore = (result, query) => {
-  let score = 0.5; // Default middle score
+  let score = 0.5; // Start with a neutral score
   
-  // Factor 1: Content length (longer content often has more value, up to a point)
+  // Factor 1: Contains specific details
   if (result.content) {
-    const contentLength = result.content.length;
-    if (contentLength > 5000) score += 0.15;
-    else if (contentLength > 2000) score += 0.1;
-    else if (contentLength > 1000) score += 0.07;
-    else if (contentLength > 500) score += 0.05;
+    if (containsSpecificDetails(result.content)) {
+      score += 0.1;
+    }
   }
   
-  // Factor 2: Source credibility (if available)
-  if (result.sourceCredibility) {
-    score += result.sourceCredibility * 0.15;
+  // Factor 2: Contains precise data
+  if (result.content) {
+    if (containsPreciseData(result.content)) {
+      score += 0.1;
+    }
   }
   
-  // Factor 3: Has structured data (tables, lists, etc.)
+  // Factor 3: Has structured data
   if (result.hasStructuredData) {
     score += 0.1;
   }
@@ -416,8 +356,8 @@ const calculateContentQualityScore = (result, query) => {
 const calculateDomainRelevanceScore = (result, query, options = {}) => {
   if (!result.source) return 0.5;
   
-  const sourceLower = result.source.toLowerCase();
-  const normalizedQuery = query.toLowerCase();
+  const sourceLower = typeof result.source === 'string' ? result.source.toLowerCase() : String(result.source).toLowerCase();
+  const normalizedQuery = typeof query === 'string' ? query.toLowerCase() : String(query || '').toLowerCase();
   
   // Determine query topics
   const queryTopics = [];
@@ -466,7 +406,7 @@ const applyPersonalizationBoost = (score, result, options = {}) => {
   
   // Boost for preferred sources
   if (preferredSources && result.source) {
-    const sourceLower = result.source.toLowerCase();
+    const sourceLower = typeof result.source === 'string' ? result.source.toLowerCase() : String(result.source).toLowerCase();
     if (preferredSources.some(source => sourceLower.includes(source.toLowerCase()))) {
       boostFactor += 0.05;
     }
@@ -486,7 +426,7 @@ const applyPersonalizationBoost = (score, result, options = {}) => {
   
   // Boost for preferred authors
   if (preferredAuthors && result.author) {
-    const authorLower = result.author.toLowerCase();
+    const authorLower = typeof result.author === 'string' ? result.author.toLowerCase() : String(result.author).toLowerCase();
     if (preferredAuthors.some(author => authorLower.includes(author.toLowerCase()))) {
       boostFactor += 0.05;
     }

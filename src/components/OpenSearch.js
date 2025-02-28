@@ -1,13 +1,19 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { useRouter } from 'next/router';
+import { FaSearch, FaSpinner } from 'react-icons/fa';
 import axios from 'axios';
 import { logger } from '../utils/logger';
-import FileUpload from './FileUpload';
-import UrlInput from './UrlInput';
-import SearchResults from './SearchResults';
-import SourceSelector from './SourceSelector';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 import { SearchModes, SourceTypes } from '../utils/constants';
 import { processWithLLM } from '../utils/search';
 import { getAllVerifiedSources } from '../utils/verifiedDataSources';
+
+// Components
+import FileUpload from './FileUpload';
+import UrlInput from './UrlInput';
+import SourceSelector from './SourceSelector';
+import SearchResults from './SearchResults';
+import LLMResults from './search/LLMResults';
 
 export default function OpenSearch() {
   const [query, setQuery] = useState('');
@@ -121,11 +127,13 @@ export default function OpenSearch() {
       
       try {
         if (selectedModel && selectedModel !== 'none' && processedResults && processedResults.length > 0) {
-          const llmResponse = await processWithLLM(
-            searchQuery, 
-            processedResults, 
-            selectedModel
-          );
+          const llmResponse = await processWithLLM({
+            query: searchQuery,
+            sources: processedResults,
+            model: selectedModel,
+            maxTokens: 2048,
+            temperature: 0.7
+          });
           
           if (llmResponse && llmResponse.content) {
             processedResults = {
@@ -249,6 +257,12 @@ export default function OpenSearch() {
             onFollowUpSearch={handleFollowUpSearch}
             loading={loading}
             query={query}
+          />
+          <LLMResults 
+            results={chatHistory} 
+            query={query}
+            onFollowUpSearch={handleFollowUpSearch}
+            loading={loading}
           />
           <div ref={chatEndRef} />
         </div>

@@ -27,7 +27,8 @@ export default function SearchPage() {
     setSearchResults(null);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/search`, {
+      // Use the correct API endpoint
+      const response = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -40,7 +41,19 @@ export default function SearchPage() {
 
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message || 'Search failed');
-      setSearchResults(data || []);
+      
+      console.log('Search results:', data);
+      
+      // Set search results, ensuring we have a valid array
+      if (data && (Array.isArray(data.results) || Array.isArray(data))) {
+        setSearchResults(data);
+      } else {
+        // Create a default structure if the response doesn't match expected format
+        setSearchResults([{
+          type: 'assistant',
+          content: 'No results found for your query. Please try a different search term.'
+        }]);
+      }
     } catch (error) {
       setError(error.message);
       console.error('Search error:', error);

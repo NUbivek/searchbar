@@ -30,6 +30,15 @@ A sophisticated search application that integrates multiple data sources, includ
 - **Crunchbase**: Company and startup information
 - **Pitchbook**: Investment and market data
 
+### LLM Processing
+- **Multi-Model Support**: Integrated with multiple LLM providers and models:
+  - Together API: mixtral-8x7b, mistral-7b, gemma-7b
+  - Perplexity API: sonar-small-chat
+- **Smart Fallback System**: Automatic fallbacks between models and providers
+- **Comprehensive Error Handling**: Ensures consistent user experience even when APIs fail
+- **Source Preservation**: Maintains source attribution throughout the processing pipeline
+- **Dynamic Content Generation**: Creates summaries, insights, and follow-up questions
+
 ### Core Functionality
 - Multi-source parallel search processing
 - Real-time results aggregation

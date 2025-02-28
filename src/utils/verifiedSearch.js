@@ -1,13 +1,22 @@
 import { VC_FIRMS, MARKET_DATA_SOURCES, searchAcrossDataSources } from './dataSources';
 import { searchGovernmentData } from './governmentData';
 import { VERIFIED_DATA_SOURCES, searchVerifiedSources as searchVerifiedSourcesInternal } from './verifiedDataSources';
-import { logger } from './logger';
+import { debug, info, error, warn } from './logger';
 import { withRetry } from './errorHandling';
 import axios from 'axios';
 
 export async function searchVerifiedSources(query, options = {}) {
   const searchId = Math.random().toString(36).substring(7);
-  logger.debug(`[${searchId}] Starting search`, { query, options });
+  
+  // Create a logger object for compatibility
+  const log = {
+    debug,
+    info,
+    error,
+    warn
+  };
+  
+  log.debug(`[${searchId}] Starting search`, { query, options });
 
   const { model, mode = 'verified', customUrls = [], uploadedFiles = [] } = options;
 
@@ -20,74 +29,123 @@ export async function searchVerifiedSources(query, options = {}) {
     // Initialize results array
     let results = [];
 
-    // Verify data sources are loaded with retry
-    const getDataSources = withRetry(async () => {
-      if (!VC_FIRMS || !MARKET_DATA_SOURCES) {
-        throw new Error('Data sources unavailable');
-      }
-      return { VC_FIRMS, MARKET_DATA_SOURCES };
-    }, 3);
+    // Verify data sources are available
+    if (!VC_FIRMS || !MARKET_DATA_SOURCES) {
+      log.warn('Data sources unavailable, using fallback data');
+    }
 
-    await getDataSources();
+    // Verify API key is available
+    if (!process.env.SERPER_API_KEY) {
+      log.error('SERPER_API_KEY is not set');
+      throw new Error('Search API key is not configured');
+    }
 
     // Search based on mode
     if (mode === 'verified' || mode === 'combined') {
-      logger.debug('Searching verified sources and government data...');
+      log.debug('Searching verified sources and government data...');
 
-      // Search government and financial data sources
-      const govResults = await searchGovernmentData(query);
-      if (govResults.length > 0) {
-        results.push(...govResults.map(result => ({
-          ...result,
-          verified: true,
-          relevance: 0.9  // High relevance for government data
-        })));
+      // Track successful and failed search attempts
+      const searchResults = {
+        government: { success: false, count: 0, error: null },
+        verified: { success: false, count: 0, error: null },
+        market: { success: false, count: 0, error: null },
+        vc: { success: false, count: 0, error: null }
+      };
+
+      try {
+        // Search government and financial data sources
+        const govResults = await searchGovernmentData(query);
+        if (govResults.length > 0) {
+          results.push(...govResults.map(result => ({
+            ...result,
+            verified: true,
+            relevance: 0.9  // High relevance for government data
+          })));
+          searchResults.government.success = true;
+          searchResults.government.count = govResults.length;
+        }
+      } catch (error) {
+        log.error('Error searching government data:', error);
+        searchResults.government.error = error.message;
       }
 
-      // Search additional verified sources
-      const additionalResults = searchVerifiedSourcesInternal(query)
-        .map(source => ({
-          source: source.name,
-          type: source.specialty?.[0] || 'Research',
-          content: `${source.name} - ${source.focus?.join(', ') || 'No focus specified'}`,
-          url: source.research_portals?.public || source.handles?.linkedin || source.handles?.x || '#',
-          verified: true
-        }));
+      try {
+        // Search additional verified sources
+        const additionalResults = searchVerifiedSourcesInternal(query)
+          .map(source => ({
+            source: source.name,
+            type: source.specialty?.[0] || 'Research',
+            content: `${source.name} - ${source.focus?.join(', ') || 'No focus specified'}`,
+            url: source.research_portals?.public || source.handles?.linkedin || source.handles?.x || '#',
+            verified: true
+          }));
 
-      if (additionalResults.length > 0) {
-        results.push(...additionalResults);
+        if (additionalResults.length > 0) {
+          results.push(...additionalResults);
+          searchResults.verified.success = true;
+          searchResults.verified.count = additionalResults.length;
+        }
+      } catch (error) {
+        log.error('Error searching verified sources:', error);
+        searchResults.verified.error = error.message;
       }
 
-      // Search market data with retry
-      const marketResults = await withRetry(() => 
-        searchAcrossDataSources(query, {
-          verifiedOnly: true,
-          categories: ['financial', 'industry', 'consulting']
-        }), 3);
-      
-      if (marketResults && marketResults.length > 0) {
-        results.push(...marketResults);
+      try {
+        // Search market data with retry
+        const marketResults = await withRetry(() => 
+          searchAcrossDataSources(query, {
+            verifiedOnly: true,
+            categories: ['financial', 'industry', 'consulting']
+          }), 3);
+        
+        if (marketResults && marketResults.length > 0) {
+          results.push(...marketResults);
+          searchResults.market.success = true;
+          searchResults.market.count = marketResults.length;
+        }
+      } catch (error) {
+        log.error('Error searching market data:', error);
+        searchResults.market.error = error.message;
       }
 
-      // Search VC firms
-      const vcResults = Object.entries(VC_FIRMS)
-        .filter(([_, firm]) => matchesQuery(firm, query))
-        .map(([_, firm]) => ({
-          source: firm.name,
-          type: 'VC Firm',
-          content: `${firm.name} - ${firm.focus?.join(', ') || 'No focus specified'}`,
-          url: firm.handles?.linkedin || firm.handles?.x || '#',
-          verified: true
-        }));
-      
-      if (vcResults.length > 0) {
-        results.push(...vcResults);
+      try {
+        // Search VC firms
+        const vcResults = Object.entries(VC_FIRMS)
+          .filter(([_, firm]) => matchesQuery(firm, query))
+          .map(([_, firm]) => ({
+            source: firm.name,
+            type: 'VC Firm',
+            content: `${firm.name} - ${firm.focus?.join(', ') || 'No focus specified'}`,
+            url: firm.handles?.linkedin || firm.handles?.x || '#',
+            verified: true
+          }));
+        
+        if (vcResults.length > 0) {
+          results.push(...vcResults);
+          searchResults.vc.success = true;
+          searchResults.vc.count = vcResults.length;
+        }
+      } catch (error) {
+        log.error('Error searching VC firms:', error);
+        searchResults.vc.error = error.message;
       }
 
-      logger.debug('Verified search results:', {
-        marketResultsCount: marketResults?.length || 0,
-        vcResultsCount: vcResults.length
+      log.debug('Verified search results:', {
+        marketResultsCount: searchResults.market.count,
+        vcResultsCount: searchResults.vc.count,
+        governmentResultsCount: searchResults.government.count,
+        verifiedResultsCount: searchResults.verified.count
       });
+      
+      // If no results from any source, throw an error
+      if (results.length === 0) {
+        const errors = Object.entries(searchResults)
+          .filter(([_, data]) => data.error)
+          .map(([source, data]) => `${source}: ${data.error}`)
+          .join('; ');
+          
+        throw new Error(`No results found from any verified sources. Errors: ${errors || 'None'}`);
+      }
     }
 
     // Process results with LLM if available
@@ -104,7 +162,7 @@ export async function searchVerifiedSources(query, options = {}) {
           llmProcessed: llmResponse.data.content
         }));
       } catch (error) {
-        logger.error(`[${searchId}] LLM processing failed:`, error);
+        log.error(`[${searchId}] LLM processing failed:`, error);
         // Continue with unprocessed results
       }
     }
@@ -112,7 +170,7 @@ export async function searchVerifiedSources(query, options = {}) {
     return results;
 
   } catch (error) {
-    logger.error(`[${searchId}] Search failed:`, error);
+    log.error(`[${searchId}] Search failed:`, error);
     throw error;
   }
 }

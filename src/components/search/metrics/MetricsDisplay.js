@@ -5,7 +5,7 @@
 
 import React from 'react';
 import styles from './Metrics.module.css';
-import { getMetricColor, getMetricLabel } from './MetricsCalculator';
+import MetricsCalculator from './MetricsCalculator';
 
 /**
  * MetricsDisplay component
@@ -34,11 +34,11 @@ const MetricsDisplay = ({
       {showOverall && (
         <div className={styles.overallMetric}>
           <div className={styles.metricLabel}>Overall Score</div>
-          <div className={`${styles.metricValue} ${styles[getMetricColor(overall)]}`}>
+          <div className={`${styles.metricValue} ${styles[MetricsCalculator.getMetricColor(overall)]}`}>
             {overall}%
           </div>
           {showLabels && (
-            <div className={styles.metricQuality}>{getMetricLabel(overall)}</div>
+            <div className={styles.metricQuality}>{MetricsCalculator.getMetricLabel(overall)}</div>
           )}
         </div>
       )}
@@ -80,8 +80,8 @@ const MetricsDisplay = ({
  * @param {boolean} props.compact - Whether to use compact display mode
  */
 const MetricBar = ({ label, value, showLabel = true, compact = false }) => {
-  const colorClass = getMetricColor(value);
-  const qualityLabel = getMetricLabel(value);
+  const colorClass = MetricsCalculator.getMetricColor(value);
+  const qualityLabel = MetricsCalculator.getMetricLabel(value);
   
   return (
     <div className={`${styles.metricItem} ${compact ? styles.compact : ''}`}>

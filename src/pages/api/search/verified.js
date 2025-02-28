@@ -1,10 +1,18 @@
-const axios = require('axios');
-const { performSimpleVerifiedSearch } = require('../../../utils/searchUtils');
-const { logger } = require('../../../utils/logger');
-const { getAllVerifiedSources } = require('../../../utils/verifiedDataSources');
-const { sourceHandlers } = require('../../../utils/sourceIntegration');
+import axios from 'axios';
+import { performSimpleVerifiedSearch } from '../../../utils/searchUtils.js';
+import { debug, info, error, warn } from '../../../utils/logger.js';
+import { getAllVerifiedSources } from '../../../utils/verifiedDataSources.js';
+import { sourceHandlers } from '../../../utils/sourceIntegration.js';
 
 export default async function handler(req, res) {
+  // Create a logger object for compatibility
+  const log = {
+    debug,
+    info,
+    error,
+    warn
+  };
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -16,7 +24,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Query is required' });
     }
 
-    logger.info('Verified search request:', { query, sources, model });
+    log.info('Verified search request:', { query, sources, model });
 
     // If no sources provided, return empty results
     if (sources.length === 0 && customUrls.length === 0 && uploadedFiles.length === 0) {
@@ -35,11 +43,11 @@ export default async function handler(req, res) {
           const sourceResults = await handler(query);
           return sourceResults;
         } else {
-          logger.warn(`No handler found for source: ${source}`);
+          log.warn(`No handler found for source: ${source}`);
           return [];
         }
       } catch (error) {
-        logger.error(`Error processing source ${source}:`, error);
+        log.error(`Error processing source ${source}:`, error);
         return [];
       }
     });
@@ -75,7 +83,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ results });
   } catch (error) {
-    logger.error('Verified search error:', error);
+    log.error('Verified search error:', error);
     return res.status(500).json({ error: error.message || 'An error occurred during search' });
   }
 }

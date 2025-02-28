@@ -1,12 +1,20 @@
 import { NextResponse } from 'next/server';
-import { logger } from './utils/logger';
+import { debug, info, error, warn } from './utils/logger';
 
 export async function middleware(request) {
   const searchId = Math.random().toString(36).substring(7);
   const startTime = Date.now();
 
+  // Create a logger object for compatibility
+  const log = {
+    debug,
+    info,
+    error,
+    warn
+  };
+
   // Log request
-  logger.info(`[${searchId}] API Request`, {
+  log.info(`[${searchId}] API Request`, {
     method: request.method,
     url: request.url,
     headers: Object.fromEntries(request.headers)
@@ -26,7 +34,7 @@ export async function middleware(request) {
 
   // Log response time
   const duration = Date.now() - startTime;
-  logger.info(`[${searchId}] API Response`, {
+  log.info(`[${searchId}] API Response`, {
     status: response.status,
     duration
   });

@@ -4,24 +4,37 @@ This document provides details on the LLM (Large Language Model) integration in 
 
 ## Supported Models
 
-The application supports multiple LLM models through the Together API:
+### Together API Models
+
+The application uses a tiered approach with Together API as the primary provider:
 
 1. **Mixtral-8x7b** (Primary Model)
    - Provider: Together AI
    - Model ID: `mistralai/Mixtral-8x7B-Instruct-v0.1`
    - Use case: General-purpose search result processing
-   - Default model when no specific model is selected
+   - Default model tried first for all requests
 
-2. **Llama-2-70b** (High-Performance Model)
+2. **Mistral-7b** (First Fallback)
    - Provider: Together AI
-   - Model ID: `meta-llama/Llama-2-70b-chat-hf`
-   - Use case: When higher quality or more detailed responses are needed
-   - Used as a replacement for DeepSeek-70b
+   - Model ID: `mistralai/Mistral-7B-Instruct-v0.2`
+   - Use case: Fallback when Mixtral fails
+   - Efficient processing with good performance
 
-3. **Gemma-2-9b** (Lightweight Model)
+3. **Gemma-7b** (Secondary Fallback)
    - Provider: Together AI
-   - Model ID: `google/gemma-2-9b-it`
-   - Use case: When faster processing is needed with acceptable quality
+   - Model ID: `google/gemma-7b-it`
+   - Use case: Alternative architecture when other models fail
+   - Used as the final Together API fallback option
+
+### Perplexity API Models
+
+If all Together API models fail, the system falls back to Perplexity API:
+
+1. **Sonar Small Chat** (Provider-Level Fallback)
+   - Provider: Perplexity
+   - Model: `sonar-small-chat`
+   - Use case: When all Together models fail
+   - Optimized for conversational responses
 
 ## Automatic Fallback Mechanism
 

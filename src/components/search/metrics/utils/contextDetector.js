@@ -9,7 +9,30 @@ const FINANCIAL_KEYWORDS = [
   'bond', 'equity', 'fund', 'etf', 'mutual fund', 'reit', 'asset', 'allocation',
   'hedge', 'return', 'yield', 'interest rate', 'inflation', 'recession', 'gdp',
   'earnings', 'revenue', 'profit', 'loss', 'balance sheet', 'income statement',
-  'cash flow', 'valuation', 'p/e ratio', 'market cap', 'ipo', 'merger', 'acquisition'
+  'cash flow', 'valuation', 'p/e ratio', 'market cap', 'ipo', 'merger', 'acquisition',
+  'shareholder', 'stakeholder', 'roi', 'roa', 'roe', 'eps', 'ebitda', 'cagr',
+  'liquidity', 'solvency', 'debt', 'equity', 'leverage', 'capital', 'assets',
+  'liabilities', 'fiscal', 'quarter', 'annual report', 'sec filing', 'form 10-k',
+  'form 10-q', 'proxy statement', 'dividend yield', 'payout ratio'
+];
+
+// Business-specific keywords
+const BUSINESS_KEYWORDS = [
+  'business', 'company', 'corporation', 'enterprise', 'firm', 'organization',
+  'industry', 'sector', 'market', 'competition', 'competitive', 'advantage',
+  'strategy', 'strategic', 'management', 'leadership', 'executive', 'ceo', 'cfo',
+  'cto', 'coo', 'board', 'director', 'corporate', 'governance', 'stakeholder',
+  'shareholder', 'investor', 'venture capital', 'private equity', 'startup',
+  'scale-up', 'growth', 'expansion', 'diversification', 'acquisition', 'merger',
+  'joint venture', 'partnership', 'alliance', 'collaboration', 'supply chain',
+  'logistics', 'operations', 'production', 'manufacturing', 'distribution',
+  'wholesale', 'retail', 'b2b', 'b2c', 'customer', 'client', 'consumer',
+  'market research', 'market analysis', 'market segment', 'target market',
+  'value proposition', 'business model', 'revenue model', 'pricing strategy',
+  'cost structure', 'profit margin', 'bottom line', 'top line', 'sales',
+  'marketing', 'advertising', 'branding', 'product', 'service', 'solution',
+  'innovation', 'disruption', 'digital transformation', 'sustainability',
+  'corporate social responsibility', 'esg', 'swot', 'pestel', 'porter'
 ];
 
 const MEDICAL_KEYWORDS = [
@@ -55,7 +78,24 @@ const ACADEMIC_KEYWORDS = [
 export const isFinancialQuery = (query) => {
   if (!query) return false;
   const queryLower = query.toLowerCase();
-  return FINANCIAL_KEYWORDS.some(keyword => queryLower.includes(keyword.toLowerCase()));
+  
+  return FINANCIAL_KEYWORDS.some(keyword => 
+    queryLower.includes(keyword.toLowerCase())
+  );
+};
+
+/**
+ * Detect if query contains business context
+ * @param {string} query - Query to analyze
+ * @returns {boolean} - Whether query has business context
+ */
+export const isBusinessQuery = (query) => {
+  if (!query) return false;
+  const queryLower = query.toLowerCase();
+  
+  return BUSINESS_KEYWORDS.some(keyword => 
+    queryLower.includes(keyword.toLowerCase())
+  );
 };
 
 /**
@@ -66,7 +106,10 @@ export const isFinancialQuery = (query) => {
 export const isMedicalQuery = (query) => {
   if (!query) return false;
   const queryLower = query.toLowerCase();
-  return MEDICAL_KEYWORDS.some(keyword => queryLower.includes(keyword.toLowerCase()));
+  
+  return MEDICAL_KEYWORDS.some(keyword => 
+    queryLower.includes(keyword.toLowerCase())
+  );
 };
 
 /**
@@ -77,7 +120,10 @@ export const isMedicalQuery = (query) => {
 export const isNewsQuery = (query) => {
   if (!query) return false;
   const queryLower = query.toLowerCase();
-  return NEWS_KEYWORDS.some(keyword => queryLower.includes(keyword.toLowerCase()));
+  
+  return NEWS_KEYWORDS.some(keyword => 
+    queryLower.includes(keyword.toLowerCase())
+  );
 };
 
 /**
@@ -88,7 +134,10 @@ export const isNewsQuery = (query) => {
 export const isTechnicalQuery = (query) => {
   if (!query) return false;
   const queryLower = query.toLowerCase();
-  return TECHNICAL_KEYWORDS.some(keyword => queryLower.includes(keyword.toLowerCase()));
+  
+  return TECHNICAL_KEYWORDS.some(keyword => 
+    queryLower.includes(keyword.toLowerCase())
+  );
 };
 
 /**
@@ -99,62 +148,69 @@ export const isTechnicalQuery = (query) => {
 export const isAcademicQuery = (query) => {
   if (!query) return false;
   const queryLower = query.toLowerCase();
-  return ACADEMIC_KEYWORDS.some(keyword => queryLower.includes(keyword.toLowerCase()));
+  
+  return ACADEMIC_KEYWORDS.some(keyword => 
+    queryLower.includes(keyword.toLowerCase())
+  );
 };
 
 /**
  * Determine the primary context of a query
  * @param {string} query - Query to analyze
- * @returns {string} - Primary context (FINANCIAL, MEDICAL, NEWS, TECHNICAL, ACADEMIC, or GENERAL)
+ * @returns {Array<string>} - Array of detected contexts
  */
 export const detectQueryContext = (query) => {
-  if (!query) return 'GENERAL';
+  if (!query) return ['general'];
   
   // Count matches for each context
   let matches = {
-    FINANCIAL: 0,
-    MEDICAL: 0,
-    NEWS: 0,
-    TECHNICAL: 0,
-    ACADEMIC: 0
+    financial: 0,
+    business: 0,
+    medical: 0,
+    news: 0,
+    technical: 0,
+    academic: 0
   };
   
   const queryLower = query.toLowerCase();
   
   // Count matches for each context
   FINANCIAL_KEYWORDS.forEach(keyword => {
-    if (queryLower.includes(keyword.toLowerCase())) matches.FINANCIAL++;
+    if (queryLower.includes(keyword.toLowerCase())) matches.financial++;
+  });
+  
+  BUSINESS_KEYWORDS.forEach(keyword => {
+    if (queryLower.includes(keyword.toLowerCase())) matches.business++;
   });
   
   MEDICAL_KEYWORDS.forEach(keyword => {
-    if (queryLower.includes(keyword.toLowerCase())) matches.MEDICAL++;
+    if (queryLower.includes(keyword.toLowerCase())) matches.medical++;
   });
   
   NEWS_KEYWORDS.forEach(keyword => {
-    if (queryLower.includes(keyword.toLowerCase())) matches.NEWS++;
+    if (queryLower.includes(keyword.toLowerCase())) matches.news++;
   });
   
   TECHNICAL_KEYWORDS.forEach(keyword => {
-    if (queryLower.includes(keyword.toLowerCase())) matches.TECHNICAL++;
+    if (queryLower.includes(keyword.toLowerCase())) matches.technical++;
   });
   
   ACADEMIC_KEYWORDS.forEach(keyword => {
-    if (queryLower.includes(keyword.toLowerCase())) matches.ACADEMIC++;
+    if (queryLower.includes(keyword.toLowerCase())) matches.academic++;
   });
   
-  // Find context with most matches
-  let maxMatches = 0;
-  let primaryContext = 'GENERAL';
+  // Create array of contexts with their match counts
+  const contextMatches = Object.entries(matches)
+    .filter(([_, count]) => count >= 1)
+    .sort((a, b) => b[1] - a[1]);
   
-  for (const [context, count] of Object.entries(matches)) {
-    if (count > maxMatches) {
-      maxMatches = count;
-      primaryContext = context;
-    }
+  // If no matches, return general
+  if (contextMatches.length === 0) {
+    return ['general'];
   }
   
-  // Return GENERAL if not enough matches
-  return maxMatches >= 2 ? primaryContext : 'GENERAL';
+  // Return array of contexts that have at least 1 match
+  return contextMatches.map(([context]) => context);
 };
 
 /**
@@ -163,46 +219,57 @@ export const detectQueryContext = (query) => {
  * @returns {Object} - Weight configuration for the query context
  */
 export const getContextWeights = (query) => {
-  const context = detectQueryContext(query);
+  const contexts = detectQueryContext(query);
+  const primaryContext = contexts[0] || 'general';
   
-  const weights = {
-    FINANCIAL: {
-      RELEVANCE: 0.30,
-      ACCURACY: 0.40,
-      CREDIBILITY: 0.30
+  // Default weights
+  const defaultWeights = {
+    relevance: 0.35,
+    accuracy: 0.35,
+    credibility: 0.30
+  };
+  
+  // Context-specific weights
+  const contextWeights = {
+    financial: {
+      relevance: 0.25,
+      accuracy: 0.45,
+      credibility: 0.30
     },
-    MEDICAL: {
-      RELEVANCE: 0.25,
-      ACCURACY: 0.40,
-      CREDIBILITY: 0.35
+    business: {
+      relevance: 0.35,
+      accuracy: 0.35,
+      credibility: 0.30
     },
-    NEWS: {
-      RELEVANCE: 0.40,
-      ACCURACY: 0.30,
-      CREDIBILITY: 0.30
+    medical: {
+      relevance: 0.25,
+      accuracy: 0.40,
+      credibility: 0.35
     },
-    TECHNICAL: {
-      RELEVANCE: 0.35,
-      ACCURACY: 0.40,
-      CREDIBILITY: 0.25
+    news: {
+      relevance: 0.40,
+      accuracy: 0.25,
+      credibility: 0.35
     },
-    ACADEMIC: {
-      RELEVANCE: 0.25,
-      ACCURACY: 0.35,
-      CREDIBILITY: 0.40
+    technical: {
+      relevance: 0.30,
+      accuracy: 0.45,
+      credibility: 0.25
     },
-    GENERAL: {
-      RELEVANCE: 0.33,
-      ACCURACY: 0.33,
-      CREDIBILITY: 0.34
+    academic: {
+      relevance: 0.25,
+      accuracy: 0.35,
+      credibility: 0.40
     }
   };
   
-  return weights[context] || weights.GENERAL;
+  // Return weights for the primary context, or default weights if not found
+  return contextWeights[primaryContext] || defaultWeights;
 };
 
 export default {
   isFinancialQuery,
+  isBusinessQuery,
   isMedicalQuery,
   isNewsQuery,
   isTechnicalQuery,

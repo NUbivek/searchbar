@@ -55,7 +55,7 @@ class NetworkMonitor {
 
     // Log to console in development
     if (process.env.NODE_ENV === 'development') {
-      console.log(JSON.stringify(logEntry, null, 2));
+      // Removed console.log statement
     }
 
     return logEntry;
