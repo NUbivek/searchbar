@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { logger } from '../utils/logger';
 import SearchResults from './SearchResults';
@@ -8,6 +8,7 @@ import FileUpload from './FileUpload';
 import UrlInput from './UrlInput';
 import { getAllVerifiedSources } from '../utils/verifiedDataSources';
 import { ALL_VERIFIED_SOURCES } from '../utils/allVerifiedSources';
+import LLMResults from './search/LLMResults';
 
 export default function VerifiedSearch() {
   const [query, setQuery] = useState('');
@@ -116,10 +117,34 @@ export default function VerifiedSearch() {
         // Continue with unprocessed results if LLM fails
       }
       
-      // Add the results to chat history
+      // Add the results to chat history with proper string conversion for React
       const resultsEntry = {
         type: 'assistant',
-        content: processedResults || []
+        content: processedResults 
+          ? typeof processedResults === 'string'
+            ? processedResults 
+            : typeof processedResults === 'object' && processedResults !== null
+              ? {
+                  summary: typeof processedResults.summary === 'string' 
+                    ? processedResults.summary 
+                    : String(processedResults.summary || ''),
+                  sources: Array.isArray(processedResults.sources)
+                    ? processedResults.sources.map(source => 
+                        typeof source === 'object' && source !== null
+                        ? { 
+                            title: String(source.title || ''), 
+                            url: String(source.url || '') 
+                          }
+                        : String(source || '')
+                      )
+                    : [],
+                  followUpQuestions: Array.isArray(processedResults.followUpQuestions)
+                    ? processedResults.followUpQuestions.map(q => String(q || ''))
+                    : [],
+                  isLLMProcessed: true
+                }
+              : JSON.stringify(processedResults)
+          : 'No results'
       };
       
       setChatHistory(prev => [...prev, newChatEntry, resultsEntry]);
@@ -327,8 +352,19 @@ export default function VerifiedSearch() {
             results={chatHistory} 
             onFollowUpSearch={handleFollowUpSearch}
             loading={loading}
-            query={query}
           />
+          
+          {/* Only render LLMResults if there's a query */}
+          {query && query.trim() !== '' && (
+            <LLMResults 
+              results={chatHistory.length > 0 ? chatHistory[chatHistory.length - 1].content : null} 
+              query={query}
+              showTabs={true}
+              tabsOptions={{}}
+              metricsOptions={{}}
+              setActiveCategory={() => {}}
+            />
+          )}
           <div ref={chatEndRef} />
         </div>
       </div>
