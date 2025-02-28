@@ -409,83 +409,35 @@ const LLMResults = ({ results, query, showTabs, tabsOptions, metricsOptions, set
     }
   };
 
-  // Function to prepare display content from LLM response
-  const prepareDisplayContent = (llmResponse) => {
-    if (!llmResponse) return '';
+  // Add a function to safely prepare the display content
+  const prepareDisplayContent = (content) => {
+    if (!content) return "No content available";
     
-    // Process LLM response to safe format first
-    const processedResponse = processLlmResponseToSafeFormat(llmResponse);
-    
-    // Ensure the response is a string, but preserve structured objects
-    if (typeof processedResponse === 'string') {
-      return processedResponse;
+    if (typeof content === 'string') {
+      return content;
     }
     
-    // Special handling for structured content objects
-    if (typeof processedResponse === 'object' && processedResponse !== null) {
-      if (processedResponse.summary !== undefined) {
-        // Return the object structure but ensure all properties are safe strings
-        return {
-          summary: String(processedResponse.summary || ''),
-          sources: Array.isArray(processedResponse.sources) 
-            ? processedResponse.sources.map(s => typeof s === 'string' ? s : JSON.stringify(s))
-            : [],
-          followUpQuestions: Array.isArray(processedResponse.followUpQuestions)
-            ? processedResponse.followUpQuestions.map(q => typeof q === 'string' ? q : String(q || ''))
-            : [],
-          isLLMProcessed: true
-        };
-      }
-    }
-    
-    // Convert any other objects to string as a fallback
-    return typeof processedResponse === 'object' ? JSON.stringify(processedResponse) : String(processedResponse);
-  };
-
-  // Combine content based on response source priority
-  const combinedDisplayContent = () => {
-    const fallbackContent = results && results.length > 0
-      ? results.map(s => s.title || 'Source').join(', ')
-      : 'No results found';
-      
-    try {
-      // Get content from different potential sources with proper stringification
-      let result = results?.result ? prepareDisplayContent(results.result) : '';
-      let answer = results?.answer ? prepareDisplayContent(results.answer) : '';
-      let content = results?.content ? prepareDisplayContent(results.content) : '';
-      let summary = results?.summary ? prepareDisplayContent(results.summary) : '';
-      
-      // Handle the case where any of these returns an object
-      if (typeof result === 'object' && result !== null) {
-        // Keep the structure but make sure we return a safe formatted object
-        return result;
-      }
-      
-      if (typeof answer === 'object' && answer !== null) {
-        return answer;
-      }
-      
-      if (typeof content === 'object' && content !== null) {
+    // Handle the object structure from VerifiedSearch
+    if (typeof content === 'object' && content !== null) {
+      // If it's already in the expected format with summary, sources, etc.
+      if (content.summary || content.content) {
         return content;
       }
       
-      if (typeof summary === 'object' && summary !== null) {
-        return summary;
+      // If it's the raw content object from chat history
+      if (content.type === 'assistant' && content.content) {
+        return prepareDisplayContent(content.content);
       }
       
-      // All string values - use the first available content
-      return result || answer || content || summary || fallbackContent;
-    } catch (e) {
-      console.error('Error in combinedDisplayContent:', e);
-      return fallbackContent;
+      // Last resort - stringify the object
+      return JSON.stringify(content);
     }
+    
+    return String(content);
   };
-
-  // Get the prepared content for display, ensuring it's properly handled for React
-  const rawDisplayContent = combinedDisplayContent();
-  const preparedDisplayContent = typeof rawDisplayContent === 'object' && rawDisplayContent !== null
-    ? rawDisplayContent  // Keep object structure for specialized rendering
-    : String(rawDisplayContent || ''); // Convert to string if it's not an object
+  
+  // Use the prepared content in the render function
+  const preparedDisplayContent = prepareDisplayContent(results);
 
   // Ensure query is a string
   const searchQuery = typeof query === 'string' ? query : '';

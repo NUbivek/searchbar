@@ -357,7 +357,13 @@ export default function VerifiedSearch() {
           {/* Only render LLMResults if there's a query */}
           {query && query.trim() !== '' && (
             <LLMResults 
-              results={chatHistory.length > 0 ? chatHistory[chatHistory.length - 1].content : null} 
+              results={
+                chatHistory.length > 0 && chatHistory[chatHistory.length - 1].content 
+                  ? typeof chatHistory[chatHistory.length - 1].content === 'object'
+                    ? chatHistory[chatHistory.length - 1].content
+                    : { summary: String(chatHistory[chatHistory.length - 1].content) }
+                  : null
+              } 
               query={query}
               showTabs={true}
               tabsOptions={{}}
