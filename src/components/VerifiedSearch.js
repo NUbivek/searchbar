@@ -9,6 +9,7 @@ import UrlInput from './UrlInput';
 import { getAllVerifiedSources } from '../utils/verifiedDataSources';
 import { ALL_VERIFIED_SOURCES } from '../utils/allVerifiedSources';
 import LLMResults from './search/LLMResults';
+import { safeStringify } from '../utils/reactUtils';
 
 export default function VerifiedSearch() {
   const [query, setQuery] = useState('');
@@ -41,124 +42,48 @@ export default function VerifiedSearch() {
   };
 
   const handleSearch = async (searchQuery = query) => {
-    if (!searchQuery) {
-      setError('Please enter a search query');
-      return;
-    }
-
+    if (!searchQuery.trim()) return;
+    
     setLoading(true);
     setError(null);
-
+    
     try {
-      const baseUrl = process.env.NODE_ENV === 'development' 
-        ? window.location.origin
-        : process.env.NEXT_PUBLIC_BASE_URL || '';
-        
-      // Get all verified sources
-      const allVerifiedSources = verifiedSourcesEnabled ? 
-        // Include all standard verified sources
-        ALL_VERIFIED_SOURCES : [];
+      // Add user message to chat history
+      setChatHistory(prev => [...prev, { type: 'user', content: searchQuery }]);
       
-      // Step 1: Get search results - use all verified sources if enabled
-      const response = await axios.post(`${baseUrl}/api/search/verified`, {
-        query: searchQuery,
-        sources: allVerifiedSources,
-        model: selectedModel,
-        customUrls,
-        uploadedFiles,
-        // Pass additional verified data sources
-        verifiedDataSources: verifiedSourcesEnabled ? getAllVerifiedSources() : []
-      });
-
-      if (response.data.error) {
-        throw new Error(response.data.error);
-      }
-
-      // Add the search query to chat history
-      const newChatEntry = {
-        type: 'user',
-        content: searchQuery
-      };
+      // Get verified sources
+      const verifiedSources = verifiedSourcesEnabled ? ALL_VERIFIED_SOURCES : [];
       
-      // Step 2: Process results with LLM if needed
-      let processedResults = response.data.results;
+      // Process with LLM
+      const llmResponse = await processWithLLM(
+        searchQuery,
+        verifiedSources,
+        selectedModel
+      );
       
-      try {
-        if (selectedModel && selectedModel !== 'none' && processedResults && processedResults.length > 0) {
-          const llmResponse = await processWithLLM(
-            searchQuery, 
-            processedResults, 
-            selectedModel
-          );
-          
-          if (llmResponse && llmResponse.content) {
-            processedResults = {
-              summary: llmResponse.content,
-              sources: processedResults,
-              followUpQuestions: llmResponse.followUpQuestions || [],
-              isLLMProcessed: true
-            };
-          }
-        } else if (processedResults && processedResults.length === 0) {
-          // Handle empty results
-          processedResults = {
-            summary: "I couldn't find any relevant information for your query. Please try a different search term or select different sources.",
-            sources: [],
-            followUpQuestions: [
-              "Could you try rephrasing your question?",
-              "Would you like to search in different sources?",
-              "Can you provide more specific details in your query?"
-            ],
-            isLLMProcessed: true
-          };
-        }
-      } catch (llmError) {
-        console.error('LLM processing error:', llmError);
-        // Continue with unprocessed results if LLM fails
-      }
+      // Ensure the response content is a string before adding to chat history
+      const safeContent = typeof llmResponse === 'string' 
+        ? llmResponse 
+        : safeStringify(llmResponse);
       
-      // Add the results to chat history with proper string conversion for React
-      const resultsEntry = {
-        type: 'assistant',
-        content: processedResults 
-          ? typeof processedResults === 'string'
-            ? processedResults 
-            : typeof processedResults === 'object' && processedResults !== null
-              ? {
-                  summary: typeof processedResults.summary === 'string' 
-                    ? processedResults.summary 
-                    : String(processedResults.summary || ''),
-                  sources: Array.isArray(processedResults.sources)
-                    ? processedResults.sources.map(source => 
-                        typeof source === 'object' && source !== null
-                        ? { 
-                            title: String(source.title || ''), 
-                            url: String(source.url || '') 
-                          }
-                        : String(source || '')
-                      )
-                    : [],
-                  followUpQuestions: Array.isArray(processedResults.followUpQuestions)
-                    ? processedResults.followUpQuestions.map(q => String(q || ''))
-                    : [],
-                  isLLMProcessed: true
-                }
-              : JSON.stringify(processedResults)
-          : 'No results'
-      };
-      
-      setChatHistory(prev => [...prev, newChatEntry, resultsEntry]);
+      // Add assistant message to chat history
+      setChatHistory(prev => [...prev, { 
+        type: 'assistant', 
+        content: safeContent,
+        rawResults: { sources: verifiedSources }
+      }]);
       
     } catch (error) {
-      console.error('[Error]', 'Search error:', error);
+      console.error('Search error:', error);
       setError(error.message || 'An error occurred during search');
+      
+      // Add error message to chat history
+      setChatHistory(prev => [...prev, { 
+        type: 'assistant', 
+        content: `Error: ${error.message || 'An error occurred during search'}`
+      }]);
     } finally {
       setLoading(false);
-      
-      // Scroll to bottom of chat
-      if (chatEndRef.current) {
-        chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-      }
     }
   };
 
@@ -349,7 +274,10 @@ export default function VerifiedSearch() {
 
         <div className="bg-white rounded-xl shadow-sm overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
           <SearchResults 
-            results={chatHistory} 
+            results={chatHistory.map(msg => ({
+              ...msg,
+              content: typeof msg.content === 'string' ? msg.content : safeStringify(msg.content)
+            }))} 
             onFollowUpSearch={handleFollowUpSearch}
             loading={loading}
           />
@@ -359,9 +287,9 @@ export default function VerifiedSearch() {
             <LLMResults 
               results={
                 chatHistory.length > 0 && chatHistory[chatHistory.length - 1].content 
-                  ? typeof chatHistory[chatHistory.length - 1].content === 'object'
+                  ? typeof chatHistory[chatHistory.length - 1].content === 'string'
                     ? chatHistory[chatHistory.length - 1].content
-                    : { summary: String(chatHistory[chatHistory.length - 1].content) }
+                    : safeStringify(chatHistory[chatHistory.length - 1].content)
                   : null
               } 
               query={query}
@@ -369,6 +297,7 @@ export default function VerifiedSearch() {
               tabsOptions={{}}
               metricsOptions={{}}
               setActiveCategory={() => {}}
+              sourceType="verified"
             />
           )}
           <div ref={chatEndRef} />

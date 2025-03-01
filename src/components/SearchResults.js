@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import CategoryDisplay from './search/categories/CategoryDisplay';
+import { safeStringify } from '../utils/reactUtils';
 
 // Helper function to get a consistent color for a category based on its ID or name
 const getColorForCategory = (identifier) => {
@@ -84,82 +85,22 @@ const normalizeResultItem = (item, index) => {
 };
 
 export default function SearchResults({ results, onFollowUpSearch, loading: initialLoading, query, error: initialError }) {
-  const [followUpQuery, setFollowUpQuery] = useState('');
-  const [processedResults, setProcessedResults] = useState([]);
-  const [sources, setSources] = useState([]); // New state to store sources
-  const [llmSummary, setLlmSummary] = useState(null);
   const [loading, setLoading] = useState(initialLoading);
   const [error, setError] = useState(initialError);
-  const [loadingType, setLoadingType] = useState('results');
-  const [llmError, setLlmError] = useState(null);
-  const chatEndRef = useRef(null);
+  const [followUpQuery, setFollowUpQuery] = useState('');
+  const resultsEndRef = useRef(null);
 
   useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [results]);
+    setLoading(initialLoading);
+  }, [initialLoading]);
 
-  // Process search results
   useEffect(() => {
-    if (!results || loading) return;
-    
-    try {
-      // Extract sources if available
-      let extractedSources = [];
-      
-      // Check if results has a sources property
-      if (results.sources && Array.isArray(results.sources)) {
-        extractedSources = results.sources;
-      } 
-      // Check if results has a sourceMap property (new format)
-      else if (results.sourceMap && typeof results.sourceMap === 'object') {
-        // Convert sourceMap to array of sources
-        extractedSources = Object.values(results.sourceMap).filter(Boolean);
-      }
-      
-      // Set sources state
-      setSources(extractedSources);
-      
-      // Extract and process regular results
-      let processedItems = [];
-      
-      // Handle different result formats
-      if (Array.isArray(results)) {
-        // Results is an array of items
-        processedItems = results.map(normalizeResultItem);
-      } else if (results.results && Array.isArray(results.results)) {
-        // Results is an object with a results array
-        processedItems = results.results.map(normalizeResultItem);
-      } else if (results.items && Array.isArray(results.items)) {
-        // Results is an object with an items array
-        processedItems = results.items.map(normalizeResultItem);
-      }
-      
-      // Set processed results
-      setProcessedResults(processedItems);
-      
-      // Extract LLM summary if available
-      if (results.summary && typeof results.summary === 'string') {
-        setLlmSummary(results.summary);
-      } else if (results.llmSummary && typeof results.llmSummary === 'string') {
-        setLlmSummary(results.llmSummary);
-      } else if (results.content && typeof results.content === 'string') {
-        setLlmSummary(results.content);
-      }
-      
-      // Check if we have categories in the results
-      if (results.categories && Array.isArray(results.categories)) {
-        // Use categories from results
-        setSources(results.categories);
-      }
-      
-      // Set loading to false
-      setLoading(false);
-    } catch (err) {
-      console.error('Error processing search results:', err);
-      setError('Failed to process search results');
-      setLoading(false);
+    setError(initialError);
+  }, [initialError]);
+
+  useEffect(() => {
+    if (resultsEndRef.current) {
+      resultsEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [results, loading]);
 
@@ -169,6 +110,36 @@ export default function SearchResults({ results, onFollowUpSearch, loading: init
       onFollowUpSearch(followUpQuery);
       setFollowUpQuery('');
     }
+  };
+
+  // Safely render message content
+  const renderMessageContent = (content) => {
+    // If content is null or undefined, return empty string
+    if (content === null || content === undefined) {
+      return '';
+    }
+    
+    // If content is already a string, return it
+    if (typeof content === 'string') {
+      return content;
+    }
+    
+    // If content is an object with summary property, use that
+    if (typeof content === 'object') {
+      if (content.summary) {
+        return typeof content.summary === 'string' ? content.summary : JSON.stringify(content.summary);
+      }
+      
+      if (content.content) {
+        return typeof content.content === 'string' ? content.content : JSON.stringify(content.content);
+      }
+      
+      // Otherwise stringify the whole object
+      return JSON.stringify(content);
+    }
+    
+    // For any other type, convert to string
+    return String(content);
   };
 
   return (
@@ -207,69 +178,11 @@ export default function SearchResults({ results, onFollowUpSearch, loading: init
                     {message.type === 'user' ? 'You' : 'AI Assistant'}
                   </div>
                   
-                  <div className="message-content" style={{ whiteSpace: 'pre-wrap' }}>
-                    {/* Handle different message content types with improved stringification */}
-                    {typeof message.content === 'string' ? (
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
-                    ) : Array.isArray(message.content) ? (
-                      <div>
-                        {message.content.map((item, i) => (
-                          <div key={i}>
-                            {typeof item === 'string' 
-                              ? item 
-                              : typeof item === 'object' && item !== null
-                                ? JSON.stringify(item)
-                                : String(item || '')}
-                          </div>
-                        ))}
-                      </div>
-                    ) : message.content && typeof message.content === 'object' ? (
-                      <div>
-                        {message.content.summary && 
-                          <div className="llm-summary">
-                            <ReactMarkdown>{typeof message.content.summary === 'string' 
-                              ? message.content.summary 
-                              : String(message.content.summary || '')}
-                            </ReactMarkdown>
-                          </div>
-                        }
-                        
-                        {message.content.sources && Array.isArray(message.content.sources) && (
-                          <div className="sources-container">
-                            <h4>Sources:</h4>
-                            <ul>
-                              {message.content.sources.map((source, i) => (
-                                <li key={i}>
-                                  {typeof source === 'string' ? source : 
-                                   typeof source === 'object' && source !== null ? (
-                                    <a href={source.url} target="_blank" rel="noopener noreferrer">
-                                      {source.title || `Source ${i + 1}`}
-                                    </a>
-                                   ) : String(source || '')}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        
-                        {message.content.followUpQuestions && Array.isArray(message.content.followUpQuestions) && message.content.followUpQuestions.length > 0 && (
-                          <div className="follow-up-questions">
-                            <h4>Follow-up Questions:</h4>
-                            <ul>
-                              {message.content.followUpQuestions.map((question, i) => (
-                                <li key={i} 
-                                    className="follow-up-question"
-                                    onClick={() => onFollowUpSearch(String(question || ''))}
-                                    style={{cursor: 'pointer', color: '#2a6496', textDecoration: 'underline'}}>
-                                  {String(question || '')}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
+                  <div className="message-content">
+                    {message.type === 'user' ? (
+                      <p>{renderMessageContent(message.content)}</p>
                     ) : (
-                      <p>Content not available in text format. {String(message.content || '')}</p>
+                      <div dangerouslySetInnerHTML={{ __html: renderMessageContent(message.content) }} />
                     )}
                   </div>
                 </div>
@@ -277,111 +190,43 @@ export default function SearchResults({ results, onFollowUpSearch, loading: init
             </div>
           )}
 
-          {/* Display LLM summary if available and not showing chat history */}
-          {!Array.isArray(results) && llmSummary && (
-            <div className="llm-summary" style={{ 
-              marginBottom: '20px', 
-              padding: '15px', 
-              backgroundColor: '#f0f7ff', 
-              borderRadius: '5px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)' 
-            }}>
-              <h3 style={{ marginTop: 0, marginBottom: '10px', color: '#2c5282' }}>AI Summary</h3>
-              <div 
-                style={{ 
-                  whiteSpace: 'pre-wrap',
-                  lineHeight: '1.5',
-                  fontSize: '1rem'
-                }}
-              >
-                {typeof llmSummary === 'string' ? (
-                  <ReactMarkdown>{llmSummary}</ReactMarkdown>
-                ) : typeof llmSummary === 'object' && llmSummary !== null ? (
-                  <ReactMarkdown>{JSON.stringify(llmSummary, null, 2)}</ReactMarkdown>
-                ) : (
-                  <p>Error displaying summary. Please try your search again.</p>
-                )}
-              </div>
+          {/* Display follow-up question form */}
+          {Array.isArray(results) && results.length > 0 && onFollowUpSearch && (
+            <div className="follow-up-container" style={{ marginTop: '20px' }}>
+              <form onSubmit={handleFollowUpSubmit} className="follow-up-form">
+                <input
+                  type="text"
+                  value={followUpQuery}
+                  onChange={(e) => setFollowUpQuery(e.target.value)}
+                  placeholder="Ask a follow-up question..."
+                  className="follow-up-input"
+                  style={{
+                    padding: '10px',
+                    borderRadius: '4px',
+                    border: '1px solid #ddd',
+                    width: '100%',
+                    marginBottom: '10px'
+                  }}
+                />
+                <button 
+                  type="submit" 
+                  className="follow-up-button"
+                  style={{
+                    padding: '10px 15px',
+                    backgroundColor: '#4285F4',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Ask Follow-up
+                </button>
+              </form>
             </div>
           )}
-      
-          {/* Display SearchResults */}
-          {processedResults && processedResults.length > 0 ? (
-            <div className="search-results">
-              {sources && sources.length > 0 ? (
-                <div className="categorized-results">
-                  <CategoryDisplay 
-                    categories={sources.map(category => {
-                      // Make sure all categories have the required fields for the tab display
-                      return {
-                        ...category,
-                        metrics: category.metrics || {
-                          relevance: category.relevanceScore || 70,
-                          accuracy: category.accuracyScore || 70,
-                          credibility: category.credibilityScore || 70,
-                          overall: category.overallScore || 70
-                        },
-                        color: category.color || getColorForCategory(category.id || category.name),
-                        content: Array.isArray(category.content) ? category.content : []
-                      };
-                    })} 
-                    query={query} 
-                    loading={loading}
-                    options={{
-                      showMetrics: true,
-                      useCardView: false,
-                      showTabs: true // Explicitly enable tabs
-                    }}
-                  />
-                </div>
-              ) : (
-                <div className="uncategorized-results">
-                  {processedResults.map((result, index) => (
-                    <div key={index} className="search-result-item">
-                      <h3>
-                        <a 
-                          href={result.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                        >
-                          {result.title}
-                        </a>
-                      </h3>
-                      <div className="search-result-url">{result.url}</div>
-                      <div className="search-result-snippet">
-                        {result.contentWithLinks ? (
-                          <div dangerouslySetInnerHTML={{ __html: result.contentWithLinks }} />
-                        ) : (
-                          <div>{result.snippet || result.content || result.description}</div>
-                        )}
-                      </div>
-                      
-                      {/* Display metrics if available */}
-                      {(result.metrics || result.relevance) && (
-                        <div className="result-metrics">
-                          <span className="metric relevance">
-                            Relevance: {Math.round((result.metrics?.relevance || result.relevance || 0) * 100)}%
-                          </span>
-                          <span className="metric accuracy">
-                            Accuracy: {Math.round((result.metrics?.accuracy || result.accuracy || 0) * 100)}%
-                          </span>
-                          <span className="metric credibility">
-                            Credibility: {Math.round((result.metrics?.credibility || result.credibility || 0) * 100)}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            !loading && (
-              <div className="no-results">
-                <p>No results found for your search.</p>
-              </div>
-            )
-          )}
+          
+          <div ref={resultsEndRef} />
         </>
       )}
     </div>

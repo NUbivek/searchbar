@@ -1,753 +1,433 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { CategoryDisplay } from './categories';
-import axios from 'axios';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { safeStringify } from '../../utils/reactUtils';
+
+// Define categories with their properties
+const CATEGORIES = [
+  {
+    id: 'key_insights',
+    title: 'Key Insights',
+    keywords: ['key', 'insight', 'highlight', 'important', 'significant', 'notable', 'critical'],
+    priority: 0,
+    color: '#4CAF50' // Green
+  },
+  {
+    id: 'market_overview',
+    title: 'Market Analysis',
+    keywords: ['market', 'industry', 'sector', 'landscape', 'overview', 'trends', 'analysis'],
+    priority: 1,
+    color: '#4285F4' // Blue
+  },
+  {
+    id: 'financial_overview',
+    title: 'Financial Data',
+    keywords: ['financial', 'finance', 'money', 'capital', 'funding', 'investment'],
+    priority: 1,
+    color: '#3F51B5' // Indigo
+  },
+  {
+    id: 'definition',
+    title: 'Definition',
+    keywords: ['definition', 'meaning', 'describe', 'explanation', 'what is'],
+    priority: 2,
+    color: '#9C27B0' // Purple
+  },
+  {
+    id: 'industry_trends',
+    title: 'Industry Trends',
+    keywords: ['trend', 'development', 'emerging', 'future', 'growth'],
+    priority: 2,
+    color: '#00BCD4' // Cyan
+  },
+  {
+    id: 'challenges',
+    title: 'Challenges',
+    keywords: ['challenge', 'problem', 'issue', 'difficulty', 'obstacle', 'barrier'],
+    priority: 3,
+    color: '#F44336' // Red
+  }
+];
 
 /**
  * Component for displaying LLM-generated search results
  * @param {Object} props Component props
  * @param {Array} props.results Array of search results
  * @param {string} props.query Search query
+ * @param {boolean} props.showTabs Whether to show category tabs
+ * @param {string} props.activeCategory Active category ID (controlled from parent)
+ * @param {Function} props.setActiveCategory Function to set active category in parent
  * @returns {JSX.Element} Rendered LLM results
  */
-const LLMResults = ({ results, query, showTabs, tabsOptions, metricsOptions, setActiveCategory }) => {
+const LLMResults = ({ 
+  results, 
+  query, 
+  showTabs = true, 
+  activeCategory: externalActiveCategory, 
+  setActiveCategory: setExternalActiveCategory 
+}) => {
   const [processedResults, setProcessedResults] = useState([]);
   const [isLLMProcessing, setIsLLMProcessing] = useState(false);
-  const [llmProcessedContent, setLlmProcessedContent] = useState(null);
   const [processingError, setProcessingError] = useState(null);
+  const [internalActiveCategory, setInternalActiveCategory] = useState('key_insights');
+  const containerRef = useRef(null);
+  const [resultsPortalTarget, setResultsPortalTarget] = useState(null);
   
+  // Use either external or internal active category
+  const activeCategory = externalActiveCategory || internalActiveCategory;
+  
+  // Set active category function
+  const setActiveCategory = (categoryId) => {
+    if (setExternalActiveCategory) {
+      setExternalActiveCategory(categoryId);
+    } else {
+      setInternalActiveCategory(categoryId);
+    }
+  };
+  
+  // Find or create the portal target
+  useEffect(() => {
+    // Look for an existing results container
+    let resultsContainer = document.getElementById('llm-results-container');
+    
+    if (!resultsContainer) {
+      // If it doesn't exist, create it
+      resultsContainer = document.createElement('div');
+      resultsContainer.id = 'llm-results-container';
+      resultsContainer.style.padding = '10px';
+      
+      // Find the search results container
+      const searchResultsContainer = document.querySelector('.overflow-y-auto');
+      
+      if (searchResultsContainer) {
+        // Insert at the beginning
+        searchResultsContainer.insertBefore(resultsContainer, searchResultsContainer.firstChild);
+      }
+    }
+    
+    setResultsPortalTarget(resultsContainer);
+    
+    // Cleanup
+    return () => {
+      if (resultsContainer && resultsContainer.parentNode) {
+        resultsContainer.parentNode.removeChild(resultsContainer);
+      }
+    };
+  }, []);
+  
+  // Process the results from the LLM API
   useEffect(() => {
     const processResultsThroughLLM = async () => {
       // Only process if we have valid results and a query
-      if (!results || !query || (Array.isArray(results) && results.length === 0)) {
-        // Clear any previous results
+      if (!results || !query) {
         setProcessedResults([]);
         return;
-      }
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Starting LLM processing for query:', query);
       }
       
       setIsLLMProcessing(true);
       setProcessingError(null);
       
       try {
-        // Ensure query is a string
-        const safeQuery = typeof query === 'string' ? query : String(query || '');
+        // Parse the results if they're a string
+        let parsedResults = results;
         
-        // Extract actual search results from the chat history
-        let searchResultsData = [];
-        
-        if (Array.isArray(results)) {
-          // Look for assistant messages with rawResults
-          const assistantMessages = results.filter(msg => msg.type === 'assistant' && msg.rawResults);
-          if (assistantMessages.length > 0) {
-            // Use the latest assistant message with rawResults
-            const latestMessage = assistantMessages[assistantMessages.length - 1];
-            if (latestMessage.rawResults && latestMessage.rawResults.sources) {
-              searchResultsData = latestMessage.rawResults.sources;
+        if (typeof results === 'string') {
+          try {
+            // Check if the string starts with "Error:"
+            if (results.startsWith('Error:')) {
+              throw new Error(results);
             }
-          }
-        }
-        
-        // If we couldn't extract from chat history, use the results directly
-        if (searchResultsData.length === 0 && Array.isArray(results)) {
-          searchResultsData = results;
-        }
-        
-        // Only proceed if we have actual search results
-        if (searchResultsData.length === 0) {
-          setProcessedResults([]);
-          setIsLLMProcessing(false);
-          return;
-        }
-        
-        // Process the results through the LLM
-        const response = await fetch('/api/llm/process', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: safeQuery,
-            sources: searchResultsData.slice(0, 20), // Limit to first 20 results for performance
-            model: 'mixtral-8x7b', // Default model
-          }),
-        });
-        
-        if (!response.ok) {
-          throw new Error(`LLM processing failed: ${response.status} ${response.statusText}`);
-        }
-        
-        const llmResponse = await response.json();
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log('LLM processing complete:', llmResponse);
-        }
-        
-        // Process llmResponse into a safe format before storing
-        const safeLlmResponse = processLlmResponseToSafeFormat(llmResponse);
-        
-        // Process the LLM response into categories
-        const { processCategories } = await import('./categories/processors/CategoryProcessor');
-        
-        // Check if llmResponse is an object and extract the content or summary
-        let llmContent = null;
-        
-        if (llmResponse) {
-          if (typeof llmResponse === 'string') {
-            llmContent = llmResponse;
-          } else if (typeof llmResponse === 'object' && llmResponse !== null) {
-            // Try to get content from different possible properties
-            llmContent = llmResponse.summary || llmResponse.content || null;
             
-            // If content is still an object, convert it to a string
-            if (typeof llmContent === 'object' && llmContent !== null) {
-              llmContent = JSON.stringify(llmContent);
-            }
+            parsedResults = JSON.parse(results);
+          } catch (e) {
+            console.error('Failed to parse results JSON:', e);
+            
+            // Create a fallback structure for non-JSON responses
+            parsedResults = { 
+              categories: {
+                key_insights: typeof results === 'string' ? results : 'No results available'
+              }
+            };
           }
         }
         
-        // Use the CategoryProcessor to process the results
-        const processedCategories = processCategories(searchResultsData, safeQuery, {
-          llmResponse: llmContent,
-          includeBusinessInsights: true,
-          includeMetrics: true,
-        });
+        // Extract categories from the results
+        let categories = [];
         
-        // Set the processed results
-        setProcessedResults(processedCategories);
-        setLlmProcessedContent(safeLlmResponse);
-        setIsLLMProcessing(false);
-        
-      } catch (error) {
-        console.error('Error processing results through LLM:', error);
-        setProcessingError(error.message || 'An error occurred during LLM processing');
-        
-        // Store searchResultsData in local variable to prevent ReferenceError
-        let localSearchResultsData = [];
-        if (Array.isArray(results)) {
-          localSearchResultsData = results;
+        // Check if we have categories in the response
+        if (parsedResults.categories) {
+          // Map the categories to our format
+          Object.entries(parsedResults.categories).forEach(([key, content]) => {
+            // Find the matching category from our predefined list
+            const categoryDef = CATEGORIES.find(cat => cat.id === key) || {
+              id: key,
+              title: key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+              color: '#607D8B' // Default color
+            };
+            
+            categories.push({
+              id: key,
+              title: categoryDef.title,
+              content: content || 'No content available',
+              color: categoryDef.color
+            });
+          });
+        } else if (parsedResults.content) {
+          // If we just have content, put it in the key insights category
+          categories.push({
+            id: 'key_insights',
+            title: 'Key Insights',
+            content: parsedResults.content,
+            color: '#4CAF50'
+          });
+        } else if (typeof parsedResults === 'string') {
+          // If we just have a string, put it in the key insights category
+          categories.push({
+            id: 'key_insights',
+            title: 'Key Insights',
+            content: parsedResults,
+            color: '#4CAF50'
+          });
+        } else if (Array.isArray(parsedResults)) {
+          // If we have an array, try to extract content from it
+          const content = parsedResults.map(item => {
+            if (typeof item === 'string') return item;
+            if (item.content) return item.content;
+            if (item.snippet) return item.snippet;
+            return safeStringify(item);
+          }).join('\n\n');
+          
+          categories.push({
+            id: 'key_insights',
+            title: 'Key Insights',
+            content,
+            color: '#4CAF50'
+          });
+        } else {
+          // Fallback for other formats
+          categories.push({
+            id: 'key_insights',
+            title: 'Key Insights',
+            content: safeStringify(parsedResults),
+            color: '#4CAF50'
+          });
         }
         
-        // Create a fallback response
-        const fallbackResponse = {
-          summary: `Could not process results: ${error.message || 'Unknown error'}`,
-          content: `Failed to process results through LLM API. Using original search results instead.`,
-          followUpQuestions: ["Try a more specific search", "Try again later"],
-          sources: localSearchResultsData
+        // Sort categories by priority
+        categories.sort((a, b) => {
+          const catA = CATEGORIES.find(cat => cat.id === a.id);
+          const catB = CATEGORIES.find(cat => cat.id === b.id);
+          return (catA?.priority || 99) - (catB?.priority || 99);
+        });
+        
+        setProcessedResults(categories);
+        
+        // Set the active category to the first one if we have results
+        if (categories.length > 0 && !activeCategory) {
+          setActiveCategory(categories[0].id);
+        }
+        
+        // Dispatch an event with the processed results
+        const event = new CustomEvent('llmResultsProcessed', {
+          detail: {
+            processedResults: categories,
+            activeCategory: categories.length > 0 ? (activeCategory || categories[0].id) : null
+          }
+        });
+        window.dispatchEvent(event);
+      } catch (error) {
+        console.error('Error processing LLM results:', error);
+        setProcessingError(error.message || 'Error processing results');
+        
+        // Create a fallback category for errors
+        const errorCategory = {
+          id: 'key_insights',
+          title: 'Key Insights',
+          content: `Error processing results: ${error.message || 'Unknown error'}`,
+          color: '#F44336'
         };
         
-        // Process fallback response into a safe format - ensure it returns a string, not an object
-        const safeResponse = processLlmResponseToSafeFormat(fallbackResponse);
-        
-        // Clear any processed results to avoid showing mock data
-        setProcessedResults([]);
-        setLlmProcessedContent(safeResponse);
+        setProcessedResults([errorCategory]);
+        setActiveCategory('key_insights');
+      } finally {
         setIsLLMProcessing(false);
       }
     };
     
     processResultsThroughLLM();
-  }, [results, query]);
+  }, [results, query, activeCategory, setExternalActiveCategory]);
   
-  // Basic processing function as fallback
-  const processResultsBasic = (resultsData) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Performing basic processing as fallback');
-    }
-    
-    // Process results to ensure they're in the correct format
-    if (resultsData) {
-      let processed = [];
-      
-      if (Array.isArray(resultsData)) {
-        // If results is already an array, use it directly
-        processed = resultsData.map(item => {
-          // Ensure each item has the necessary properties for categorization
-          if (typeof item === 'object' && item !== null) {
-            return {
-              ...item,
-              // Add type if not present
-              type: item.type || 'search_result',
-              // Ensure title is present
-              title: item.title || item.name || '',
-              // Ensure description is present
-              description: item.snippet || item.description || item.content || '',
-              // Ensure URL is present
-              url: item.link || item.url || '',
-              // Add a unique ID for tracking
-              _id: item._id || item.id || `result-${Math.random().toString(36).substring(2, 15)}`
-            };
-          }
-          return item;
-        });
-      } else if (typeof resultsData === 'object') {
-        // If results is an object with items/results/data property, use that
-        if (resultsData.items && Array.isArray(resultsData.items)) {
-          processed = resultsData.items;
-        } else if (resultsData.results && Array.isArray(resultsData.results)) {
-          processed = resultsData.results;
-        } else if (resultsData.data && Array.isArray(resultsData.data)) {
-          processed = resultsData.data;
-        } else {
-          // Otherwise, wrap the object in an array
-          processed = [resultsData];
-        }
-      } else if (typeof resultsData === 'string') {
-        // If results is a string, create a text item
-        processed = [{ text: resultsData, type: 'text' }];
-      }
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Basic processed results count:', processed.length);
-      }
-      setProcessedResults(processed);
-    }
-  };
-
-  // Helper function to extract key facts from LLM content
-  const extractKeyFacts = (content) => {
-    if (!content) return '';
-    
-    // Try to find bullet points or numbered lists that might indicate facts
-    const facts = [];
-    const lines = content.split('\n');
-    
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      // Match bullet points, numbers, or markdown list items
-      if (line.match(/^[•\-\*\d\.]+ /)) {
-        facts.push(line);
-      }
-    }
-    
-    // If no facts found with bullet points, try to extract sentences that look like facts
-    if (facts.length === 0) {
-      const sentences = content.match(/[^.!?]+[.!?]+/g) || [];
-      for (const sentence of sentences) {
-        if (sentence.includes('is') || sentence.includes('are') || 
-            sentence.includes('was') || sentence.includes('were') ||
-            sentence.match(/\d+/)) {
-          facts.push(sentence.trim());
-        }
-        
-        // Limit to 10 facts if using sentence extraction
-        if (facts.length >= 10) break;
-      }
-    }
-    
-    return facts.length > 0 ? facts.join('\n\n') : content;
+  // Handle category change
+  const handleCategoryChange = (categoryId) => {
+    setActiveCategory(categoryId);
   };
   
-  // Helper function to extract key insights from LLM content
-  const extractKeyInsights = (content, query) => {
-    if (!content) return '';
-    
-    // Try to find paragraphs or sentences that contain key insight indicators
-    const insights = [];
-    const lines = content.split('\n');
-    const queryTerms = query.toLowerCase().split(/\s+/);
-    
-    // Look for paragraphs with insight indicators
-    let insightParagraphs = '';
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      
-      // Skip empty lines
-      if (!line) continue;
-      
-      // Look for insight indicators
-      const hasInsightIndicator = 
-        line.toLowerCase().includes('insight') || 
-        line.toLowerCase().includes('takeaway') ||
-        line.toLowerCase().includes('key finding') ||
-        line.toLowerCase().includes('important') ||
-        line.toLowerCase().includes('significant') ||
-        line.toLowerCase().includes('analysis');
-      
-      // Look for query terms
-      const hasQueryTerms = queryTerms.some(term => 
-        line.toLowerCase().includes(term) && term.length > 3
+  // Render the complete results (categories + content)
+  const renderCompleteResults = () => {
+    if (isLLMProcessing) {
+      return (
+        <div className="loading-container" style={{ textAlign: 'center', padding: '40px' }}>
+          <div className="loading-spinner" style={{ 
+            width: '40px', 
+            height: '40px',
+            border: '4px solid #f3f3f3',
+            borderTop: '4px solid #3498db',
+            borderRadius: '50%',
+            margin: '0 auto 20px',
+            animation: 'spin 1s linear infinite'
+          }}></div>
+          <p>Processing search results...</p>
+        </div>
       );
-      
-      if (hasInsightIndicator || (hasQueryTerms && line.length > 100)) {
-        insights.push(line);
-      }
     }
     
-    // If no insights found, try to extract important-looking sentences
-    if (insights.length === 0) {
-      const sentences = content.match(/[^.!?]+[.!?]+/g) || [];
-      for (const sentence of sentences) {
-        const sentenceLower = sentence.toLowerCase();
-        if (sentenceLower.includes('important') || 
-            sentenceLower.includes('significant') || 
-            sentenceLower.includes('key') ||
-            sentenceLower.includes('noteworthy') ||
-            queryTerms.some(term => sentenceLower.includes(term) && term.length > 3)) {
-          insights.push(sentence.trim());
-        }
-        
-        // Limit to 5 insights if using sentence extraction
-        if (insights.length >= 5) break;
-      }
+    if (processingError && processedResults.length === 0) {
+      return (
+        <div className="error-container" style={{ padding: '20px', color: '#e74c3c' }}>
+          <h3>Error Processing Results</h3>
+          <p>{processingError}</p>
+        </div>
+      );
     }
     
-    return insights.length > 0 ? insights.join('\n\n') : content;
-  };
-
-  // Function to ensure all content is stringified for React
-  const stringifyForReact = (obj) => {
-    // Direct string or primitive - return as string
-    if (typeof obj !== 'object' || obj === null) {
-      return String(obj || '');
+    if (processedResults.length === 0) {
+      return (
+        <div className="no-categories" style={{ padding: '20px', textAlign: 'center' }}>
+          <p>No relevant categories found for your search.</p>
+        </div>
+      );
     }
     
-    try {
-      // Handle array by stringifying each element
-      if (Array.isArray(obj)) {
-        // If it's an array of primitive values, return as comma-separated string
-        if (obj.every(item => typeof item !== 'object' || item === null)) {
-          return obj.map(item => String(item || '')).join(', ');
-        }
-        // Otherwise, convert each item properly and return as array
-        return obj.map(item => stringifyForReact(item));
-      }
-      
-      // For objects with specific structure that needs to be preserved
-      if (obj && typeof obj === 'object') {
-        // If it's a structured LLM response with summary/sources, preserve it but stringify individual properties
-        if (obj.summary !== undefined || obj.content !== undefined || obj.sources !== undefined) {
-          const processedObj = {
-            summary: typeof obj.summary === 'string' ? obj.summary : String(obj.summary || ''),
-            isLLMProcessed: true
-          };
-          
-          // Process sources to ensure they have the correct structure
-          if (Array.isArray(obj.sources)) {
-            processedObj.sources = obj.sources.map(source => {
-              if (typeof source === 'string') {
-                return source;
-              } else if (typeof source === 'object' && source !== null) {
-                // Ensure each source has title and url as strings
-                return {
-                  title: typeof source.title === 'string' ? source.title : String(source.title || ''),
-                  url: typeof source.url === 'string' ? source.url : String(source.url || '')
-                };
-              } else {
-                return String(source || '');
-              }
-            });
-          } else {
-            processedObj.sources = [];
-          }
-          
-          // Process follow-up questions
-          if (Array.isArray(obj.followUpQuestions)) {
-            processedObj.followUpQuestions = obj.followUpQuestions.map(q => 
-              typeof q === 'string' ? q : String(q || '')
-            );
-          } else {
-            processedObj.followUpQuestions = [];
-          }
-          
-          return processedObj;
-        }
-        
-        // For source objects with title/url, preserve structure
-        if (obj.title !== undefined || obj.url !== undefined) {
-          return {
-            title: typeof obj.title === 'string' ? obj.title : String(obj.title || ''),
-            url: typeof obj.url === 'string' ? obj.url : String(obj.url || '')
-          };
-        }
-      }
-      
-      // For other objects, convert to a string representation
-      return JSON.stringify(obj);
-    } catch (e) {
-      console.error('Error stringifying object:', e);
-      return String(obj || 'Error processing content');
-    }
-  };
-
-  // Enhanced version of processLlmResponseToSafeFormat that fully stringifies content
-  const processLlmResponseToSafeFormat = (response) => {
-    if (!response) return '';
-    
-    try {
-      // If it's already a string, we're good to go
-      if (typeof response === 'string') {
-        return response;
-      }
-      
-      // If it's an array, process each item and return the processed array
-      if (Array.isArray(response)) {
-        return response.map(item => stringifyForReact(item));
-      }
-      
-      // For objects with LLM response structure, process it preserving the structure
-      if (typeof response === 'object' && response !== null) {
-        // Check if this is a structured LLM response
-        if (response.summary !== undefined || response.content !== undefined || 
-            response.sources !== undefined || response.followUpQuestions !== undefined) {
-          
-          // Return a properly processed object with all fields stringified
-          return stringifyForReact(response);
-        }
-        
-        // For other objects, use stringifyForReact
-        return stringifyForReact(response);
-      }
-      
-      // Fallback for any other type
-      return String(response || '');
-    } catch (err) {
-      console.error('Error in processLlmResponseToSafeFormat:', err);
-      return String(response || 'Error processing content');
-    }
-  };
-
-  // Add a function to safely prepare the display content
-  const prepareDisplayContent = (content) => {
-    if (!content) return "No content available";
-    
-    if (typeof content === 'string') {
-      return content;
-    }
-    
-    // Handle the object structure from VerifiedSearch
-    if (typeof content === 'object' && content !== null) {
-      // If it's already in the expected format with summary, sources, etc.
-      if (content.summary || content.content) {
-        return content;
-      }
-      
-      // If it's the raw content object from chat history
-      if (content.type === 'assistant' && content.content) {
-        return prepareDisplayContent(content.content);
-      }
-      
-      // Last resort - stringify the object
-      return JSON.stringify(content);
-    }
-    
-    return String(content);
-  };
-  
-  // Use the prepared content in the render function
-  const preparedDisplayContent = prepareDisplayContent(results);
-
-  // Ensure query is a string
-  const searchQuery = typeof query === 'string' ? query : '';
-  
-  // Get the display content for the LLM results
-  const getDisplayContent = (content) => {
-    // Handle object responses
-    if (typeof content === 'object' && content !== null) {
-      return content.content || JSON.stringify(content, null, 2);
-    }
-    return content;
-  };
-
-  // Prepare the content for CategoryDisplay
-  const preparedDisplayContentForCategory = useMemo(() => {
-    // Early exit if we don't have anything to display
-    if (!llmProcessedContent && !processedResults) {
-      return [];
-    }
-    
-    // If it's a string, convert to a simple category format for display
-    if (typeof preparedDisplayContent === 'string') {
-      // Check if the string is empty
-      if (!preparedDisplayContent.trim()) {
-        return [];
-      }
-      
-      // Return as single category with proper ID format
-      return [
-        {
-          id: 'llm-response', // Use specific ID for criteria matching
-          name: 'AI Analysis',
-          description: 'Analysis of search results',
-          icon: 'robot',
-          content: [
-            {
-              id: 'content-1',
-              title: 'Analysis',
-              content: preparedDisplayContent,
-              source: 'LLM Analysis',
-              type: 'analysis'
-            }
-          ],
-          metrics: { relevance: 1, accuracy: 1, credibility: 1, overall: 1 },
-          color: '#4285F4' // Google Blue
-        }
-      ];
-    } else if (preparedDisplayContent && typeof preparedDisplayContent === 'object' && !Array.isArray(preparedDisplayContent)) {
-      // If it's an object with specific properties like summary, content, sources, etc.
-      // convert it to a properly formatted category structure
-      const content = preparedDisplayContent.summary || preparedDisplayContent.content || '';
-      const sources = preparedDisplayContent.sources || [];
-      const followUpQuestions = preparedDisplayContent.followUpQuestions || [];
-      
-      // Format the content as string
-      const contentString = typeof content === 'string' ? content : JSON.stringify(content);
-      
-      // Create a complete category with the content
-      return [
-        {
-          id: 'llm-response',
-          name: 'AI Analysis',
-          description: 'Analysis of search results',
-          icon: 'robot',
-          content: [
-            {
-              id: 'content-main',
-              title: 'Analysis',
-              content: contentString,
-              source: 'LLM Analysis',
-              type: 'analysis'
-            },
-            // Add sources as separate content items
-            ...sources.map((source, index) => {
-              const sourceContent = typeof source === 'object' ? 
-                (source.content || `Source: ${source.title || 'Unknown'}`) : 
-                String(source);
-              
-              return {
-                id: `source-${index}`,
-                title: typeof source === 'object' ? (source.title || `Source ${index + 1}`) : `Source ${index + 1}`,
-                content: sourceContent,
-                url: typeof source === 'object' ? (source.url || '') : '',
-                source: 'Search Result',
-                type: 'source'
-              };
-            }),
-            // Add follow-up questions as separate content item
-            {
-              id: 'followup-questions',
-              title: 'Follow-up Questions',
-              content: followUpQuestions.map(q => `- ${typeof q === 'string' ? q : JSON.stringify(q)}`).join('\n'),
-              source: 'LLM Suggestions',
-              type: 'questions'
-            }
-          ].filter(item => {
-            // Filter out empty followup questions
-            if (item.id === 'followup-questions' && (!followUpQuestions || followUpQuestions.length === 0)) {
-              return false;
-            }
-            return true;
-          }),
-          metrics: { relevance: 1, accuracy: 1, credibility: 1, overall: 1 },
-          color: '#4285F4' // Google Blue
-        }
-      ];
-    }
-    
-    // If it's an array, make sure it's properly structured
-    if (Array.isArray(preparedDisplayContent)) {
-      // Validate each category has proper format and all content values are strings
-      return preparedDisplayContent.map(category => {
-        // Ensure category has required fields
-        if (!category) return null;
-        
-        const safeCategory = { ...category };
-        safeCategory.id = category.id || `category-${Math.random().toString(36).substring(2, 9)}`;
-        safeCategory.name = category.name || 'Untitled Category';
-        
-        // Handle content array
-        if (Array.isArray(category.content)) {
-          safeCategory.content = category.content.map(item => {
-            if (!item) return null;
-            
-            // If item is not an object, convert to object with content property
-            if (typeof item !== 'object' || item === null) {
-              return {
-                id: `content-${Math.random().toString(36).substring(2, 9)}`,
-                title: 'Content',
-                content: String(item || '')
-              };
-            }
-            
-            // Ensure content is a string
-            const safeItem = { ...item };
-            safeItem.id = item.id || `content-${Math.random().toString(36).substring(2, 9)}`;
-            safeItem.title = item.title || 'Content';
-            
-            if (item.content !== undefined) {
-              if (typeof item.content === 'string') {
-                safeItem.content = item.content;
-              } else if (typeof item.content === 'object' && item.content !== null) {
-                safeItem.content = JSON.stringify(item.content);
-              } else {
-                safeItem.content = String(item.content || '');
-              }
-            } else {
-              safeItem.content = '';
-            }
-            
-            return safeItem;
-          }).filter(Boolean); // Remove null items
-        } else if (category.content !== undefined) {
-          // If content is not an array, convert to string and make single item
-          safeCategory.content = [{
-            id: `content-${Math.random().toString(36).substring(2, 9)}`,
-            title: 'Content',
-            content: typeof category.content === 'string' 
-              ? category.content 
-              : String(category.content || '')
-          }];
-        } else {
-          safeCategory.content = [];
-        }
-        
-        return safeCategory;
-      }).filter(Boolean); // Remove null items
-    }
-    
-    // For any other type, convert to string and create a category
-    return [{
-      id: 'llm-insights',
-      name: 'AI Analysis',
-      description: 'AI-generated insights',
-      icon: 'lightbulb',
-      content: [{
-        id: 'llm-content',
-        title: 'AI Content',
-        content: String(preparedDisplayContent || '')
-      }],
-      metrics: { relevance: 0.9, accuracy: 0.8, credibility: 0.7, overall: 0.8 }
-    }];
-  }, [preparedDisplayContent]);
-
-  // If we're not processing and no valid content or search, don't render
-  if (!isLLMProcessing && (!preparedDisplayContentForCategory || preparedDisplayContentForCategory.length === 0)) {
-    return null;
-  }
-  
-  // Check specific criteria for showing LLM results
-  const shouldShowLLMResults = () => {
-    // Only show if we have exactly 1 category
-    if (!Array.isArray(preparedDisplayContentForCategory) || preparedDisplayContentForCategory.length !== 1) {
-      return false;
-    }
-    
-    // Check if the first category has the required ID
-    const firstCategory = preparedDisplayContentForCategory[0];
-    if (!firstCategory || firstCategory.id !== 'llm-response') {
-      return false;
-    }
-    
-    // Check if we have a valid query
-    if (!query || query.trim() === '') {
-      return false;
-    }
-    
-    // Only show after a search has been performed
-    return true;
-  };
-  
-  // Early exit if criteria not met
-  if (!shouldShowLLMResults() && !isLLMProcessing) {
-    return null;
-  }
-
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Display content items:', Array.isArray(preparedDisplayContentForCategory) ? preparedDisplayContentForCategory.length : 0);
-  }
-
-  // Special renderer for source item that ensures it's a string
-  const renderSource = (source, index) => {
-    if (typeof source === 'string') {
-      return <li key={index}>{source}</li>;
-    } else if (source && typeof source === 'object') {
-      // Try to extract useful information from source object
-      const title = source.title || '';
-      const url = source.url || '';
-      return <li key={index}>{title}{url ? ` - ${url}` : ''}</li>;
-    }
-    return <li key={index}>Source {index + 1}</li>;
-  };
-
-  return (
-    shouldShowLLMResults() && (
-      <div className="llm-search-results">
-        <CategoryDisplay
-          title="AI Analysis"
-          id="llm-response"
-          icon={<i className="fas fa-robot" />}
-          content={
-            <div className="llm-content">
-              {isLLMProcessing ? (
-                <div className="processing-state">
-                  <div className="spinner" style={{
-                    border: '4px solid rgba(0, 0, 0, 0.1)',
-                    borderRadius: '50%',
-                    borderTop: '4px solid #3498db',
-                    width: '30px',
-                    height: '30px',
-                    animation: 'spin 1s linear infinite',
-                    margin: '0 auto 15px auto'
-                  }}></div>
-                  <p>Processing search results with AI...</p>
-                </div>
-              ) : processingError ? (
-                <div className="error-state">
-                  <p className="error-message">Error: {processingError}</p>
-                  <p>Try rephrasing your search or try again later.</p>
-                </div>
-              ) : typeof preparedDisplayContent === 'object' && preparedDisplayContent !== null ? (
-                <div>
-                  {/* Handle structured object content */}
-                  {preparedDisplayContent.summary && (
-                    <div className="llm-summary">{String(preparedDisplayContent.summary)}</div>
-                  )}
-                  
-                  {/* Render sources if available */}
-                  {Array.isArray(preparedDisplayContent.sources) && preparedDisplayContent.sources.length > 0 && (
-                    <div className="llm-sources">
-                      <h4>Sources:</h4>
-                      <ul>
-                        {preparedDisplayContent.sources.map((source, index) => renderSource(source, index))}
-                      </ul>
-                    </div>
-                  )}
-                  
-                  {/* Render follow-up questions if available */}
-                  {Array.isArray(preparedDisplayContent.followUpQuestions) && preparedDisplayContent.followUpQuestions.length > 0 && (
-                    <div className="llm-follow-up">
-                      <h4>Follow-up Questions:</h4>
-                      <ul>
-                        {preparedDisplayContent.followUpQuestions.map((question, index) => (
-                          <li key={index}>{String(question)}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                // Render simple string content
-                <div>{String(preparedDisplayContent || "No AI analysis available for this search.")}</div>
-              )}
-            </div>
-          }
-          showTabs={showTabs}
-          tabsOptions={tabsOptions}
-          metricsOptions={metricsOptions}
-          activeCategory="llm-response"
-          setActiveCategory={setActiveCategory}
-          categoriesCount={1}
-        />
-        <style jsx>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+    // Compact "You" section
+    const youSection = (
+      <div className="you-section compact-you" style={{ 
+        borderBottom: '1px solid #eee',
+        marginBottom: '10px',
+        paddingBottom: '8px'
+      }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center',
+          fontSize: '13px',
+          color: '#555'
+        }}>
+          <span style={{ 
+            fontWeight: 'bold', 
+            marginRight: '6px',
+            color: '#333'
+          }}>You:</span>
+          <span style={{ 
+            fontStyle: 'italic',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}>
+            {query}
+          </span>
+        </div>
       </div>
-    )
+    );
+    
+    // Categories section - removed the "Categories" label
+    const categoriesSection = (
+      <div className="categories-section" style={{ 
+        position: 'sticky',
+        top: 0,
+        backgroundColor: 'white',
+        zIndex: 100,
+        padding: '10px 0',
+        marginBottom: '15px',
+        borderBottom: '1px solid #eee'
+      }}>
+        {/* Removed the Categories label */}
+        <div className="flex flex-wrap gap-2 mb-2">
+          {processedResults.map(category => (
+            <button
+              key={category.id}
+              className={`px-3 py-1 rounded-full text-sm`}
+              style={{
+                backgroundColor: activeCategory === category.id ? category.color : '#f1f5f9',
+                color: activeCategory === category.id ? 'white' : '#333'
+              }}
+              onClick={() => handleCategoryChange(category.id)}
+            >
+              {category.title}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+    
+    // Content section
+    const category = processedResults.find(cat => cat.id === activeCategory) || processedResults[0];
+    
+    // Convert newlines to <br> tags and handle markdown-like formatting
+    const contentHtml = (category.content || 'No content available')
+      .replace(/\n\n/g, '<br><br>')
+      .replace(/\n/g, '<br>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    
+    const contentSection = (
+      <div className="content-panel" style={{ 
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        padding: '20px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        border: `1px solid #f0f0f0`,
+        borderLeft: `4px solid ${category.color}`
+      }}>
+        <h2 style={{ 
+          color: category.color,
+          marginBottom: '15px',
+          fontSize: '20px',
+          fontWeight: 'bold'
+        }}>
+          {category.title}
+        </h2>
+        
+        <div 
+          className="content-text"
+          dangerouslySetInnerHTML={{ __html: contentHtml }}
+          style={{ lineHeight: '1.6' }}
+        />
+        
+        {/* Sources section */}
+        <div className="sources-section" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+          <p style={{ fontWeight: 'bold', marginBottom: '5px' }}>Sources:</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+            <a href={`https://www.google.com/search?q=${encodeURIComponent(query)}`} target="_blank" rel="noopener noreferrer" style={{ color: '#4285F4', textDecoration: 'underline' }}>
+              Search results for {query}
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+    
+    return (
+      <div className="complete-results">
+        {results && results.length > 0 && (
+          <>
+            {youSection}
+            {categoriesSection}
+            {contentSection}
+          </>
+        )}
+      </div>
+    );
+  };
+  
+  return (
+    <>
+      {/* Render everything in the portal */}
+      {resultsPortalTarget && createPortal(
+        renderCompleteResults(),
+        resultsPortalTarget
+      )}
+      
+      {/* This div is just a placeholder and won't be visible */}
+      <div style={{ display: 'none' }}></div>
+    </>
   );
 };
 

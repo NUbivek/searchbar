@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { logger } from './logger.js';
+import { isDebugMode } from './debug';
 
 // Try to import the processWithLLM function from llmProcessing.js
 let processWithLLMInternal;
@@ -232,17 +233,19 @@ const callLLMAPI = async (query, results, options = {}, originalSources = []) =>
     }
 
     // Log the combined sources for debugging
-    console.log('DEBUG: Combined sources for LLM API:', {
-      totalSources: combinedSources.length,
-      enhancedResultsCount: enhancedResults.length,
-      originalSourcesCount: originalSources.length,
-      firstSourceSample: combinedSources.length > 0 ? {
-        hasTitle: !!combinedSources[0].title,
-        hasContent: !!combinedSources[0].content,
-        hasUrl: !!combinedSources[0].url,
-        contentLength: combinedSources[0].content?.length
-      } : 'No sources'
-    });
+    if (isDebugMode()) {
+      logger.debug('Combined sources for LLM API:', {
+        totalSources: combinedSources.length,
+        enhancedResultsCount: enhancedResults.length,
+        originalSourcesCount: originalSources.length,
+        firstSourceSample: combinedSources.length > 0 ? {
+          hasTitle: !!combinedSources[0].title,
+          hasContent: !!combinedSources[0].content,
+          hasUrl: !!combinedSources[0].url,
+          contentLength: combinedSources[0].content?.length
+        } : 'No sources'
+      });
+    }
 
     // Return appropriate error if query is missing or empty
     if (!query || typeof query !== 'string' || query.trim() === '') {

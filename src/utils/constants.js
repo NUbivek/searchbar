@@ -63,3 +63,8 @@ export const VERIFIED_SOURCE_TYPES = [
   { id: 'market_data', name: 'Market Data Analytics', icon: '📈' },
   { id: 'vc_startups', name: 'VC & Startups', icon: '💰' }
 ];
+
+// Check for debug-related constants
+export const DEBUG_MODE = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
+export const SHOW_METRICS = process.env.NEXT_PUBLIC_SHOW_METRICS === 'true';
+export const SHOW_CHAT_HISTORY = process.env.NEXT_PUBLIC_SHOW_CHAT_HISTORY === 'true';

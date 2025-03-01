@@ -27,6 +27,9 @@ jobs:
       env:
         NEXT_PUBLIC_API_BASE_URL: "https://api.research.bivek.ai"
         NEXT_PUBLIC_ENABLE_LOGGING: "true"
+        NEXT_PUBLIC_DEBUG_MODE: "false"
+        NEXT_PUBLIC_SHOW_CHAT_HISTORY: "false"
+        NEXT_PUBLIC_SHOW_METRICS: "false"
         
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3

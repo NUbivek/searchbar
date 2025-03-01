@@ -164,10 +164,12 @@ export default function SearchResults({ results, onFollowUpSearch, isLoading, er
         <div className="p-4 space-y-6">
           <div>
             {/* LLM Synthesized Results */}
-            <LLMResults 
-              results={resultsArray} 
-              query={query} 
-            />
+            {resultsArray && resultsArray.length > 0 && (
+              <LLMResults 
+                results={resultsArray} 
+                query={query} 
+              />
+            )}
             
             {/* Traditional Web Results */}
             {getTraditionalResults().length > 0 && (

@@ -252,18 +252,22 @@ export default function OpenSearch() {
         )}
 
         <div className="bg-white rounded-xl shadow-sm overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
-          <SearchResults 
-            results={chatHistory} 
-            onFollowUpSearch={handleFollowUpSearch}
-            loading={loading}
-            query={query}
-          />
-          <LLMResults 
-            results={chatHistory} 
-            query={query}
-            onFollowUpSearch={handleFollowUpSearch}
-            loading={loading}
-          />
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <FaSpinner className="animate-spin text-blue-600" size={24} />
+            </div>
+          ) : (
+            <>
+              {chatHistory.length > 0 && (
+                <SearchResults 
+                  results={chatHistory} 
+                  onFollowUpSearch={handleFollowUpSearch}
+                  loading={loading}
+                  query={query}
+                />
+              )}
+            </>
+          )}
           <div ref={chatEndRef} />
         </div>
       </div>

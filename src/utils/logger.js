@@ -2,6 +2,8 @@
  * @fileoverview Logging utility that provides different log levels and respects environment configuration
  */
 
+import { isDebugMode } from './debug';
+
 /**
  * Logger object with methods for different logging levels
  * @namespace
@@ -12,8 +14,8 @@ const logger = {
    * @param {...*} args - Arguments to log
    */
   debug: (...args) => {
-    if (process.env.NEXT_PUBLIC_ENABLE_LOGGING === 'true') {
-      console.debug('[DEBUG]', ...args);
+    if (isDebugMode()) {
+      console.log('DEBUG:', ...args);
     }
   },
 
@@ -22,9 +24,7 @@ const logger = {
    * @param {...*} args - Arguments to log
    */
   info: (...args) => {
-    if (process.env.NEXT_PUBLIC_ENABLE_LOGGING === 'true') {
-      console.info('[INFO]', ...args);
-    }
+    console.log('INFO:', ...args);
   },
 
   /**
@@ -32,7 +32,7 @@ const logger = {
    * @param {...*} args - Arguments to log
    */
   error: (...args) => {
-    console.error('[ERROR]', ...args);
+    console.error('ERROR:', ...args);
   },
 
   /**
@@ -40,7 +40,7 @@ const logger = {
    * @param {...*} args - Arguments to log
    */
   warn: (...args) => {
-    console.warn('[WARN]', ...args);
+    console.warn('WARN:', ...args);
   }
 };
 
