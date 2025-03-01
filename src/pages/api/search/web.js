@@ -51,7 +51,6 @@ export default async function handler(req, res) {
   try {
     const { 
       query, 
-      mockResults, 
       customUrls = [], 
       uploadedFiles = [], 
       model = 'mixtral-8x7b',
@@ -122,18 +121,14 @@ export default async function handler(req, res) {
 
     logger.info(`[${searchId}] Processing web search for query: ${query}`);
 
-    // Use mock results in test mode
+    // Always use real API results
     let response;
-    if (process.env.NODE_ENV === 'test') {
-      logger.info(`[${searchId}] Using mock results for web search`);
-      response = { data: mockResults || { organic: [] } };
-    } else {
-      // Use Serper API for web search
-      logger.info(`[${searchId}] Calling Serper API`);
-      const serperApiKey = process.env.SERPER_API_KEY;
-      if (!serperApiKey) {
-        throw new Error('Serper API key not configured');
-      }
+    // Use Serper API for web search
+    logger.info(`[${searchId}] Calling Serper API`);
+    const serperApiKey = process.env.SERPER_API_KEY;
+    if (!serperApiKey) {
+      throw new Error('Serper API key not configured');
+    }
 
       logger.info(`[${searchId}] Using Serper API key: ${serperApiKey}`);
       response = await withRetry(() => axios.post(

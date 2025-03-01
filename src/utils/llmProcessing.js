@@ -160,31 +160,64 @@ async function processWithLLM(
   apiKey = null
 ) {
   try {
-    // Input validation
-    if (!query || typeof query !== 'string') {
-      console.error('Invalid query provided to processWithLLM:', query);
-      return createFallbackResponse(
-        typeof query === 'string' ? query : 'unknown query', 
-        Array.isArray(sourceData) ? sourceData : []
-      );
+    // Input validation and sanitization
+    const sanitizedQuery = typeof query === 'string' ? query.trim() : '';
+    
+    if (!sanitizedQuery) {
+      console.error('Invalid or empty query provided to processWithLLM:', query);
+      return createFallbackResponse('empty query', Array.isArray(sourceData) ? sourceData : []);
     }
+    
+    // Log the sanitized query
+    console.log('DEBUG: Processing LLM request with query:', {
+      original: query,
+      sanitized: sanitizedQuery,
+      length: sanitizedQuery.length
+    });
 
-    if (!sourceData || !Array.isArray(sourceData) || sourceData.length === 0) {
-      console.warn('No source data provided to processWithLLM');
-      return createFallbackResponse(query, []);
+    // Validate and sanitize source data
+    const validSources = Array.isArray(sourceData) ? sourceData.filter(source => {
+      return source && typeof source === 'object' && 
+             (source.content || source.title || source.url);
+    }) : [];
+    
+    if (validSources.length === 0) {
+      console.warn('No valid source data provided to processWithLLM');
+      return createFallbackResponse(sanitizedQuery, []);
     }
+    
+    // Log source validation results
+    console.log('DEBUG: Source validation results:', {
+      originalCount: sourceData?.length || 0,
+      validCount: validSources.length,
+      firstSource: validSources[0] ? {
+        hasContent: !!validSources[0].content,
+        hasTitle: !!validSources[0].title,
+        hasUrl: !!validSources[0].url
+      } : 'No valid sources'
+    });
 
     const log = logger;
   
-    // Default parameters
-    const maxTokens = 2000;
-    const temperature = 0.3;
+    // Configure LLM parameters based on query and content
+    const maxTokens = Math.min(2000, sanitizedQuery.length * 10);
+    const temperature = 0.3; // Keep temperature low for more focused responses
     const stop = ["\n\n\n"];
+    
+    // Log LLM configuration
+    console.log('DEBUG: LLM configuration:', {
+      maxTokens,
+      temperature,
+      model,
+      sourceCount: validSources.length
+    });
 
     log.info('Processing with LLM', { 
       model,
-      queryLength: query.length,
-      sourceCount: sourceData.length
+      queryLength: sanitizedQuery.length,
+      sourceCount: validSources.length,
+      maxTokens,
+      temperature
     });
 
     // Validate model
@@ -282,27 +315,76 @@ async function processWithLLM(
         choices: response.data?.choices ? response.data.choices.length : 0
       });
       
-      // Process response based on model
+      // Process and validate response based on model
       let result;
       
-      if (model === 'perplexity') {
-        // Extract content from Perplexity response
-        result = response.data.choices[0].message.content;
-      } else {
-        // Extract content from Together response
-        result = response.data.choices[0].text;
+      // Log raw response for debugging
+      console.log('DEBUG: Raw API response:', {
+        status: response.status,
+        hasData: !!response.data,
+        hasChoices: Array.isArray(response.data?.choices),
+        choicesLength: response.data?.choices?.length || 0
+      });
+      
+      if (!response.data || !response.data.choices || !response.data.choices.length) {
+        throw new Error('Invalid API response structure');
       }
+      
+      if (model === 'perplexity') {
+        // Extract and validate Perplexity response
+        const message = response.data.choices[0].message;
+        if (!message || !message.content) {
+          throw new Error('Invalid Perplexity response format');
+        }
+        result = message.content;
+      } else {
+        // Extract and validate Together response
+        const choice = response.data.choices[0];
+        if (!choice || !choice.text) {
+          throw new Error('Invalid Together API response format');
+        }
+        result = choice.text;
+      }
+      
+      // Log processed result
+      console.log('DEBUG: Processed API result:', {
+        resultLength: result.length,
+        resultPreview: result.substring(0, 100) + '...'
+      });
       
       // Attempt to parse JSON from result (Together API sometimes returns JSON without proper headers)
       let parsedContent;
       try {
-        // Look for JSON in the response
-        const jsonMatch = result.match(/\{[\s\S]*\}/);
+        // Look for JSON in the response and handle potential extra content
+        console.log('DEBUG: Raw LLM response:', result.substring(0, 200) + '...');
         
-        if (jsonMatch) {
-          const jsonStr = jsonMatch[0];
-          parsedContent = JSON.parse(jsonStr);
-          console.log('DEBUG: Successfully parsed JSON from LLM response');
+        // Try to find the first complete JSON object
+        let jsonStart = result.indexOf('{');
+        if (jsonStart !== -1) {
+          let bracketCount = 1;
+          let jsonEnd = jsonStart + 1;
+          
+          // Find the matching closing bracket
+          while (bracketCount > 0 && jsonEnd < result.length) {
+            if (result[jsonEnd] === '{') bracketCount++;
+            if (result[jsonEnd] === '}') bracketCount--;
+            jsonEnd++;
+          }
+          
+          if (bracketCount === 0) {
+            // Extract just the JSON part
+            const jsonStr = result.substring(jsonStart, jsonEnd);
+            try {
+              parsedContent = JSON.parse(jsonStr);
+              console.log('DEBUG: Successfully parsed JSON from LLM response');
+            } catch (parseError) {
+              console.error('DEBUG: Failed to parse extracted JSON:', parseError.message);
+              parsedContent = { content: result };
+            }
+          } else {
+            console.log('DEBUG: No complete JSON object found in response');
+            parsedContent = { content: result };
+          }
         } else {
           // If no JSON is found, use the raw text
           parsedContent = { content: result };
@@ -419,55 +501,85 @@ function isBusinessRelatedQuery(query) {
   return businessKeywords.some(keyword => query.toLowerCase().includes(keyword));
 }
 
-export const createFallbackResponse = (query, sources) => {
+export const createFallbackResponse = (query, sources, errorMessage = null) => {
   const safeQuery = typeof query === 'string' ? query : 'unknown query';
   const safeSources = Array.isArray(sources) ? sources : [];
   
   console.log('DEBUG: Creating fallback response for query:', safeQuery);
-  
-  // Create a summary from the source titles
-  let summaryFromSources = '';
-  if (safeSources.length > 0) {
-    summaryFromSources = `Based on the search results, here's what I found about "${safeQuery}":\n\n`;
-    
-    safeSources.forEach((source, index) => {
-      const title = source.title || `Source ${index + 1}`;
-      summaryFromSources += `- ${title}\n`;
-    });
-    
-    summaryFromSources += `\nPlease review these sources for more detailed information.`;
+  if (errorMessage) {
+    console.log('DEBUG: Error message:', errorMessage);
   }
   
-  // Check if it's a business query
+  // Create sanitized sources that convert any nested objects to strings
+  const sanitizedSources = safeSources.map(source => {
+    if (!source || typeof source !== 'object') return { title: 'Unknown Source', url: '#', content: '' };
+    
+    // Create a safe copy with only string values
+    return {
+      title: typeof source.title === 'string' ? source.title : 
+             (source.title ? JSON.stringify(source.title) : 'Unknown Source'),
+      url: typeof source.url === 'string' ? source.url : '#',
+      content: typeof source.content === 'string' ? source.content : 
+               (source.content ? JSON.stringify(source.content) : ''),
+      domain: typeof source.domain === 'string' ? source.domain : 
+              (source.domain ? JSON.stringify(source.domain) : '')
+    };
+  });
+  
+  // Create a summary from the source titles
+  let sourceTitles = [];
+  if (sanitizedSources.length > 0) {
+    sanitizedSources.forEach((source) => {
+      const title = source.title || 'Unknown Source';
+      sourceTitles.push(title);
+    });
+  }
+  
+  // Check query type for different category responses
   const isBusinessQuery = safeQuery.toLowerCase().includes('business') || 
                         safeQuery.toLowerCase().includes('company') || 
-                        safeQuery.toLowerCase().includes('market');
+                        safeQuery.toLowerCase().includes('market') ||
+                        safeQuery.toLowerCase().includes('industry');
   
-  // Create fallback content based on query type
-  let fallbackContent = '';
-  if (summaryFromSources) {
-    // Use the summary from sources if available
-    fallbackContent = summaryFromSources;
-  } else if (isBusinessQuery) {
-    fallbackContent = `I've analyzed ${safeSources.length} results related to your business query "${safeQuery}". 
-    
-The search results contain information on market trends, business strategies, and industry insights. While I couldn't generate a complete analysis, the sources provide valuable information on:
-
-- Market conditions and business environment
-- Industry-specific strategies and best practices
-- Competitive analysis and positioning
-
-I recommend reviewing the sources directly for specific data points, market projections, and detailed analysis of this business topic.`;
+  const isTechQuery = safeQuery.toLowerCase().includes('tech') ||
+                     safeQuery.toLowerCase().includes('software') ||
+                     safeQuery.toLowerCase().includes('hardware') ||
+                     safeQuery.toLowerCase().includes('digital');
+  
+  const isFinanceQuery = safeQuery.toLowerCase().includes('finance') ||
+                        safeQuery.toLowerCase().includes('money') ||
+                        safeQuery.toLowerCase().includes('investment') ||
+                        safeQuery.toLowerCase().includes('economic');
+  
+  // Generate dynamic categories based on query type
+  const categories = {};
+  
+  // Key Insights category - always included
+  if (sourceTitles.length > 0) {
+    categories.key_insights = `Based on the search results for "${safeQuery}", here are the key insights:\n\n`;
+    sourceTitles.slice(0, 3).forEach((title, index) => {
+      categories.key_insights += `${index + 1}. ${title}\n`;
+    });
+    if (sourceTitles.length > 3) {
+      categories.key_insights += `\nPlus ${sourceTitles.length - 3} more sources with relevant information.`;
+    }
   } else {
-    fallbackContent = `I've analyzed ${safeSources.length} results for your query "${safeQuery}". 
-    
-The search results contain relevant information on this topic from multiple perspectives. While I couldn't generate a complete analysis, the sources provide:
-
-- Key information and definitions
-- Different perspectives on the topic
-- Recent developments and research
-
-I recommend reviewing the sources directly for more detailed information.`;
+    categories.key_insights = `Search results for "${safeQuery}" suggest this is a topic with various aspects worth exploring. The search returned ${safeSources.length} sources that might contain relevant information.`;
+  }
+  
+  // Add business category if relevant
+  if (isBusinessQuery) {
+    categories.market_overview = `The search results for "${safeQuery}" include information related to business and market aspects. These sources contain perspectives on market trends, business strategies, and industry dynamics.\n\nReviewing these sources directly will provide more specific information about this business topic.`;
+  }
+  
+  // Add tech category if relevant
+  if (isTechQuery) {
+    categories.technology_trends = `The search results for "${safeQuery}" include information about technology trends and developments. The sources may contain insights about innovations, technical specifications, and implementation details.\n\nFor more specific technical information, consider reviewing the sources directly.`;
+  }
+  
+  // Add finance category if relevant
+  if (isFinanceQuery) {
+    categories.financial_overview = `The search results for "${safeQuery}" include financial information and economic data. These sources may contain insights about investments, financial performance, economic indicators, and market forecasts.\n\nFor specific financial data and analysis, consider reviewing the sources directly.`;
   }
   
   // Generate some generic follow-up questions based on the query
@@ -477,15 +589,45 @@ I recommend reviewing the sources directly for more detailed information.`;
     `Can you refine your query to focus on a specific aspect of ${safeQuery}?`
   ];
   
-  // Create a consistent response structure
+  // Add error category if there was an error message
+  if (errorMessage) {
+    categories.error = `There was an error processing your search for "${safeQuery}": ${errorMessage}\n\nHowever, we've gathered some information from the available sources.`;
+  }
+
+  // Create metrics based on the quality of the fallback response
+  const metrics = {
+    relevance: sanitizedSources.length > 0 ? 70 : 50,
+    accuracy: sanitizedSources.length > 0 ? 65 : 45,
+    credibility: sanitizedSources.length > 0 ? 60 : 40,
+    recency: 80
+  };
+  
+  // Create a consistent response structure with categories
   return {
-    content: fallbackContent,
-    sources: safeSources.map(source => ({
-      title: source.title || 'Unknown Source',
-      content: typeof source.content === 'string' ? source.content : 'No content available',
-      url: source.url || ''
+    content: `Search results for "${safeQuery}"${errorMessage ? ' (processed with fallback due to an error)' : ''}`,
+    categories,
+    sources: sanitizedSources.map((source, index) => ({
+      id: `source-${index + 1}`,
+      title: source.title,
+      content: source.content,
+      url: source.url,
+      domain: source.domain || (source.url && source.url.includes('://') ? new URL(source.url).hostname : 'unknown-domain')
     })),
+    sourceMap: sanitizedSources.reduce((map, source, index) => {
+      map[`source-${index + 1}`] = {
+        title: source.title,
+        url: source.url
+      };
+      return map;
+    }, {}),
     followUpQuestions,
+    metrics,
+    apiStatus: {
+      model: 'fallback',
+      processingTime: 0,
+      sourceCount: sanitizedSources.length,
+      error: errorMessage || 'Used fallback response due to API issues or lack of sources'
+    }
   };
 };
 
@@ -616,15 +758,37 @@ export {
   addIntelligentHyperlinks
 };
 
-// Update the prompt template to generate better insights
-
-const generatePrompt = (query, sources) => {
+/**
+ * Generate a prompt for the LLM to analyze search results
+ * @param {string} query - The search query
+ * @param {Array} sources - The search results to analyze
+ * @returns {string} - The formatted prompt for the LLM
+ */
+export const generatePrompt = (query, sources) => {
+  // Check query type to customize the prompt
+  const isBusinessQuery = query.toLowerCase().includes('business') || 
+                       query.toLowerCase().includes('company') || 
+                       query.toLowerCase().includes('market') ||
+                       query.toLowerCase().includes('industry');
+  
+  const isTechQuery = query.toLowerCase().includes('tech') ||
+                    query.toLowerCase().includes('software') ||
+                    query.toLowerCase().includes('hardware') ||
+                    query.toLowerCase().includes('digital');
+  
+  const isFinanceQuery = query.toLowerCase().includes('finance') ||
+                       query.toLowerCase().includes('money') ||
+                       query.toLowerCase().includes('investment') ||
+                       query.toLowerCase().includes('economic');
+  
+  // Format each source with index, title and content
   const formattedSources = sources.map((source, index) => {
     const content = source.content || source.snippet || source.description || 'No content available';
     return `Source ${index + 1}: ${source.title || 'Untitled'}\n${content}\n`;
   }).join('\n');
 
-  return `
+  // Start with a base prompt
+  let prompt = `
 You are an expert research analyst providing comprehensive insights based on search results.
 
 QUERY: ${query}
@@ -635,36 +799,66 @@ ${formattedSources}
 Please analyze these search results and provide a detailed response with the following structure:
 
 1. Key Insights: Provide 3-5 key insights or takeaways from the search results, focusing on the most important information related to the query.
+`;
 
-2. Market Overview: Summarize the current state, trends, and important developments in this area.
+  // Add more specific categories based on query type
+  if (isBusinessQuery) {
+    prompt += `
+2. Market Overview: Summarize the current state, trends, and important developments in this market or industry.
 
 3. Business Strategy: Identify strategic approaches, business models, or competitive advantages mentioned in the sources.
+`;
+  }
 
-4. Financial Overview: Highlight any financial data, metrics, or economic factors mentioned.
+  if (isFinanceQuery) {
+    prompt += `
+2. Financial Overview: Highlight financial data, metrics, economic factors, and investment considerations mentioned in the sources.
+`;
+  }
 
-5. Technology Trends: Describe technological innovations, advancements, or disruptions relevant to the query.
+  if (isTechQuery) {
+    prompt += `
+2. Technology Trends: Describe technological innovations, advancements, or disruptions relevant to the query.
 
+3. Implementation Considerations: Highlight practical considerations, challenges, and best practices mentioned in the sources.
+`;
+  }
+
+  // Add default categories if no specific ones were added
+  if (!isBusinessQuery && !isFinanceQuery && !isTechQuery) {
+    prompt += `
+2. Context & Background: Provide relevant background information and context for understanding the query topic.
+
+3. Different Perspectives: Summarize different viewpoints or approaches mentioned in the sources.
+`;
+  }
+
+  // Add general instructions for all query types
+  prompt += `
 For each section, cite your sources using their numbers [1], [2], etc. If the search results don't contain relevant information for a particular section, briefly acknowledge this limitation.
 
 Also, suggest 3 follow-up questions that would help the user explore this topic further.
 
-FORMAT YOUR RESPONSE AS JSON with the following structure:
-{
+FORMAT YOUR RESPONSE AS JSON with the following structure:`;
+
+  return prompt + `{
   "categories": {
-    "key_insights": "Detailed key insights with source citations",
-    "market_overview": "Market overview with source citations",
-    "business_strategy": "Business strategy insights with source citations",
-    "financial_overview": "Financial data and insights with source citations",
-    "technology_trends": "Technology trends with source citations"
+    "key_insights": "Detailed key insights with source citations"
+    // Additional categories will be included based on the query type and available information
+  },
+  "sourceMap": {
+    "1": { "title": "Source 1 Title", "url": "source1_url" },
+    "2": { "title": "Source 2 Title", "url": "source2_url" }
+    // Include all sources that were cited in the response
   },
   "followUpQuestions": ["Follow-up question 1?", "Follow-up question 2?", "Follow-up question 3?"],
   "metrics": {
-    "relevance": 85,
-    "accuracy": 90,
-    "credibility": 80
+    "relevance": 85, // Score from 0-100 indicating how relevant the sources are to the query
+    "accuracy": 90,  // Score from 0-100 indicating estimated accuracy of information
+    "credibility": 80 // Score from 0-100 indicating credibility of the sources
   }
 }
 
-Ensure each category contains substantive insights. If there's insufficient information for a category, provide a brief explanation rather than leaving it empty.
+Only include categories that have meaningful content derived from the sources. For each category, provide substantive insights with specific information, not generic statements. Cite sources consistently and ensure your analysis adds value beyond what's explicitly stated in the sources.
 `;
 };

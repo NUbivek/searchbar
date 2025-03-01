@@ -7,18 +7,19 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { SearchModes, SourceTypes } from '../utils/constants';
 import { processWithLLM } from '../utils/search';
 import { getAllVerifiedSources } from '../utils/verifiedDataSources';
+import { safeStringify } from '../utils/reactUtils';
+import { executeSearch, getSourcesFromSelection } from '../utils/search/searchFlowHelper';
 
 // Components
 import FileUpload from './FileUpload';
 import UrlInput from './UrlInput';
 import SourceSelector from './SourceSelector';
-import SearchResults from './SearchResults';
-import LLMResults from './search/LLMResults';
+import SearchResultsWrapper from './SearchResultsWrapper';
+import { IntelligentSearchResults } from './search/results';
 
-export default function OpenSearch() {
+export default function OpenSearch({ selectedModel, setSelectedModel }) {
   const [query, setQuery] = useState('');
   const [selectedSources, setSelectedSources] = useState(['web']);
-  const [selectedModel, setSelectedModel] = useState('mixtral-8x7b');
   const [customUrls, setCustomUrls] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -69,109 +70,67 @@ export default function OpenSearch() {
 
     setLoading(true);
     setError(null);
+    
+    // Add user message to chat history
+    setChatHistory(prev => [...prev, { type: 'user', content: searchQuery }]);
 
     try {
-      const baseUrl = process.env.NODE_ENV === 'development' 
-        ? window.location.origin
-        : process.env.NEXT_PUBLIC_BASE_URL || '';
+      // Get actual source identifiers from the selected source types
+      const sourcesToUse = getSourcesFromSelection(selectedSources);
       
-      // Determine which API endpoint to use based on search mode
-      let endpoint = '';
-      let requestData = {
+      // Execute search using our helper function
+      const searchResponse = await executeSearch({
         query: searchQuery,
+        mode: 'open',
         model: selectedModel,
-        customUrls,
-        uploadedFiles
-      };
+        sources: sourcesToUse,
+        customUrls: customUrls,
+        files: uploadedFiles,
+        useLLM: true,
+        // Pass additional parameters for source selection
+        includeVerifiedSources: selectedSources.includes('verified'),
+        includeWeb: selectedSources.includes('web'),
+        includeReddit: selectedSources.includes('reddit'),
+        includeLinkedIn: selectedSources.includes('linkedin'),
+        includeTwitter: selectedSources.includes('twitter')
+      });
       
-      // Add sources based on search mode
-      if (searchMode === SearchModes.VERIFIED) {
-        endpoint = '/api/search/verified';
-        // Include all standard verified sources
-        requestData.sources = ['fmp', 'sec', 'edgar', 
-          // Include custom verified sources from categories
-          'strategy_consulting', 'investment_banks', 'market_data', 'vc_firms', 
-          'professional_services', 'research_firms',
-          // Include additional data sources
-          'financial_market_data', 'industry_market_data', 'vc_firms_data',
-          // Include social media platforms
-          'x', 'linkedin', 'reddit', 'substack',
-          // Include website scraping for specific domains
-          'carta', 'crunchbase', 'pitchbook', 'cbinsights',
-          // Include employee social media handles
-          'employee_handles'];
-        // Pass additional verified data sources
-        requestData.verifiedDataSources = getAllVerifiedSources();
-      } else if (searchMode === SearchModes.WEB) {
-        endpoint = '/api/search/web';
-      } else if (searchMode === SearchModes.OPEN) {
-        endpoint = '/api/search/open';
-        requestData.sources = selectedSources;
-      }
-
-      // Step 1: Get search results
-      const response = await axios.post(`${baseUrl}${endpoint}`, requestData);
-
-      if (response.data.error) {
-        throw new Error(response.data.error);
-      }
-
-      // Add the search query to chat history
-      const newChatEntry = {
-        type: 'user',
-        content: searchQuery
-      };
-      
-      // Step 2: Process results with LLM if needed
-      let processedResults = response.data.results;
-      
-      try {
-        if (selectedModel && selectedModel !== 'none' && processedResults && processedResults.length > 0) {
-          const llmResponse = await processWithLLM({
-            query: searchQuery,
-            sources: processedResults,
-            model: selectedModel,
-            maxTokens: 2048,
-            temperature: 0.7
-          });
-          
-          if (llmResponse && llmResponse.content) {
-            processedResults = {
-              summary: llmResponse.content,
-              sources: processedResults,
-              followUpQuestions: llmResponse.followUpQuestions || [],
-              isLLMProcessed: true
-            };
-          }
-        } else if (processedResults && processedResults.length === 0) {
-          // Handle empty results
-          processedResults = {
-            summary: "I couldn't find any relevant information for your query. Please try a different search term or select different sources.",
-            sources: [],
-            followUpQuestions: [
-              "Could you try rephrasing your question?",
-              "Would you like to search in different sources?",
-              "Can you provide more specific details in your query?"
-            ],
-            isLLMProcessed: true
-          };
-        }
-      } catch (llmError) {
-        console.error('LLM processing error:', llmError);
-        // Continue with unprocessed results if LLM fails
+      // Check for errors
+      if (searchResponse.error) {
+        throw new Error(searchResponse.message || 'An error occurred during search');
       }
       
-      // Add the results to chat history
-      const resultsEntry = {
-        type: 'assistant',
-        content: processedResults || []
-      };
-      
-      setChatHistory(prev => [...prev, newChatEntry, resultsEntry]);
+      // Add results to chat history
+      if (searchResponse.results && searchResponse.results.length > 0) {
+        setChatHistory(prev => [...prev, { 
+          type: 'assistant', 
+          content: searchResponse.results,
+          query: searchQuery,
+          metadata: searchResponse.metadata,
+          timestamp: new Date().toISOString()
+        }]);
+      } else {
+        // Handle empty results
+        setChatHistory(prev => [...prev, { 
+          type: 'assistant', 
+          content: 'No results found for this query. Please try a different search term or select more sources.',
+          query: searchQuery,
+          metadata: searchResponse.metadata,
+          timestamp: new Date().toISOString()
+        }]);
+      }
       
     } catch (error) {
-      console.error('[Error]', 'Search error:', error);
+      console.error('Search error:', error);
       setError(error.message || 'An error occurred during search');
+      
+      // Add error message to chat history
+      setChatHistory(prev => [...prev, { 
+        type: 'assistant', 
+        content: `Error: ${error.message || 'An error occurred during search'}`,
+        query: searchQuery,
+        timestamp: new Date().toISOString()
+      }]);
     } finally {
       setLoading(false);
       
@@ -252,21 +211,35 @@ export default function OpenSearch() {
         )}
 
         <div className="bg-white rounded-xl shadow-sm overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <FaSpinner className="animate-spin text-blue-600" size={24} />
-            </div>
-          ) : (
-            <>
-              {chatHistory.length > 0 && (
-                <SearchResults 
-                  results={chatHistory} 
-                  onFollowUpSearch={handleFollowUpSearch}
-                  loading={loading}
-                  query={query}
-                />
-              )}
-            </>
+          <SearchResultsWrapper 
+            results={chatHistory.map(msg => ({
+              ...msg,
+              content: typeof msg.content === 'string' ? msg.content : safeStringify(msg.content)
+            }))} 
+            onFollowUpSearch={handleFollowUpSearch}
+            isLoading={loading}
+            query={query}
+          />
+          
+          {/* Only render IntelligentSearchResults if there's a query */}
+          {query && query.trim() !== '' && (
+            <IntelligentSearchResults 
+              results={
+                chatHistory.length > 0 && chatHistory[chatHistory.length - 1].content 
+                  ? typeof chatHistory[chatHistory.length - 1].content === 'string'
+                    ? chatHistory[chatHistory.length - 1].content
+                    : safeStringify(chatHistory[chatHistory.length - 1].content)
+                  : null
+              } 
+              query={query}
+              options={{
+                showTabs: true,
+                tabsOptions: {},
+                metricsOptions: {},
+                setActiveCategory: () => {},
+                sourceType: "open"
+              }}
+            />
           )}
           <div ref={chatEndRef} />
         </div>

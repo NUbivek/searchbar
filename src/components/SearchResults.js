@@ -159,68 +159,46 @@ export default function SearchResults({ results, onFollowUpSearch, loading: init
 
       {!loading && !error && (
         <>
-          {/* Display chat history if available */}
-          {Array.isArray(results) && results.length > 0 && (
-            <div className="chat-history">
-              {results.map((message, index) => (
-                <div key={index} className={`chat-message ${message.type}`} style={{
-                  padding: '15px',
-                  margin: '10px 0',
-                  borderRadius: '5px',
-                  backgroundColor: message.type === 'user' ? '#e2f0fd' : '#f8f9fa',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                }}>
-                  <div className="message-header" style={{ 
-                    marginBottom: '5px', 
-                    fontWeight: 'bold', 
-                    color: message.type === 'user' ? '#2a6496' : '#333'
-                  }}>
-                    {message.type === 'user' ? 'You' : 'AI Assistant'}
-                  </div>
-                  
-                  <div className="message-content">
-                    {message.type === 'user' ? (
-                      <p>{renderMessageContent(message.content)}</p>
-                    ) : (
-                      <div dangerouslySetInnerHTML={{ __html: renderMessageContent(message.content) }} />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Chat history removed as requested */}
 
-          {/* Display follow-up question form */}
+          {/* Display follow-up question form - more compact styling */}
           {Array.isArray(results) && results.length > 0 && onFollowUpSearch && (
-            <div className="follow-up-container" style={{ marginTop: '20px' }}>
-              <form onSubmit={handleFollowUpSubmit} className="follow-up-form">
+            <div style={{ 
+              padding: '8px 10px', 
+              borderTop: '1px solid #eee',
+              marginTop: '10px' 
+            }}>
+              <form onSubmit={handleFollowUpSubmit} style={{ display: 'flex', alignItems: 'center' }}>
                 <input
                   type="text"
                   value={followUpQuery}
                   onChange={(e) => setFollowUpQuery(e.target.value)}
                   placeholder="Ask a follow-up question..."
-                  className="follow-up-input"
                   style={{
-                    padding: '10px',
-                    borderRadius: '4px',
-                    border: '1px solid #ddd',
-                    width: '100%',
-                    marginBottom: '10px'
+                    flexGrow: 1,
+                    padding: '6px 8px',
+                    fontSize: '13px',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '4px 0 0 4px',
+                    backgroundColor: '#fafafa',
+                    outline: 'none'
                   }}
                 />
                 <button 
-                  type="submit" 
-                  className="follow-up-button"
+                  type="submit"
                   style={{
-                    padding: '10px 15px',
-                    backgroundColor: '#4285F4',
+                    backgroundColor: !followUpQuery.trim() ? '#90CAF9' : '#2196F3',
                     color: 'white',
+                    padding: '6px 10px',
+                    fontSize: '12px',
                     border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
+                    borderRadius: '0 4px 4px 0',
+                    cursor: !followUpQuery.trim() ? 'not-allowed' : 'pointer',
+                    minWidth: '60px'
                   }}
+                  disabled={!followUpQuery.trim()}
                 >
-                  Ask Follow-up
+                  Ask
                 </button>
               </form>
             </div>

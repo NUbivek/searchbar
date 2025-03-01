@@ -12,8 +12,27 @@ import DynamicCategorizer from './DynamicCategorizer';
 import { 
   processCategories, 
   processCategory,
-  createCategorizedContent 
-} from './processors';
+  createCategorizedContent,
+  generateCategories
+} from './processors/CategoryProcessor';
+
+// Import category types
+import { getSpecialCategories } from './types/SpecialCategories';
+import { getBroadCategories } from './types/BroadCategories';
+import { getSpecificCategories } from './types/SpecificCategories';
+
+// Import category processors
+import { findBestCategories } from './processors/CategoryFinder';
+import { createDynamicCategoriesFromText } from './processors/DynamicCategorizer';
+import { matchCategories } from './processors/CategoryMatcher';
+
+// Import category metrics
+import {
+  calculateRelevanceScore,
+  calculateCredibilityScore,
+  calculateAccuracyScore,
+  calculateCombinedScore
+} from './processors/CategoryMetricsCalculator';
 
 // Import display components
 import { 
@@ -55,6 +74,23 @@ export {
   processCategories,
   processCategory,
   createCategorizedContent,
+  generateCategories,
+  
+  // Category Types
+  getSpecialCategories,
+  getBroadCategories,
+  getSpecificCategories,
+  
+  // Category Processors
+  findBestCategories,
+  createDynamicCategoriesFromText,
+  matchCategories,
+  
+  // Category Metrics
+  calculateRelevanceScore,
+  calculateCredibilityScore,
+  calculateAccuracyScore,
+  calculateCombinedScore,
   
   // Display components
   CategoryTabs,

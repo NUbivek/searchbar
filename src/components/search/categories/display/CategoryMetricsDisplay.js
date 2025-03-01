@@ -26,13 +26,18 @@ const CategoryMetricsDisplay = ({ metrics, compact = false, showLabels = true, c
     return null;
   }
   
-  // Helper function to get color based on score
-  const getColorForScore = (score) => {
-    if (score >= 90) return '#4CAF50'; // Green
-    if (score >= 75) return '#8BC34A'; // Light Green
-    if (score >= 60) return '#CDDC39'; // Lime
-    if (score >= 40) return '#FFC107'; // Amber
-    return '#F44336'; // Red
+  // Helper function to get color based on metric type
+  const getColorForMetric = (metricType) => {
+    switch (metricType) {
+      case 'relevance':
+        return '#4CAF50'; // Green for Relevance & Recency
+      case 'accuracy':
+        return '#FFC107'; // Amber for Accuracy
+      case 'credibility':
+        return '#2196F3'; // Blue for Credibility
+      default:
+        return '#9C27B0'; // Purple for fallback
+    }
   };
   
   // Get label text based on category type
@@ -78,11 +83,12 @@ const CategoryMetricsDisplay = ({ metrics, compact = false, showLabels = true, c
   
   return (
     <div className="category-metrics-display" style={{
-      backgroundColor: '#f8f9fa',
-      borderRadius: '8px',
-      padding: compact ? '8px 12px' : '12px 16px',
+      backgroundColor: '#ffffff',
+      borderRadius: '12px',
+      padding: compact ? '12px 16px' : '16px 20px',
       marginBottom: '16px',
-      border: '1px solid #e9ecef'
+      border: '1px solid #e0e0e0',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
     }}>
       <div style={{
         display: 'flex',
@@ -127,34 +133,37 @@ const CategoryMetricsDisplay = ({ metrics, compact = false, showLabels = true, c
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {showLabels && (
               <div style={{ 
-                width: '130px', 
-                fontSize: '13px', 
-                color: '#495057',
-                whiteSpace: 'nowrap'
+                width: '150px', 
+                fontSize: '14px', 
+                color: '#424242',
+                whiteSpace: 'nowrap',
+                fontWeight: '500'
               }}>
-                {metricLabels.relevance}:
+                {metricLabels.relevance}
               </div>
             )}
             <div style={{ 
               flex: 1, 
-              height: compact ? '6px' : '8px', 
-              backgroundColor: '#e9ecef',
-              borderRadius: '4px',
-              overflow: 'hidden'
+              height: compact ? '8px' : '10px', 
+              backgroundColor: '#f5f5f5',
+              borderRadius: '10px',
+              overflow: 'hidden',
+              position: 'relative'
             }}>
               <div style={{
                 width: `${relevance}%`,
                 height: '100%',
-                backgroundColor: getColorForScore(relevance),
-                borderRadius: '4px'
+                background: `linear-gradient(90deg, ${getColorForMetric('relevance')}dd 0%, ${getColorForMetric('relevance')} 100%)`,
+                borderRadius: '10px',
+                transition: 'width 0.3s ease-in-out'
               }}></div>
             </div>
             <div style={{ 
-              width: '36px', 
-              textAlign: 'right', 
-              fontSize: '13px', 
-              fontWeight: '500',
-              color: getColorForScore(relevance)
+                width: '45px', 
+                textAlign: 'right', 
+                fontSize: '14px', 
+                fontWeight: '600',
+                color: getColorForMetric('relevance')
             }}>
               {relevance}%
             </div>

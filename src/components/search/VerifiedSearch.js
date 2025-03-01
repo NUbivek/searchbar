@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import LLMResults from './LLMResults';
+import { IntelligentSearchResults } from './results';
 import FollowUpChat from './FollowUpChat';
-import SearchResults from './SearchResults';
+import SearchResultsWrapper from '../SearchResultsWrapper';
 
 // Add this to your VerifiedSearch.js file
 
@@ -73,11 +73,11 @@ const handleSearch = async (query, options = {}) => {
 // It might look something like this:
 return (
   <div className="search-results-container">
-    {/* This is where we need to ensure LLMResults comes before FollowUpChat */}
+    {/* This is where we need to ensure IntelligentSearchResults comes before FollowUpChat */}
     <div className="results-section" style={{ display: 'flex', flexDirection: 'column' }}>
-      {/* LLM Results - Force this to be first */}
+      {/* Intelligent Search Results - Force this to be first */}
       <div style={{ order: 1 }}>
-        <LLMResults results={llmResults} query={query} />
+        <IntelligentSearchResults results={llmResults} query={query} />
       </div>
       
       {/* Follow-up Chat - Force this to be second */}
@@ -100,7 +100,7 @@ const VerifiedSearch = ({ query, onSearch, results, isSearching, error }) => {
   
   return (
     <div className="verified-search-container">
-      <SearchResults 
+      <SearchResultsWrapper 
         results={filteredResults}
         onFollowUpSearch={onSearch}
         isLoading={isSearching}

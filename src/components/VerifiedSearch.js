@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { logger } from '../utils/logger';
-import SearchResults from './SearchResults';
-import { SearchModes } from '../utils/constants';
+import SearchResultsWrapper from './SearchResultsWrapper';
+import { IntelligentSearchResults } from './search/results';
+import { SearchModes, MODEL_OPTIONS } from '../utils/constants';
 import { processWithLLM } from '../utils/search';
 import FileUpload from './FileUpload';
 import UrlInput from './UrlInput';
 import { getAllVerifiedSources } from '../utils/verifiedDataSources';
 import { ALL_VERIFIED_SOURCES } from '../utils/allVerifiedSources';
-import LLMResults from './search/LLMResults';
 import { safeStringify } from '../utils/reactUtils';
+import { executeSearch, getSourcesFromSelection } from '../utils/search/searchFlowHelper';
 
 export default function VerifiedSearch() {
   const [query, setQuery] = useState('');
@@ -47,31 +48,56 @@ export default function VerifiedSearch() {
     setLoading(true);
     setError(null);
     
+    // Add user message to chat history
+    setChatHistory(prev => [...prev, { type: 'user', content: searchQuery }]);
+    
     try {
-      // Add user message to chat history
-      setChatHistory(prev => [...prev, { type: 'user', content: searchQuery }]);
+      // Get sources based on settings
+      const sources = [];
+      if (verifiedSourcesEnabled) {
+        sources.push(...ALL_VERIFIED_SOURCES);
+      }
+      if (customUrls.length > 0) {
+        sources.push(...customUrls);
+      }
       
-      // Get verified sources
-      const verifiedSources = verifiedSourcesEnabled ? ALL_VERIFIED_SOURCES : [];
+      // Execute search with our helper function
+      const searchResponse = await executeSearch({
+        query: searchQuery,
+        mode: 'verified',
+        model: selectedModel,
+        sources: sources,
+        customUrls: customUrls,
+        files: uploadedFiles,
+        useLLM: true
+      });
       
-      // Process with LLM
-      const llmResponse = await processWithLLM(
-        searchQuery,
-        verifiedSources,
-        selectedModel
-      );
+      // Check for errors
+      if (searchResponse.error) {
+        throw new Error(searchResponse.message || 'An error occurred during search');
+      }
       
-      // Ensure the response content is a string before adding to chat history
-      const safeContent = typeof llmResponse === 'string' 
-        ? llmResponse 
-        : safeStringify(llmResponse);
-      
-      // Add assistant message to chat history
-      setChatHistory(prev => [...prev, { 
-        type: 'assistant', 
-        content: safeContent,
-        rawResults: { sources: verifiedSources }
-      }]);
+      // Add results to chat history
+      if (searchResponse.results && searchResponse.results.length > 0) {
+        console.log('Search response has categories:', searchResponse.categories?.length || 0);
+        setChatHistory(prev => [...prev, { 
+          type: 'assistant', 
+          content: searchResponse.results,
+          query: searchQuery,
+          categories: searchResponse.categories || [], // Include categories in chat history
+          metadata: searchResponse.metadata,
+          timestamp: new Date().toISOString()
+        }]);
+      } else {
+        // Handle empty results
+        setChatHistory(prev => [...prev, { 
+          type: 'assistant', 
+          content: 'No results found for this query. Please try a different search term.',
+          query: searchQuery,
+          metadata: searchResponse.metadata,
+          timestamp: new Date().toISOString()
+        }]);
+      }
       
     } catch (error) {
       console.error('Search error:', error);
@@ -80,7 +106,9 @@ export default function VerifiedSearch() {
       // Add error message to chat history
       setChatHistory(prev => [...prev, { 
         type: 'assistant', 
-        content: `Error: ${error.message || 'An error occurred during search'}`
+        content: `Error: ${error.message || 'An error occurred during search'}`,
+        query: searchQuery,
+        timestamp: new Date().toISOString()
       }]);
     } finally {
       setLoading(false);
@@ -273,33 +301,17 @@ export default function VerifiedSearch() {
         )}
 
         <div className="bg-white rounded-xl shadow-sm overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
-          <SearchResults 
+          <SearchResultsWrapper 
             results={chatHistory.map(msg => ({
               ...msg,
               content: typeof msg.content === 'string' ? msg.content : safeStringify(msg.content)
             }))} 
             onFollowUpSearch={handleFollowUpSearch}
-            loading={loading}
+            isLoading={loading}
+            error={error}
+            query={query}
+            showCategories={true}
           />
-          
-          {/* Only render LLMResults if there's a query */}
-          {query && query.trim() !== '' && (
-            <LLMResults 
-              results={
-                chatHistory.length > 0 && chatHistory[chatHistory.length - 1].content 
-                  ? typeof chatHistory[chatHistory.length - 1].content === 'string'
-                    ? chatHistory[chatHistory.length - 1].content
-                    : safeStringify(chatHistory[chatHistory.length - 1].content)
-                  : null
-              } 
-              query={query}
-              showTabs={true}
-              tabsOptions={{}}
-              metricsOptions={{}}
-              setActiveCategory={() => {}}
-              sourceType="verified"
-            />
-          )}
           <div ref={chatEndRef} />
         </div>
       </div>

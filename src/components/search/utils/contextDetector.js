@@ -91,7 +91,13 @@ export const detectQueryContext = (query) => {
       financial: 0,
       technical: 0,
       medical: 0,
-      general: 1
+      general: 1,
+      isBusinessQuery: false,
+      isFinancialQuery: false,
+      isTechnicalQuery: false,
+      isMedicalQuery: false,
+      isGeneralQuery: true,
+      primaryContext: 'general'
     };
   }
   
@@ -105,12 +111,42 @@ export const detectQueryContext = (query) => {
   const maxConfidence = Math.max(businessConfidence, financialConfidence, technicalConfidence, medicalConfidence);
   const generalConfidence = maxConfidence < 0.3 ? 1 - maxConfidence : 0;
   
-  return {
+  // Create contextScores object
+  const contextScores = {
     business: businessConfidence,
     financial: financialConfidence,
     technical: technicalConfidence,
     medical: medicalConfidence,
     general: generalConfidence
+  };
+  
+  // Get the primary context type
+  const primaryContext = getPrimaryContextType(contextScores);
+  
+  // Boolean flags for each context type - using threshold of 0.3 to determine if it's primarily that type
+  const isBusinessQuery = businessConfidence >= 0.3;
+  const isFinancialQuery = financialConfidence >= 0.3;
+  const isTechnicalQuery = technicalConfidence >= 0.3;
+  const isMedicalQuery = medicalConfidence >= 0.3;
+  const isGeneralQuery = generalConfidence >= 0.5 || (!isBusinessQuery && !isFinancialQuery && !isTechnicalQuery && !isMedicalQuery);
+  
+  return {
+    // Original confidence scores
+    business: businessConfidence,
+    financial: financialConfidence,
+    technical: technicalConfidence,
+    medical: medicalConfidence,
+    general: generalConfidence,
+    
+    // Boolean flags for easy checking
+    isBusinessQuery,
+    isFinancialQuery,
+    isTechnicalQuery,
+    isMedicalQuery,
+    isGeneralQuery,
+    
+    // Primary context for single type identification
+    primaryContext
   };
 };
 

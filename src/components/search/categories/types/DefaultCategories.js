@@ -1,5 +1,20 @@
 /**
  * Default category definitions for content categorization
+ * 
+ * This module provides fallback categories when no other categories are available.
+ * If you're seeing only these default categories, it might indicate that:
+ * 
+ * 1. The API didn't return any categories (check API response)
+ * 2. Categories weren't properly passed through the component chain
+ * 3. There was an error in dynamic category processing
+ * 4. CSS module loading issues are preventing categories from displaying
+ * 
+ * See /docs/CATEGORY_FLOW.md for the complete category flow documentation.
+ * 
+ * EMERGENCY DISPLAY SYSTEM:
+ * To force display categories bypassing React and CSS modules, use:
+ * - window.emergencyCategorySystem.inject() - in console
+ * - DefaultCategories.injectIntoGlobalScope() - in code
  */
 
 /**
@@ -8,17 +23,23 @@
  * @returns {Array} Array of default category objects
  */
 export const getDefaultCategories = (query = '') => {
-  // Generate unique IDs for each category
-  const allResultsId = 'cat_all_' + Date.now();
-  const keyInsightsId = 'key_insights';
-  const marketAnalysisId = 'market_analysis';
-  const financialDataId = 'financial_data';
-  const companyInfoId = 'company_info';
-  const industryTrendsId = 'industry_trends';
-  const investmentStrategiesId = 'investment_strategies';
-  const economicIndicatorsId = 'economic_indicators';
-  const regulatoryInfoId = 'regulatory_info';
-  const expertOpinionsId = 'expert_opinions';
+  console.log('Generating default categories as fallback - if this appears when categories should be coming from API, check category flow');
+  
+  // Generate unique IDs for each category - using consistent IDs for better debugging
+  // We now use consistent IDs rather than generating timestamps, which made debugging harder
+  const allResultsId = 'all_results';
+  const searchResultsId = 'searchResults';
+  const keyInsightsId = 'key-insights';
+  const marketAnalysisId = 'market-analysis';
+  const financialDataId = 'financial-data';
+  const companyInfoId = 'company-info';
+  const industryTrendsId = 'industry-trends';
+  const investmentStrategiesId = 'investment-strategies';
+  const economicIndicatorsId = 'economic-indicators';
+  const regulatoryInfoId = 'regulatory-info';
+  const expertOpinionsId = 'expert-opinions';
+  
+  console.log(`DefaultCategories: Generating categories for query: "${query}"`);
   
   // Base categories that are always included
   const baseCategories = [
@@ -30,7 +51,34 @@ export const getDefaultCategories = (query = '') => {
       filter: (item) => true, // Include all items
       priority: 100,
       color: '#4285F4', // Google Blue
-      keywords: []
+      keywords: [],
+      keyTerms: ['all', 'results', 'search'],
+      metrics: {
+        relevance: 0.75,
+        accuracy: 0.75,
+        credibility: 0.75,
+        overall: 0.75
+      },
+      content: [] // Initialize empty content array
+    },
+    // Alternative category ID used in some places
+    {
+      id: searchResultsId,
+      name: 'Search Results',
+      icon: 'search',
+      description: 'All search results',
+      filter: (item) => true, // Include all items
+      priority: 100,
+      color: '#4285F4', // Google Blue
+      keywords: [],
+      keyTerms: ['all', 'results', 'search'],
+      metrics: {
+        relevance: 0.75,
+        accuracy: 0.75,
+        credibility: 0.75,
+        overall: 0.75
+      },
+      content: [] // Initialize empty content array
     },
     {
       id: keyInsightsId,
@@ -40,7 +88,15 @@ export const getDefaultCategories = (query = '') => {
       filter: (item) => true, // Will be filtered by relevance score
       priority: 95,
       color: '#0F9D58', // Google Green
-      keywords: ['insight', 'key', 'important', 'highlight', 'summary', 'takeaway', 'conclusion']
+      keywords: ['insight', 'key', 'important', 'highlight', 'summary', 'takeaway', 'conclusion'],
+      keyTerms: ['insight', 'key', 'important', 'highlight', 'summary', 'takeaway', 'finding', 'main point'],
+      metrics: {
+        relevance: 0.95,
+        accuracy: 0.90,
+        credibility: 0.92,
+        overall: 0.92
+      },
+      content: [] // Initialize empty content array
     }
   ];
   
@@ -53,6 +109,12 @@ export const getDefaultCategories = (query = '') => {
       description: 'Market trends, analysis, and forecasts',
       priority: 90,
       color: '#4285F4', // Google Blue
+      metrics: {
+        relevance: 0.85,
+        accuracy: 0.82,
+        credibility: 0.84,
+        overall: 0.84
+      },
       keywords: [
         'market', 'analysis', 'trend', 'forecast', 'growth', 'decline', 
         'market share', 'competition', 'competitive landscape', 'market size',
@@ -67,6 +129,12 @@ export const getDefaultCategories = (query = '') => {
       description: 'Financial metrics, reports, and performance data',
       priority: 85,
       color: '#34A853', // Google Green
+      metrics: {
+        relevance: 0.84,
+        accuracy: 0.86,
+        credibility: 0.85,
+        overall: 0.85
+      },
       keywords: [
         'financial', 'finance', 'revenue', 'profit', 'earnings', 'income',
         'balance sheet', 'cash flow', 'statement', 'quarterly', 'annual',
@@ -257,3 +325,187 @@ export const getCategoriesByKeywords = (query = '', content = []) => {
     );
   }
 };
+
+/**
+ * Get emergency fallback categories that will always render
+ * These categories use simplified structure and guarantee display
+ * 
+ * @param {string} query The search query
+ * @returns {Array} Emergency fallback categories
+ */
+export const getEmergencyCategories = (query = '') => {
+  console.log('Generating EMERGENCY categories for query:', query);
+  return [
+    {
+      id: 'key_insights_emergency',
+      name: 'Key Insights',
+      icon: 'lightbulb',
+      description: 'Most important insights from all sources',
+      content: [],
+      color: '#0F9D58', // Google Green
+      metrics: {
+        relevance: 0.95,
+        accuracy: 0.90,
+        credibility: 0.92,
+        overall: 0.92
+      },
+      _source: 'emergency_fallback'
+    },
+    {
+      id: 'all_results_emergency',
+      name: 'All Results',
+      icon: 'search',
+      description: 'All search results',
+      content: [],
+      color: '#4285F4', // Google Blue
+      metrics: {
+        relevance: 0.75,
+        accuracy: 0.75,
+        credibility: 0.75,
+        overall: 0.75
+      },
+      _source: 'emergency_fallback'
+    },
+    {
+      id: 'answers_emergency',
+      name: 'Answers',
+      icon: 'question_answer',
+      description: 'Direct answers to your query',
+      content: [],
+      color: '#DB4437', // Google Red
+      metrics: {
+        relevance: 0.85,
+        accuracy: 0.82,
+        credibility: 0.80,
+        overall: 0.82
+      },
+      _source: 'emergency_fallback'
+    }
+  ];
+};
+
+/**
+ * Validate and fix categories to ensure they have all required fields
+ * @param {Array} categories Categories to validate
+ * @param {string} query The search query
+ * @returns {Array} Valid categories or emergency categories if none are valid
+ */
+export const validateAndFixCategories = (categories, query = '') => {
+  // Validate categories is an array
+  if (!Array.isArray(categories)) {
+    console.error('Categories is not an array, using emergency fallback');
+    return getEmergencyCategories(query);
+  }
+  
+  // Validate categories has items
+  if (categories.length === 0) {
+    console.error('Categories array is empty, using emergency fallback');
+    return getEmergencyCategories(query);
+  }
+  
+  // Validate each category has required fields
+  const validCategories = categories.filter(cat => {
+    if (!cat || typeof cat !== 'object') return false;
+    if (!cat.id || !cat.name) return false;
+    return true;
+  });
+  
+  // If no valid categories, use emergency fallback
+  if (validCategories.length === 0) {
+    console.error('No valid categories found, using emergency fallback');
+    return getEmergencyCategories(query);
+  }
+  
+  // Fix any categories with missing fields
+  return validCategories.map(cat => ({
+    id: cat.id || `category-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
+    name: cat.name || 'Unnamed Category',
+    icon: cat.icon || 'category',
+    description: cat.description || `Category for ${cat.name || 'results'}`,
+    content: Array.isArray(cat.content) ? cat.content : [],
+    color: cat.color || '#4285F4',
+    metrics: cat.metrics || {
+      relevance: 0.75,
+      accuracy: 0.75,
+      credibility: 0.75,
+      overall: 0.75
+    },
+    _source: cat._source || 'fixed_by_validation'
+  }));
+};
+
+/**
+ * Inject categories into the global scope for emergency access
+ * @param {Array} categories Categories to inject
+ * @param {string} query The search query
+ * @returns {Array} The injected categories
+ */
+export const injectIntoGlobalScope = (categories, query = '') => {
+  if (typeof window === 'undefined') return;
+  
+  // Validate and fix categories
+  const validatedCategories = validateAndFixCategories(categories, query);
+  
+  // Store in multiple locations for redundancy
+  window.__apiDirectCategories = validatedCategories;
+  window.__lastAPICategories = validatedCategories;
+  window.__allCategories = validatedCategories;
+  window.__lastCategoriesReceived = validatedCategories;
+  window.__processedCategories = validatedCategories;
+  window.__intelligentSearchCategories = validatedCategories;
+  window.__globalCategoryStorage = validatedCategories;
+  
+  console.log(`✅ Injected ${validatedCategories.length} categories into global scope`);
+  
+  // Attempt to trigger any listeners
+  if (typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new CustomEvent('categoriesInjected', {
+      detail: { categories: validatedCategories, query }
+    }));
+  }
+  
+  return validatedCategories;
+};
+
+// Add emergency category methods to global namespace for console access
+if (typeof window !== 'undefined') {
+  // First, see if we have previously defined categories
+  const existingCategories = 
+    window.__globalCategoryStorage || 
+    window.__lastCategoriesReceived || 
+    window.__allCategories;
+    
+  // Export methods to window for direct console access
+  window.DefaultCategories = {
+    getDefaultCategories,
+    getCategoriesByKeywords,
+    getEmergencyCategories,
+    validateAndFixCategories,
+    injectIntoGlobalScope,
+    // Add utility method for forcing category display from console
+    forceDisplay: () => {
+      // Get categories from any available source
+      const categories = 
+        existingCategories || 
+        getEmergencyCategories();
+      
+      // Inject into global scope
+      injectIntoGlobalScope(categories);
+      
+      // Try to trigger emergency display
+      if (window.emergencyCategorySystem && typeof window.emergencyCategorySystem.inject === 'function') {
+        window.emergencyCategorySystem.inject();
+      }
+      
+      console.log('Forced category display with', categories.length, 'categories');
+      return categories;
+    }
+  };
+  
+  // Initialize emergency categories if none exist
+  if (!existingCategories) {
+    const emergencyCategories = getEmergencyCategories();
+    injectIntoGlobalScope(emergencyCategories);
+    console.log('Initialized emergency categories as none were found');
+  }
+}

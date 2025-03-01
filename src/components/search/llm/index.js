@@ -14,6 +14,13 @@ import {
   createBusinessCategoryFromLLM
 } from './LLMCategoryMapper';
 
+import {
+  processLLMResults,
+  createCategory,
+  processContent,
+  DEFAULT_CATEGORIES
+} from './LLMResultsCore';
+
 export {
   // LLM Response Processor
   processLLMResponse,
@@ -24,7 +31,13 @@ export {
   // LLM Category Mapper
   mapLLMResponseToCategories,
   enhanceCategoriesWithLLM,
-  createBusinessCategoryFromLLM
+  createBusinessCategoryFromLLM,
+  
+  // LLM Results Core
+  processLLMResults,
+  createCategory,
+  processContent,
+  DEFAULT_CATEGORIES
 };
 
 export default {

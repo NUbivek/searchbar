@@ -13,6 +13,9 @@ import calculateCredibilityScore from './calculators/CredibilityCalculator';
 import calculateBusinessMetrics from './calculators/BusinessMetricsCalculator';
 import calculateRecency from './calculators/RecencyCalculator';
 
+// New unified calculator
+import { calculateMetrics, DEFAULT_METRICS } from './calculators';
+
 // Display components
 import MetricsDisplay from './MetricsDisplay';
 
@@ -27,6 +30,10 @@ export {
   calculateCredibilityScore,
   calculateBusinessMetrics,
   calculateRecency,
+  
+  // New unified calculator
+  calculateMetrics,
+  DEFAULT_METRICS,
   
   // Display components
   MetricsDisplay

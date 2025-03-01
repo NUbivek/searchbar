@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IntelligentSearchResults } from '../search';
+import { IntelligentSearchResults } from '../search/results';
 
 /**
  * Demo component for showcasing intelligent search results

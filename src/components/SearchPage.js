@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { SearchModes, OPEN_SOURCE_TYPES } from '../utils/constants';
 import ModelSelector from './ModelSelector';
 import SourceSelector from './SourceSelector';
-import SearchResults from './SearchResults';
+import SearchResultsWrapper from './SearchResultsWrapper';
 import SearchErrorBoundary from './SearchErrorBoundary';
 import FileUpload from './FileUpload';
 import UrlInput from './UrlInput';
@@ -138,7 +138,7 @@ export default function SearchPage() {
       )}
 
       <SearchErrorBoundary>
-        <SearchResults 
+        <SearchResultsWrapper 
           results={searchResults}
           isLoading={isLoading}
           error={error}
