@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { generateInlineLinks } from './LinkGenerator';
-import { MetricsProgressBar } from '../metrics/display';
+// import { MetricsProgressBar } from '../metrics/display';
 
 /**
  * SearchResultItem component to display a search result with metrics

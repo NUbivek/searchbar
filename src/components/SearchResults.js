@@ -1,212 +1,235 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import CategoryDisplay from './search/categories/CategoryDisplay';
-import { safeStringify } from '../utils/reactUtils';
 
-// Helper function to get a consistent color for a category based on its ID or name
-const getColorForCategory = (identifier) => {
-  if (!identifier) return '#4285F4'; // Default blue
+const SearchResults = ({ results, onFollowUpSearch, query }) => {
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [followUpQuestion, setFollowUpQuestion] = useState('');
   
-  // Predefined colors for common categories
-  const categoryColors = {
-    'key_insights': '#4285F4',      // Blue
-    'market_analysis': '#34A853',   // Green
-    'financial_data': '#4C6EF5',    // Indigo
-    'definition': '#9C27B0',        // Purple
-    'industry_trends': '#00BCD4',   // Cyan
-    'challenges': '#F44336',        // Red
-    'overview': '#FF9800',          // Orange
-    'statistics': '#795548',        // Brown
-    'research': '#607D8B',          // Blue Grey
-    'comparison': '#673AB7',        // Deep Purple
-    'forecast': '#009688',          // Teal
-    'searchResults': '#757575'      // Grey
-  };
-  
-  // Check if we have a predefined color
-  const normalizedId = identifier.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-  
-  // Try exact match first
-  if (categoryColors[normalizedId]) {
-    return categoryColors[normalizedId];
+  if (!results || results.length === 0) {
+    return null;
   }
-  
-  // Look for partial matches
-  for (const [key, color] of Object.entries(categoryColors)) {
-    if (normalizedId.includes(key)) {
-      return color;
-    }
-  }
-  
-  // Calculate a consistent color based on string hash
-  let hash = 0;
-  for (let i = 0; i < identifier.length; i++) {
-    hash = identifier.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  
-  // Convert to hex color
-  let color = '#';
-  for (let i = 0; i < 3; i++) {
-    const value = (hash >> (i * 8)) & 0xFF;
-    color += ('00' + value.toString(16)).substr(-2);
-  }
-  
-  return color;
-};
 
-/**
- * Normalize a result item to a standard format
- * @param {Object} item The result item to normalize
- * @param {number} index The index of the item
- * @returns {Object} Normalized result item
- */
-const normalizeResultItem = (item, index) => {
-  // If item is already normalized, return it
-  if (item && item.id && item.title && item.content) {
-    return item;
-  }
+  console.log('SearchResults rendering with:', results);
+
+  // Check if any result has a synthesizedAnswer
+  const hasSynthesizedAnswer = results.some(result => result.synthesizedAnswer);
   
-  // Create a new normalized item
-  const normalizedItem = {
-    id: item.id || `result-${index}`,
-    title: item.title || item.name || 'Untitled Result',
-    content: item.content || item.text || item.summary || '',
-    url: item.url || item.link || '',
-    source: item.source || item.provider || '',
-    type: item.type || 'web',
-    metrics: {
-      relevance: item.relevance || item.relevanceScore || 0,
-      accuracy: item.accuracy || item.accuracyScore || 0,
-      credibility: item.credibility || item.credibilityScore || 0
-    }
-  };
-  
-  return normalizedItem;
-};
+  // Get the first result with synthesizedAnswer
+  const synthesizedResult = results.find(result => result.synthesizedAnswer);
 
-export default function SearchResults({ results, onFollowUpSearch, loading: initialLoading, query, error: initialError }) {
-  const [loading, setLoading] = useState(initialLoading);
-  const [error, setError] = useState(initialError);
-  const [followUpQuery, setFollowUpQuery] = useState('');
-  const resultsEndRef = useRef(null);
+  // Get categories if they already exist in the response
+  const categories = synthesizedResult?.synthesizedAnswer?.categories || [];
 
-  useEffect(() => {
-    setLoading(initialLoading);
-  }, [initialLoading]);
-
-  useEffect(() => {
-    setError(initialError);
-  }, [initialError]);
-
-  useEffect(() => {
-    if (resultsEndRef.current) {
-      resultsEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [results, loading]);
-
+  // Handle follow-up question submission
   const handleFollowUpSubmit = (e) => {
     e.preventDefault();
-    if (followUpQuery.trim()) {
-      onFollowUpSearch(followUpQuery);
-      setFollowUpQuery('');
-    }
-  };
-
-  // Safely render message content
-  const renderMessageContent = (content) => {
-    // If content is null or undefined, return empty string
-    if (content === null || content === undefined) {
-      return '';
-    }
+    if (!followUpQuestion.trim()) return;
     
-    // If content is already a string, return it
-    if (typeof content === 'string') {
-      return content;
-    }
-    
-    // If content is an object with summary property, use that
-    if (typeof content === 'object') {
-      if (content.summary) {
-        return typeof content.summary === 'string' ? content.summary : JSON.stringify(content.summary);
-      }
-      
-      if (content.content) {
-        return typeof content.content === 'string' ? content.content : JSON.stringify(content.content);
-      }
-      
-      // Otherwise stringify the whole object
-      return JSON.stringify(content);
-    }
-    
-    // For any other type, convert to string
-    return String(content);
+    onFollowUpSearch(followUpQuestion);
+    setFollowUpQuestion('');
   };
 
   return (
-    <div className="search-results-container">
-      {loading && (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Searching...</p>
-        </div>
-      )}
-      
-      {error && (
-        <div className="error-message">
-          <p>Error: {error}</p>
-        </div>
-      )}
-
-      {!loading && !error && (
-        <>
-          {/* Chat history removed as requested */}
-
-          {/* Display follow-up question form - more compact styling */}
-          {Array.isArray(results) && results.length > 0 && onFollowUpSearch && (
-            <div style={{ 
-              padding: '8px 10px', 
-              borderTop: '1px solid #eee',
-              marginTop: '10px' 
-            }}>
-              <form onSubmit={handleFollowUpSubmit} style={{ display: 'flex', alignItems: 'center' }}>
-                <input
-                  type="text"
-                  value={followUpQuery}
-                  onChange={(e) => setFollowUpQuery(e.target.value)}
-                  placeholder="Ask a follow-up question..."
-                  style={{
-                    flexGrow: 1,
-                    padding: '6px 8px',
-                    fontSize: '13px',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '4px 0 0 4px',
-                    backgroundColor: '#fafafa',
-                    outline: 'none'
-                  }}
-                />
+    <div className="search-results">
+      {hasSynthesizedAnswer && synthesizedResult ? (
+        <div>
+          {/* Category Tabs - only show if we have multiple categories */}
+          {categories.length > 1 && (
+            <div className="mb-4 border-b">
+              <div className="flex overflow-x-auto whitespace-nowrap">
                 <button 
-                  type="submit"
-                  style={{
-                    backgroundColor: !followUpQuery.trim() ? '#90CAF9' : '#2196F3',
-                    color: 'white',
-                    padding: '6px 10px',
-                    fontSize: '12px',
-                    border: 'none',
-                    borderRadius: '0 4px 4px 0',
-                    cursor: !followUpQuery.trim() ? 'not-allowed' : 'pointer',
-                    minWidth: '60px'
-                  }}
-                  disabled={!followUpQuery.trim()}
+                  className={`px-4 py-2 border-b-2 font-medium text-sm ${
+                    activeCategory === 'all' 
+                      ? 'border-blue-500 text-blue-600' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => setActiveCategory('all')}
                 >
-                  Ask
+                  All
                 </button>
-              </form>
+                
+                {categories.map(category => (
+                  <button 
+                    key={category}
+                    className={`px-4 py-2 border-b-2 font-medium text-sm ${
+                      activeCategory === category 
+                        ? 'border-blue-500 text-blue-600' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                    onClick={() => setActiveCategory(category)}
+                  >
+                    {formatCategoryName(category)}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           
-          <div ref={resultsEndRef} />
-        </>
+          {/* Main LLM Content */}
+          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+            <div className="prose max-w-none">
+              {synthesizedResult.synthesizedAnswer.summary && (
+                <ReactMarkdown>{synthesizedResult.synthesizedAnswer.summary}</ReactMarkdown>
+              )}
+              
+              {/* Show category-specific content if a category is selected and exists */}
+              {activeCategory !== 'all' && 
+                synthesizedResult.synthesizedAnswer.categoryContent && 
+                synthesizedResult.synthesizedAnswer.categoryContent[activeCategory] && (
+                <div className="mt-4">
+                  <ReactMarkdown>
+                    {synthesizedResult.synthesizedAnswer.categoryContent[activeCategory]}
+                  </ReactMarkdown>
+                </div>
+              )}
+            </div>
+            
+            {renderSources(synthesizedResult.synthesizedAnswer.sources)}
+            {renderFollowUpQuestions(synthesizedResult.synthesizedAnswer.followUpQuestions, onFollowUpSearch)}
+            
+            {/* Follow-up Question Input */}
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <form onSubmit={handleFollowUpSubmit} className="flex">
+                <input
+                  type="text"
+                  value={followUpQuestion}
+                  onChange={(e) => setFollowUpQuestion(e.target.value)}
+                  placeholder="Ask a follow-up question..."
+                  className="flex-grow p-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="submit"
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-md"
+                >
+                  Chat
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      ) : (
+        // Display traditional search results if no synthesizedAnswer
+        <div>
+          {results.map((result, index) => {
+            const { title, snippet, link, source = 'web' } = result;
+            
+            return (
+              <div key={index} className="bg-white p-4 rounded-lg shadow-sm mb-4">
+                <h3 className="text-lg font-medium">
+                  {link ? (
+                    <a 
+                      href={link} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {title}
+                    </a>
+                  ) : (
+                    <span>{title}</span>
+                  )}
+                </h3>
+                
+                {link && (
+                  <p className="text-green-700 text-sm mb-2">
+                    {link.length > 70 ? link.substring(0, 70) + '...' : link}
+                  </p>
+                )}
+                
+                <p className="text-gray-600">
+                  {typeof snippet === 'string' 
+                    ? snippet 
+                    : typeof snippet === 'object' && snippet !== null
+                      ? JSON.stringify(snippet)
+                      : 'No description available'}
+                </p>
+                
+                <div className="mt-2">
+                  <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2">
+                    {source}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
+};
+
+// Helper function to format category names
+function formatCategoryName(category) {
+  return category
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
+
+// Helper function to render sources
+function renderSources(sources) {
+  if (!sources || !Array.isArray(sources) || sources.length === 0) {
+    return null;
+  }
+  
+  return (
+    <div className="mt-4">
+      <h3 className="text-md font-medium mb-2">Sources</h3>
+      <ul className="list-disc pl-5 space-y-1">
+        {sources.map((source, index) => {
+          // Handle different source formats
+          if (typeof source === 'string') {
+            return <li key={index}>{source}</li>;
+          } else if (source && typeof source === 'object') {
+            const title = source.title || source.name || 'Untitled Source';
+            const url = source.url || source.link || null;
+            
+            return (
+              <li key={index}>
+                {url ? (
+                  <a 
+                    href={url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {title}
+                  </a>
+                ) : (
+                  <span>{title}</span>
+                )}
+              </li>
+            );
+          }
+          return null;
+        })}
+      </ul>
+    </div>
+  );
+}
+
+// Helper function to render follow-up questions
+function renderFollowUpQuestions(questions, onFollowUpSearch) {
+  if (!questions || !Array.isArray(questions) || questions.length === 0) {
+    return null;
+  }
+  
+  return (
+    <div className="mt-4">
+      <h3 className="text-md font-medium mb-2">Follow-up Questions</h3>
+      <div className="space-y-2">
+        {questions.map((question, index) => (
+          <button
+            key={index}
+            onClick={() => onFollowUpSearch(question)}
+            className="block w-full text-left p-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-800"
+          >
+            {question}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default SearchResults;

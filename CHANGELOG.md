@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2025-03-01
+
+### Changed
+- Renamed "Verified Sources" tab to "Network Map"
+- Removed search functionality from Network Map tab
+- Made "Open Research" the default tab on application load
+- Restructured UI layout for improved user experience
+- Maintained verified sources search functionality within Open Research tab
+
+### Improved
+- Enhanced Network Map visualization
+- Streamlined search flow in Open Research tab
+- Updated documentation to reflect new UI layout
+
 ## [0.5.0] - 2025-02-25
 
 ### Fixed

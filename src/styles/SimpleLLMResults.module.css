@@ -1,0 +1,71 @@
+/* 
+ * SimpleLLMResults.module.css
+ * Styling for the SimpleLLMResults component
+ */
+
+.container {
+  width: 100%;
+  margin: 16px 0;
+  position: relative;
+}
+
+.statusLabel {
+  font-weight: 500;
+  color: #4b5563;
+}
+
+/* Results styling */
+.resultsContainer {
+  display: block !important;
+  visibility: visible !important;
+  min-height: 50px;
+}
+
+.resultItem {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background-color: #ffffff;
+}
+
+.resultContent {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1f2937;
+}
+
+.noResultsMessage {
+  padding: 24px;
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Error message styling */
+.errorContainer {
+  border: 1px solid #f87171;
+  background-color: #fef2f2;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.errorTitle {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: #b91c1c;
+}
+
+.errorMessage {
+  margin: 0;
+  font-size: 14px;
+  color: #b91c1c;
+}
+
+/* Ensure tab visibility */
+.tabVisibilityHelper :global(.tab-navigation-container) {
+  display: block !important;
+  visibility: visible !important;
+}

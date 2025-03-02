@@ -6,6 +6,19 @@ A sophisticated search application that integrates multiple data sources, includ
 
 ## Features
 
+### Open Research
+- **Web Search**: General web results using Serper API
+- **Verified Sources**: Access to LinkedIn, Twitter, and Reddit data
+- **Custom URLs**: Add and search specific websites
+- **File Upload**: Process and search through uploaded documents
+- **LLM Processing**: AI-powered insights from search results
+
+### Network Map
+- **Professional Network Visualization**: View your connections across platforms
+- **LinkedIn Integration**: Professional network data
+- **Twitter Integration**: Social media connections
+- **Reddit Integration**: Community participation
+
 ### Verified Sources
 - **LinkedIn**: Professional network search with OAuth 2.0 authentication
 - **Twitter/X**: Social media insights with Bearer token authentication
@@ -24,7 +37,6 @@ A sophisticated search application that integrates multiple data sources, includ
 - **WSJ**: Market insights and financial reporting
 
 ### Open Research Sources
-- **Web Search**: General web results using Serper API
 - **Substack**: Newsletter and blog content
 - **Medium**: Article and publication search
 - **Crunchbase**: Company and startup information
@@ -252,3 +264,19 @@ For detailed documentation on the metrics system, see [METRICS_SYSTEM.md](./docs
 ## License
 
 MIT License - See LICENSE file for details
+
+## UI Layout
+
+The application now consists of two main tabs:
+
+1. **Open Research** (Default tab)
+   - Comprehensive search across multiple sources
+   - Includes Web, Verified Sources, Academic, and News
+   - Custom URL and file upload capabilities
+   - LLM-powered insights and summaries
+
+2. **Network Map** 
+   - Visual representation of professional connections
+   - LinkedIn, Twitter, and Reddit network visualization
+   - Connection exploration and insights
+   - No search functionality - purely for network visualization

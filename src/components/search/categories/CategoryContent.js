@@ -5,7 +5,7 @@ import { EnhancedCategoryContent } from './display';
 import { debug, info, error, warn } from '../../../utils/logger';
 import { isBusinessQuery } from '../utils';
 import { extractCategoryInsights, getCategoryColor, getCategoryIcon } from './utils';
-import { calculateCategoryMetrics } from './metrics';
+import { calculateCategoryMetrics } from '../metrics/calculators/categoryMetrics';
 import MetricsProgressBar from '../metrics/display/MetricsProgressBar';
 
 // Create a log object for consistent logging

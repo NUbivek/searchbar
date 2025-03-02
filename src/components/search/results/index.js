@@ -1,4 +1,22 @@
 // Export all search results components
-export { default as SearchResultItem } from './SearchResultItem';
-export { default as IntelligentSearchResults } from './IntelligentSearchResults';
-export { LLMResultsProcessor, processLLMResults, extractInsightsFromLLM } from './LLMResultsProcessor';
+import SearchResultItem from './SearchResultItem';
+import IntelligentSearchResults from './IntelligentSearchResults';
+import { LLMResultsProcessor, processLLMResults, extractInsightsFromLLM } from './LLMResultsProcessor';
+
+// Simple, clear exports that avoid duplicates
+export {
+  SearchResultItem,
+  IntelligentSearchResults,
+  LLMResultsProcessor,
+  processLLMResults,
+  extractInsightsFromLLM
+};
+
+// Default export
+export default {
+  SearchResultItem,
+  IntelligentSearchResults,
+  LLMResultsProcessor,
+  processLLMResults,
+  extractInsightsFromLLM
+};
