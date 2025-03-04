@@ -368,36 +368,7 @@ const SimplifiedLLMResults = ({
           Math.min(Math.max(aggregateScores.credibility / aggregateScores.count, 0), 1) : 0.85
       };
       
-      // Create score visualization - more subtle, in a row layout
-      const createScoreBar = (score, label) => {
-        const percentage = Math.min(Math.max(score * 100, 0), 100).toFixed(0);
-        // Subtle colors
-        const color = percentage > 80 ? 'rgba(52, 211, 153, 0.8)' : 
-                     percentage > 60 ? 'rgba(251, 191, 36, 0.7)' : 
-                     'rgba(248, 113, 113, 0.7)';
-        
-        return `
-          <div class="score-metric">
-            <div class="score-label">${label}</div>
-            <div class="score-bar-container">
-              <div class="score-bar" style="width: ${percentage}%; background-color: ${color};"></div>
-            </div>
-            <div class="score-value">${percentage}%</div>
-          </div>
-        `;
-      };
-      
-      // Create subtle metrics section at the top
-      const metricsHTML = `
-        <div class="metrics-dashboard">
-          <h3>Quality Metrics</h3>
-          <div class="metrics-container">
-            ${createScoreBar(avgScores.relevance, 'Relevance')}
-            ${createScoreBar(avgScores.accuracy, 'Accuracy')}
-            ${createScoreBar(avgScores.credibility, 'Credibility')}
-          </div>
-        </div>
-      `;
+      // Not using text-based quality metrics anymore - quality metrics are now shown only in the progress bar visualization
       
       // Detect query type for context-aware visualization
       const isFinancialQuery = query.toLowerCase().match(/financ|revenue|profit|stock|market|growth|investor|economic|business|company/i);
@@ -438,8 +409,7 @@ const SimplifiedLLMResults = ({
       });
       formattedHTML += `</ul>`;
       
-      // Add subtle metrics display
-      formattedHTML += metricsHTML;
+      // No longer displaying quality metrics in the text content area
       
       // Add detailed analysis section if we have more points
       if (keyPoints.length > 5) {
