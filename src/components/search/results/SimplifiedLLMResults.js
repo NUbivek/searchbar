@@ -8,6 +8,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import TabNavigation from './TabNavigation';
 import styles from './SimplifiedLLMResults.module.css';
+import searchResultScorer from '../../../utils/scoring/SearchResultScorer';
+import { detectQueryContext } from '../utils/contextDetector';
 
 /**
  * ExpandableContent Component
@@ -158,12 +160,51 @@ const SimplifiedLLMResults = ({
 }) => {
   const [followUpQueries, setFollowUpQueries] = useState([]);
   
-  // Default metrics scores for displaying in the UI
-  const aggregateScores = {
+  // Will be calculated from actual result scores
+  // Default values (only used until real scores are calculated)
+  const [aggregateScores] = useState({
     relevance: 0.85,
     accuracy: 0.82,
     credibility: 0.88
-  };
+  });
+  
+  // Store processed sources separately to avoid render loops
+  const [processedSources, setProcessedSources] = useState([]);
+  
+  // Calculate metrics from processed sources
+  // We use a ref for storing metrics to avoid render loops
+  const metricsRef = useRef({
+    relevance: 0.85,
+    accuracy: 0.82,
+    credibility: 0.88
+  });
+  
+  // Calculate metrics when sources change
+  useEffect(() => {
+    if (processedSources.length > 0) {
+      console.log(`Calculating metrics from ${processedSources.length} processed sources`);
+      
+      // Calculate aggregate scores from sources
+      let totalRelevance = 0;
+      let totalAccuracy = 0;
+      let totalCredibility = 0;
+      
+      processedSources.forEach(source => {
+        totalRelevance += source.relevanceScore;
+        totalAccuracy += source.accuracyScore;
+        totalCredibility += source.credibilityScore;
+      });
+      
+      // Update metrics ref (doesn't trigger re-render)
+      metricsRef.current = {
+        relevance: totalRelevance / processedSources.length,
+        accuracy: totalAccuracy / processedSources.length,
+        credibility: totalCredibility / processedSources.length
+      };
+      
+      console.log('Updated metrics:', metricsRef.current);
+    }
+  }, [processedSources]);
 
   // Detect if results contain errors
   const hasErrorResults = useMemo(() => {
@@ -537,28 +578,28 @@ const SimplifiedLLMResults = ({
                   <div className={styles.metricItem}>
                     <div className={styles.metricLabel}>Relevance</div>
                     <div className={styles.metricBarContainer}>
-                      <div className={styles.metricBar} style={{width: `${Math.round(aggregateScores.relevance * 100)}%`}}></div>
+                      <div className={styles.metricBar} style={{width: `${Math.round(metricsRef.current.relevance * 100)}%`}}></div>
                     </div>
-                    <div className={styles.metricValue}>{Math.round(aggregateScores.relevance * 100)}%</div>
+                    <div className={styles.metricValue}>{Math.round(metricsRef.current.relevance * 100)}%</div>
                   </div>
                   <div className={styles.metricItem}>
                     <div className={styles.metricLabel}>Accuracy</div>
                     <div className={styles.metricBarContainer}>
-                      <div className={styles.metricBar} style={{width: `${Math.round(aggregateScores.accuracy * 100)}%`}}></div>
+                      <div className={styles.metricBar} style={{width: `${Math.round(metricsRef.current.accuracy * 100)}%`}}></div>
                     </div>
-                    <div className={styles.metricValue}>{Math.round(aggregateScores.accuracy * 100)}%</div>
+                    <div className={styles.metricValue}>{Math.round(metricsRef.current.accuracy * 100)}%</div>
                   </div>
                   <div className={styles.metricItem}>
                     <div className={styles.metricLabel}>Credibility</div>
                     <div className={styles.metricBarContainer}>
-                      <div className={styles.metricBar} style={{width: `${Math.round(aggregateScores.credibility * 100)}%`}}></div>
+                      <div className={styles.metricBar} style={{width: `${Math.round(metricsRef.current.credibility * 100)}%`}}></div>
                     </div>
-                    <div className={styles.metricValue}>{Math.round(aggregateScores.credibility * 100)}%</div>
+                    <div className={styles.metricValue}>{Math.round(metricsRef.current.credibility * 100)}%</div>
                   </div>
                   <div className={styles.overallMetric}>
                     <div className={styles.overallLabel}>Overall</div>
                     <div className={styles.overallScore}>
-                      {Math.round((aggregateScores.relevance + aggregateScores.accuracy + aggregateScores.credibility) / 3 * 100)}%
+                      {Math.round((metricsRef.current.relevance + metricsRef.current.accuracy + metricsRef.current.credibility) / 3 * 100)}%
                     </div>
                   </div>
                 </div>
@@ -569,77 +610,269 @@ const SimplifiedLLMResults = ({
                   <div className={styles.sourcesList}>
                     {/* Extract and sort sources by score */}
                     {(() => {
-                      // Get all possible sources - from both validResults and allResults
-                      const allPossibleSources = [
-                        ...(validResults || []),
-                        ...(results || []).filter(r => !r.isLLMResults && r.url)
-                      ];
-
-                      // Create concise descriptions for each source
-                      const createDescriptiveTitle = (result) => {
-                        // Try to extract most informative part from title or snippet
-                        if (result.title) {
-                          // Extract key phrases from title
-                          const title = result.title;
-                          // Remove domain names and common prefixes
-                          const cleaned = title.replace(/^(https?:\/\/)?([\w\.-]+\.[a-z]{2,})(\/.*)?(\s|\||-|:)/, '');
-                          // Take first 3-4 meaningful words
-                          const words = cleaned.split(/\s+/).filter(word => word.length > 2);
-                          return words.slice(0, 3).join(' ');
-                        } else if (result.snippet) {
-                          // Extract key phrases from snippet
-                          const words = result.snippet.split(/\s+/).filter(word => word.length > 2);
-                          return words.slice(0, 3).join(' ');
-                        } else if (result.url) {
-                          // Extract domain name as fallback
-                          try {
-                            const domain = new URL(result.url).hostname.replace('www.', '');
-                            return domain.split('.')[0];
-                          } catch (e) {
-                            return 'Source ' + (index + 1);
-                          }
+                      // Extract all possible sources from results with more aggressive search
+                      let allPossibleSources = [];
+                      
+                      // Function to recursively search for sources in objects
+                      const extractSourcesFromObject = (obj) => {
+                        // Guard clause for non-objects
+                        if (!obj || typeof obj !== 'object') return;
+                        
+                        // Direct source objects have URL and title or snippet
+                        if (obj.url && (obj.title || obj.snippet)) {
+                          allPossibleSources.push(obj);
                         }
-                        return 'Key source';
+                        
+                        // Check for sources array property
+                        if (obj.sources && Array.isArray(obj.sources)) {
+                          obj.sources.forEach(source => {
+                            if (source && typeof source === 'object' && source.url) {
+                              allPossibleSources.push(source);
+                            }
+                          });
+                        }
+                        
+                        // Check for data.sources path
+                        if (obj.data && obj.data.sources && Array.isArray(obj.data.sources)) {
+                          obj.data.sources.forEach(source => {
+                            if (source && typeof source === 'object' && source.url) {
+                              allPossibleSources.push(source);
+                            }
+                          });
+                        }
+                        
+                        // Special case: check for references/citations section
+                        if (obj.references && Array.isArray(obj.references)) {
+                          obj.references.forEach(ref => {
+                            if (ref && typeof ref === 'object' && ref.url) {
+                              allPossibleSources.push(ref);
+                            }
+                          });
+                        }
+                        
+                        // Recursively search nested objects but not arrays
+                        Object.keys(obj).forEach(key => {
+                          if (obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+                            extractSourcesFromObject(obj[key]);
+                          }
+                        });
+                      };
+                      
+                      // First check direct source arrays
+                      if (results && results.sources && Array.isArray(results.sources)) {
+                        console.log('Found sources array at top level');
+                        allPossibleSources = [...results.sources.filter(s => s && s.url)];
+                      }
+                      
+                      // Extract sources from raw results
+                      if (Array.isArray(results)) {
+                        console.log('Searching array results for sources');
+                        results.forEach(result => {
+                          // Direct source objects
+                          if (result && typeof result === 'object' && result.url && !result.isLLMResults) {
+                            allPossibleSources.push(result);
+                          }
+                          
+                          // Recursively search in objects
+                          if (result && typeof result === 'object') {
+                            extractSourcesFromObject(result);
+                          }
+                        });
+                      } else if (results && typeof results === 'object') {
+                        // Single result object - search recursively
+                        console.log('Searching single result object for sources');
+                        extractSourcesFromObject(results);
+                      }
+                      
+                      // Also check validResults
+                      if (validResults && validResults.length > 0) {
+                        console.log('Searching validResults for sources');
+                        validResults.forEach(result => {
+                          if (result && typeof result === 'object') {
+                            if (result.url && !result.isLLMResults) {
+                              allPossibleSources.push(result);
+                            }
+                            extractSourcesFromObject(result);
+                          }
+                        });
+                      }
+                      
+                      // Log the number of sources found
+                      if (allPossibleSources.length > 0) {
+                        console.log(`Found ${allPossibleSources.length} real sources`);
+                      } else {
+                        console.log('No real sources found');
+                      }
+
+// Create concise descriptions for each source - max 5 words, complete thoughts
+const createDescriptiveTitle = (result, index) => {
+  // First try to extract domain name if URL exists
+  if (result.url) {
+    try {
+      const url = new URL(String(result.url));
+      const domain = url.hostname.replace('www.', '');
+      // Extract main domain name and capitalize
+      const siteName = domain.split('.')[0];
+      return siteName.charAt(0).toUpperCase() + siteName.slice(1);
+    } catch {}
+  }
+  
+  // If title exists, extract a clean, short phrase
+  if (result.title) {
+    const title = String(result.title);
+    // Clean up title
+    const cleaned = title.replace(/^(https?:\/\/)?([\w\.-]+\.[a-z]{2,})(\/.*)?(\s|\||-|:)/, '');
+    
+    // For short titles, just return as is
+    if (cleaned.length < 20) return cleaned;
+    
+    // Filter out common words for a more meaningful phrase
+    const words = cleaned.split(/\s+/).filter(word => {
+      return word.length > 2 && 
+            !['and', 'the', 'for', 'with', 'that', 'this', 'from', 'to'].includes(word.toLowerCase());
+    });
+    
+    // Create a 3-5 word phrase that makes sense
+    if (words.length >= 2) {
+      return words.slice(0, Math.min(5, words.length)).join(' ');
+    }
+    
+    // If no good phrase, use first 20 chars
+    return cleaned.substring(0, 20);
+  }
+  
+  // If snippet exists, extract a meaningful phrase
+  if (result.snippet) {
+    const snippet = String(result.snippet);
+    
+    // For short snippets, use as is
+    if (snippet.length < 20) return snippet;
+    
+    // Try to find the most meaningful phrase
+    const cleanWords = snippet.split(/\s+/).filter(word => {
+      return word.length > 2 && 
+            !['and', 'the', 'for', 'with', 'that', 'this', 'from', 'to'].includes(word.toLowerCase());
+    });
+    
+    if (cleanWords.length >= 2) {
+      return cleanWords.slice(0, Math.min(5, cleanWords.length)).join(' ');
+    }
+  }
+  
+  // Last resort - use the raw URL if available
+  if (result.url) {
+    const rawUrl = String(result.url);
+    // Just show the domain + first path segment if possible
+    try {
+      const url = new URL(rawUrl);
+      const domain = url.hostname.replace('www.', '');
+      const pathSegment = url.pathname.split('/').filter(s => s.length > 0)[0] || '';
+      const displayUrl = domain + (pathSegment ? '/' + pathSegment : '');
+      return displayUrl.length > 25 ? displayUrl.substring(0, 25) : displayUrl;
+    } catch {}
+    
+    // If URL parsing fails, use raw URL (shortened)
+    return rawUrl.length > 25 ? rawUrl.substring(0, 25) : rawUrl;
+  }
+  
+  // Absolute last resort - generic source reference
+  return 'Source ' + (index + 1);
                       };
 
+                      // Make sure we display sources
+                      console.log(`Found ${allPossibleSources.length} potential sources`);
+                      
+                      // Process sources and ensure we show the top 5
                       if (allPossibleSources.length > 0) {
-                        return allPossibleSources
-                          // Calculate a combined score for each result
-                          .map((result, index) => ({
-                            ...result,
-                            url: result.url || '#',
-                            combinedScore: (result.relevanceScore || 0.85) + (result.accuracyScore || 0.8) + (result.credibilityScore || 0.82),
-                            displayTitle: createDescriptiveTitle(result)
-                          }))
-                          // Remove duplicates based on URL
-                          .filter((item, index, self) => 
-                            index === self.findIndex((t) => t.url === item.url)
-                          )
-                          // Sort by combined score in descending order
-                          .sort((a, b) => b.combinedScore - a.combinedScore)
-                          // Take only top 5
-                          .slice(0, 5)
-                          // Render each source with score
-                          .map((result, index) => {
-                            const score = Math.round((result.combinedScore / 3) * 100);
-                            return (
-                              <div key={`source-${index}`} className={styles.sourceItem}>
-                                <a href={result.url} target="_blank" rel="noopener noreferrer" className={styles.sourceLink}>
-                                  {result.displayTitle}
-                                </a>
-                                <span className={styles.sourceScore}>{score}%</span>
-                              </div>
-                            );
-                          });
+                        // Use the sophisticated scoring system to score the sources
+                        console.log('Using sophisticated scoring system for sources');
+                        
+                        // Detect query context for better scoring
+                        const queryContext = detectQueryContext(query);
+                        
+                        // Score results using the sophisticated scoring system
+                        const scoredSources = searchResultScorer.scoreResults(allPossibleSources, query, {
+                          recalculateMetrics: true,
+                          context: queryContext,
+                          sourceType: 'llm'
+                        });
+                        
+                        // Map to enhanced sources with proper metrics
+                        const enhancedSources = scoredSources.map((result, index) => {
+                            // Check if result already has metrics from scoring system
+                            if (!result.metrics) {
+                              console.warn('Result missing metrics from scoring system:', result);
+                            }
+                            
+                            // Get metrics from the scoring system, with fallbacks
+                            const metrics = result.metrics || {};
+                            const relevanceScore = metrics.relevance || 0.80;
+                            const accuracyScore = metrics.accuracy || 0.75;
+                            const credibilityScore = metrics.credibility || 0.78;
+                            const overallScore = metrics.overall || ((relevanceScore * 0.4) + (accuracyScore * 0.3) + (credibilityScore * 0.3));
+                            
+                            // Log metrics from scoring system
+                            console.log(`Source ${index} scored:`, {
+                              relevance: relevanceScore,
+                              accuracy: accuracyScore,
+                              credibility: credibilityScore,
+                              overall: overallScore
+                            });
+                            
+                            // Enhanced source object with metrics from the scoring system
+                            return {
+                              ...result,
+                              url: result.url || '#',
+                              relevanceScore: relevanceScore,
+                              accuracyScore: accuracyScore,
+                              credibilityScore: credibilityScore,
+                              combinedScore: overallScore,
+                              displayTitle: createDescriptiveTitle(result, index)
+                            };
+                        });
+                        
+                        // Remove duplicates based on URL
+                        const uniqueSources = enhancedSources.filter((item, index, self) => 
+                          index === self.findIndex((t) => t.url === item.url)
+                        );
+                        
+                        // Sort by combined score in descending order
+                        const sortedSources = uniqueSources.sort((a, b) => b.combinedScore - a.combinedScore);
+                        
+                        // Display all available high-quality sources instead of exactly 5
+                        const topSources = sortedSources.filter(source => source.combinedScore > 0.6);
+                        
+                        console.log(`Displaying top ${topSources.length} sources with scores`);
+                        
+                        // Store processed sources for metrics calculation in useEffect
+                        if (topSources.length > 0 && processedSources.length !== topSources.length) {
+                          // Only update processed sources if they've changed
+                          if (JSON.stringify(processedSources) !== JSON.stringify(topSources)) {
+                            console.log('Updating processed sources for metrics calculation');
+                            setProcessedSources(topSources);
+                          }
+                        }
+                        
+                        // Render each source with score
+                        return topSources.map((result, index) => {
+                          // Calculate weighted quality score (matching our weighting above)
+                          const score = Math.round(result.combinedScore * 100);
+                          return (
+                            <div key={`source-${index}`} className={styles.sourceItem}>
+                              <a href={result.url} target="_blank" rel="noopener noreferrer" className={styles.sourceLink}>
+                                {result.displayTitle}
+                              </a>
+                              <span className={styles.sourceScore}>{score}%</span>
+                            </div>
+                          );
+                        });
                       } else {
-                        // Placeholder items when no sources are available
-                        return [
-                          <div key="placeholder-1" className={styles.sourceItem}><div className={styles.placeholderLink}></div><span className={styles.sourceScore}>92%</span></div>,
-                          <div key="placeholder-2" className={styles.sourceItem}><div className={styles.placeholderLink}></div><span className={styles.sourceScore}>88%</span></div>,
-                          <div key="placeholder-3" className={styles.sourceItem}><div className={styles.placeholderLink}></div><span className={styles.sourceScore}>85%</span></div>,
-                          <div key="placeholder-4" className={styles.sourceItem}><div className={styles.placeholderLink}></div><span className={styles.sourceScore}>79%</span></div>,
-                          <div key="placeholder-5" className={styles.sourceItem}><div className={styles.placeholderLink}></div><span className={styles.sourceScore}>77%</span></div>
-                        ];
+                        // No placeholders - only show real sources
+                        return (
+                          <div className={styles.noSourcesMessage}>
+                            No sources available for this search.
+                          </div>
+                        );
                       }
                     })()} 
                   </div>
