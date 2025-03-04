@@ -17,7 +17,8 @@ import styles from './TabNavigation.module.css';
 const TabNavigation = ({ 
   tabs = [],
   defaultTabId = null,
-  onTabChange = null
+  onTabChange = null,
+  containerStyle = {}
 }) => {
   // ENHANCED: More aggressive debugging logs for tab rendering
   console.log('🔄 TabNavigation RENDERING with:', {
@@ -59,20 +60,26 @@ const TabNavigation = ({
     if (onTabChange) onTabChange(tabId);
   };
 
-  // If no tabs, return empty container
+  // If no tabs, create a default error tab
   if (!tabs || tabs.length === 0) {
-    console.log('⚠️ TabNavigation: No tabs available, rendering empty container');
-    return (
-      <div className={styles.emptyContainer} data-testid="tab-navigation-empty"
-           style={{ border: '2px solid red', padding: '10px', margin: '10px 0' }}>
-        <p style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-          No tabs available - this should not happen!
-        </p>
-        <div style={{ fontSize: '0.8rem', color: '#999', padding: '10px', background: '#f5f5f5' }}>
-          Debug info: tabs prop is {tabs ? `an array with length ${tabs.length}` : 'not an array or undefined'}
+    console.log('⚠️ TabNavigation: No tabs available, creating default error tab');
+    
+    // Create a default tab with error information
+    tabs = [{
+      id: 'error-tab',
+      label: 'Results',
+      content: (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <h3 style={{ color: '#b91c1c', marginBottom: '10px' }}>Search Results Unavailable</h3>
+          <p style={{ color: '#6b7280', marginBottom: '15px' }}>
+            We couldn't display the search results at this time. Please try again.
+          </p>
+          <div style={{ fontSize: '0.8rem', color: '#9ca3af', padding: '10px', background: '#f5f5f5', borderRadius: '4px' }}>
+            Debug info: tabs prop is {tabs ? `an array with length ${tabs.length}` : 'not an array or undefined'}
+          </div>
         </div>
-      </div>
-    );
+      )
+    }];
   }
 
   // Get active tab content
@@ -98,26 +105,38 @@ const TabNavigation = ({
   });
   
   return (
-    <div className={`${styles.tabContainer} ${styles.visibilityHelper}`} data-testid="tab-navigation"
-         style={{ 
-           border: '1px solid #e5e7eb', 
-           borderRadius: '8px', 
-           marginTop: '20px',
-           overflow: 'visible', 
-           zIndex: 10,
-           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-           minHeight: '150px'
-         }}>
-      {/* Tab Headers */}
-      <div className={styles.tabHeaders} style={{ 
+    <div 
+      className={`${styles.tabContainer} ${styles.visibilityHelper}`} 
+      data-testid="tab-navigation"
+      style={{ 
         display: 'flex',
-        background: '#f9fafb', 
-        borderBottom: '1px solid #e5e7eb', 
-        padding: '0',
-        margin: '0'
-      }}>
+        flexDirection: 'column',
+        flex: '1',
+        border: 'none', 
+        borderRadius: '8px', 
+        marginTop: '0',
+        zIndex: 10,
+        minHeight: '300px',
+        maxHeight: '100%',
+        ...containerStyle
+      }}
+    >
+      {/* Tab Headers - Made more prominent */}
+      <div 
+        className={styles.tabHeaders} 
+        style={{ 
+          display: 'flex',
+          background: '#f9fafb', 
+          borderBottom: '1px solid #e5e7eb', 
+          padding: '0',
+          margin: '0',
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+        }}
+      >
         {tabs.map(tab => {
-          console.log('🔘 Rendering tab button:', tab.id, tab.label);
           return (
             <button
               key={tab.id}
@@ -127,34 +146,52 @@ const TabNavigation = ({
               role="tab"
               data-tab-id={tab.id}
               style={{ 
-                padding: '10px 16px', 
-                fontWeight: activeTabId === tab.id ? 'bold' : 'normal',
+                padding: '14px 24px',
+                fontWeight: activeTabId === tab.id ? '600' : 'normal',
                 background: activeTabId === tab.id ? '#fff' : 'transparent',
-                color: activeTabId === tab.id ? '#3b82f6' : '#6b7280',
-                borderBottom: activeTabId === tab.id ? '2px solid #3b82f6' : 'none',
-                fontSize: '14px',
+                color: activeTabId === tab.id ? '#3b82f6' : '#4b5563',
+                borderTop: 'none',
+                borderLeft: 'none',
+                borderRight: 'none',
+                borderBottom: activeTabId === tab.id ? '3px solid #3b82f6' : 'none',
+                fontSize: '15px',
                 margin: '0',
-                border: 'none',
                 borderRadius: '4px 4px 0 0',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                position: 'relative',
+                overflow: 'visible'
               }}
             >
               {tab.label}
+              {activeTabId === tab.id && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '0px',
+                  left: '0',
+                  right: '0',
+                  height: '3px',
+                  background: '#3b82f6',
+                  borderRadius: '4px 4px 0 0'
+                }}/>
+              )}
             </button>
           );
         })}
       </div>
 
-      {/* Tab Content - Enhanced with styling */}
-      <div className={styles.tabContent} style={{
-        border: '1px solid #e2e8f0',
-        borderRadius: '0 0 8px 8px',
-        background: 'white',
-        padding: '16px',
-        minHeight: '150px'
-      }}>
-
-        
+      {/* Tab Content - Full height */}
+      <div 
+        className={styles.tabContent} 
+        style={{
+          background: 'white',
+          padding: '20px',
+          flex: '1',
+          overflow: 'auto',
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
         {/* Find and display the active tab content */}
         {activeTab ? activeTab.content : <div>No content available</div>}
       </div>

@@ -38,10 +38,17 @@ const rateLimits = {
   global: {              // Global fallback limiter
     lastRequestTime: Date.now(),
     requestCount: 0,
-    maxRequests: 15,       // Maximum 15 requests in the window
-    windowMs: 15000,       // 15 second window (very forgiving)
-    retryAfterMs: 8000     // Suggest retry after 8 seconds
+    maxRequests: 10,       // Maximum 10 requests in the window
+    windowMs: 30000,       // 30 second window (more forgiving)
+    retryAfterMs: 15000    // Suggest retry after 15 seconds
   }
+};
+
+// Cache successful responses to reduce API calls
+const responseCache = {
+  entries: {},
+  maxEntries: 100,
+  ttlMs: 5 * 60 * 1000  // 5 minute cache TTL
 };
 
 /**
@@ -70,6 +77,15 @@ async function handleTokenValidation(req, res) {
     const now = Date.now();
     const timeSinceLastRequest = now - limiter.lastRequestTime;
     
+    // Check cache first to avoid unnecessary API calls
+    const cacheKey = `token-validation-${clientIp}`;
+    const cachedResponse = responseCache.entries[cacheKey];
+    
+    if (cachedResponse && (now - cachedResponse.timestamp) < responseCache.ttlMs) {
+      console.log('Serving Twitter token validation from cache');
+      return res.status(cachedResponse.status).json(cachedResponse.data);
+    }
+    
     // Refill the bucket based on elapsed time
     if (timeSinceLastRequest > limiter.windowMs) {
       // Reset counter after window passes
@@ -89,11 +105,14 @@ async function handleTokenValidation(req, res) {
       res.setHeader('X-RateLimit-Remaining', 0);
       res.setHeader('X-RateLimit-Reset', Math.ceil((limiter.lastRequestTime + limiter.windowMs) / 1000));
       
+      // Include more helpful information for debugging
       return res.status(429).json({
         error: `Twitter API rate limit exceeded. Please try again in ${retryAfter} seconds.`,
         authenticated: false,
         rateLimited: true,
-        retryAfter: retryAfter
+        retryAfter: retryAfter,
+        windowMs: limiter.windowMs,
+        nextReset: new Date(limiter.lastRequestTime + limiter.windowMs).toISOString()
       });
     }
     
@@ -116,10 +135,17 @@ async function handleTokenValidation(req, res) {
     const accessToken = cookies.twitter_access_token;
     
     if (!accessToken) {
-      return res.status(200).json({ 
+      // Cache this negative response
+      const responseData = { 
         error: 'Not authenticated with Twitter',
         authenticated: false 
-      });
+      };
+      responseCache.entries[cacheKey] = {
+        timestamp: now,
+        status: 200,
+        data: responseData
+      };
+      return res.status(200).json(responseData);
     }
     
     // Validate the token by calling the Twitter API
@@ -152,11 +178,35 @@ async function handleTokenValidation(req, res) {
         // Don't fail the whole request if connections fail
       }
       
-      return res.status(200).json({
+      // Success - return the user data and cache the response
+      const responseData = {
         authenticated: true,
         profile: userResponse.data.data,
         connections,
-      });
+      };
+      
+      // Store in cache
+      responseCache.entries[cacheKey] = {
+        timestamp: now,
+        status: 200,
+        data: responseData
+      };
+      
+      // Clean up cache if needed
+      if (Object.keys(responseCache.entries).length > responseCache.maxEntries) {
+        const oldestCacheKey = Object.keys(responseCache.entries).reduce((oldest, key) => {
+          if (!oldest || responseCache.entries[key].timestamp < responseCache.entries[oldest].timestamp) {
+            return key;
+          }
+          return oldest;
+        }, null);
+        
+        if (oldestCacheKey) {
+          delete responseCache.entries[oldestCacheKey];
+        }
+      }
+      
+      return res.status(200).json(responseData);
     } catch (error) {
       // Token is invalid or expired
       if (error.response?.status === 401) {

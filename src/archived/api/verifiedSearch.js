@@ -1,12 +1,4 @@
-/**
- * DEPRECATED: This endpoint is kept for backward compatibility only.
- * 
- * All functionality has been moved to the main search API.
- * A copy of this file has been archived in /src/archived/api/verifiedSearch.js
- * 
- * This endpoint now simply redirects all requests to the main search API
- * with the appropriate parameters.
- */
+// Simplified verifiedSearch.js - LLM and search functionality temporarily disabled
 import { logger } from '../../utils/logger';
 
 export default async function handler(req, res) {

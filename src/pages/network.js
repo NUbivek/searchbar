@@ -139,29 +139,42 @@ export default function NetworkPage() {
         
         const checkTwitterAuth = async () => {
           try {
-            // Add a significant delay between retries to avoid rate limiting
+            // Use exponential backoff with jitter for retries
             if (retryCount > 0) {
-              const delayMs = 6000 * retryCount; // 6 seconds per retry level
-              console.log(`Waiting ${delayMs/1000}s before retrying Twitter auth check...`);
+              // Base delay of 6 seconds, with exponential backoff and random jitter
+              const baseDelay = 6000;
+              const maxDelay = 30000; // Cap at 30 seconds
+              const exponentialDelay = Math.min(baseDelay * Math.pow(1.5, retryCount-1), maxDelay);
+              const jitter = Math.random() * 2000; // Add up to 2 seconds of jitter
+              const delayMs = exponentialDelay + jitter;
+              
+              console.log(`Waiting ${Math.round(delayMs/1000)}s before retrying Twitter auth check (retry #${retryCount})...`);
               await new Promise(resolve => setTimeout(resolve, delayMs));
             }
             
             const twitterResponse = await axios.get('/api/auth/twitter/token', { 
               validateStatus: false,
               // Add cache busting to avoid browser caching the 429 response
-              params: { _t: Date.now() } 
+              params: { 
+                _t: Date.now(),
+                retry: retryCount // Pass retry count to API for logging
+              } 
             });
             
             // Handle rate limiting specially
             if (twitterResponse.status === 429) {
               // Extract retry-after if available
               const retryAfter = twitterResponse.data?.retryAfter || 
-                                 twitterResponse.headers?.['retry-after'] || 8;
+                                 twitterResponse.headers?.['retry-after'] || 15;
+              
+              // Get nextReset time if available
+              const nextReset = twitterResponse.data?.nextReset || null;
+              const nextResetMessage = nextReset ? ` (reset at ${new Date(nextReset).toLocaleTimeString()})` : '';
                                  
-              console.warn(`Twitter API rate limited. Retry after ${retryAfter}s`);
+              console.warn(`Twitter API rate limited. Retry after ${retryAfter}s${nextResetMessage}`);
               
               // Show a more user-friendly error
-              setErrorMessage(`Twitter connection check is rate limited. Please try again in a moment.`);
+              setErrorMessage(`Twitter connection check is temporarily unavailable due to rate limiting. Please try again in ${retryAfter} seconds.`);
               
               // Set Twitter status to false but don't treat as a full error
               setConnectionStatus(prev => ({

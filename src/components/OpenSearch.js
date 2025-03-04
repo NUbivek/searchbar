@@ -3,6 +3,7 @@ import axios from 'axios';
 import ModelSelector from './ModelSelector';
 import SourceSelector from './SourceSelector';
 import SimplifiedLLMResults, { FollowUpChat } from './search/results/SimplifiedLLMResults';
+import { isLLMResult } from '../utils/isLLMResult';
 
 export default function OpenSearch({ selectedModel, setSelectedModel }) {
   const [query, setQuery] = useState('');
@@ -64,21 +65,85 @@ export default function OpenSearch({ selectedModel, setSelectedModel }) {
     setLoading(true);
     setError(null);
 
-    // Simulate a search with a timeout - no actual API call
     try {
-      console.log('Simulating search for query:', searchQuery);
+      console.log('Performing search for query:', searchQuery);
       console.log('Selected sources:', selectedSources);
+      console.log('Using model:', selectedModel);
       
-      // Simulate network latency
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Make actual API call to the search endpoint
+      const response = await axios.post('/api/search', {
+        query: searchQuery,
+        mode: 'open',
+        model: selectedModel,
+        sources: selectedSources,
+        customUrls: customUrls,
+        files: uploadedFiles.map(f => f.name),
+        useLLM: true
+      });
       
-      // This function doesn't actually do any searching or processing
-      // It simply updates the UI to show the simplified LLM results tabs
+      // Log the response for debugging
+      console.log('Search API response structure:', {
+        hasLLMResults: !!response.data.llmResults,
+        hasContent: !!response.data.content,
+        topLevelKeys: Object.keys(response.data).slice(0, 8),
+        llmFlags: response.data.isLLMResults || response.data.isLLMResult || response.data.__isImmutableLLMResult
+      });
+      
+      // Enhanced LLM detection using utility function
+      console.log('Performing LLM result detection on response data');
+      
+      if (isLLMResult(response.data)) {
+        console.log('✅ Successfully detected LLM-formatted results');
+        
+        // Determine if we should use a property or the whole object
+        if (response.data.llmResults && isLLMResult(response.data.llmResults)) {
+          console.log('Using nested llmResults from response');
+          setResults({
+            ...response.data.llmResults,
+            __isImmutableLLMResult: true,
+            isLLMResult: true,
+            query: searchQuery
+          });
+        } else {
+          // Use the whole response when it's the LLM result itself
+          console.log('Using entire response as LLM result');
+          setResults({
+            ...response.data,
+            __isImmutableLLMResult: true,
+            isLLMResult: true,
+            query: searchQuery
+          });
+        }
+      } else if (response.data.content && typeof response.data.content === 'string') {
+        // Explicitly format as LLM result when content is present
+        console.log('Formatting content property as LLM result');
+        setResults({
+          content: response.data.content,
+          isLLMResult: true,
+          __isImmutableLLMResult: true,
+          query: searchQuery
+        });
+      } else if (response.data.results) {
+        // Fallback to regular results
+        console.log('Using regular search results array');
+        setResults(response.data.results);
+      } else if (typeof response.data === 'string') {
+        // Handle case where response might be a plain string
+        console.log('Handling string response');
+        setResults([response.data]);
+      } else {
+        // Create empty result if nothing found
+        console.log('No recognizable results format');
+        setResults([]);
+      }
+      
       setHasSearched(true);
       
     } catch (err) {
-      console.error('Search simulation error:', err);
-      setError('An error occurred. Please try again.');
+      console.error('Search error:', err.response?.data || err.message);
+      setError(err.response?.data?.error || 'An error occurred. Please try again.');
+      // Set empty results
+      setResults([]);
     } finally {
       setLoading(false);
     }
@@ -145,9 +210,9 @@ export default function OpenSearch({ selectedModel, setSelectedModel }) {
             <>
               <SimplifiedLLMResults 
                 query={query}
-                onFollowUpQuery={handleFollowUpSearch}
+                results={results}
+                onFollowUpSearch={handleFollowUpSearch}
               />
-              <FollowUpChat onSubmit={handleFollowUpSearch} />
             </>
           )}
         </div>

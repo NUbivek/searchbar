@@ -1,7 +1,7 @@
 import unifiedSearch from '../../../utils/search-legacy';
 import { processWithLLM } from '../../../utils/llmProcessing';
 import { synthesizeFromResults } from '../../../utils/fallbackSynthesizer';
-import { isLLMResult } from '../../../utils/llm/resultDetector';
+import { isLLMResult } from '../../../utils/isLLMResult';
 import { deepWebSearch } from '../../../utils/deepWebSearch';
 import { logger } from '../../../utils/logger';
 import CategoryFinder from '../../../components/search/categories/CategoryFinder';
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    let { query, mode = 'verified', model = 'mistral-7b', sources = ['Web'], customUrls = [], files = [], useLLM = true } = req.body;
+    let { query, mode = 'verified', model = 'mistral-7b', sources = ['Web'], customUrls = [], files = [], useLLM = true, options = {} } = req.body;
     
     // Normalize model ID in case older format is passed
     const modelMap = {
@@ -194,6 +194,8 @@ export default async function handler(req, res) {
     const shouldUseLLM = useLLM === true || 
                         req.body.shouldUseLLM === true ||
                         req.body.forceLLM === true || 
+                        options?.forceLLM === true ||
+                        options?.debug === true ||
                         (useLLM !== false && (req.body.useLLM !== false));
     
     console.log(`LLM Processing: ${shouldUseLLM ? 'ENABLED' : 'DISABLED'} (useLLM=${useLLM})`, {
@@ -201,15 +203,18 @@ export default async function handler(req, res) {
       bodyUseLLM: req.body.useLLM,
       bodyShouldUseLLM: req.body.shouldUseLLM,
       bodyForceLLM: req.body.forceLLM,
+      optionsForceLLM: options?.forceLLM,
+      optionsDebug: options?.debug,
       model: model
     });
     
     // Track if we need to use the fallback synthesizer
     let useFallbackSynthesizer = false;
     
+    // Use the model from the request or default to mixtral-8x7b
+    const llmModel = model || 'mixtral-8x7b';
+    
     if (results.length > 0 && shouldUseLLM) {
-      // Use the model from the request or default to mixtral-8x7b
-      const llmModel = model || 'mixtral-8x7b';
       
       try {
         console.log(`Processing ${results.length} results with LLM model: ${llmModel}`);
@@ -264,22 +269,38 @@ export default async function handler(req, res) {
           }
           
           // Process with LLM with detailed logging
-          console.log('Calling processWithLLM with query:', query.substring(0, 30) + '...');
+          console.log('Calling processWithLLM with query:', query.substring(0, 30) + '...',
+            'Model:', llmModel,
+            'Results count:', validSources?.length || 0);
+          
           llmResponse = await processWithLLM(
-            query,
-            validSources,
-            llmModel,
-            apiKey
+            validSources, // searchResults
+            query,         // query
+            llmModel,      // modelId 
+            {              // options
+              apiKey: apiKey
+            }
           );
           
-          // Add necessary flags to ensure proper detection & display
-          llmResponse = {
-            ...llmResponse,
-            __isImmutableLLMResult: true,
-            llmProcessed: true,
-            isLLMResults: true,
-            query: query
-          };
+          // Add necessary flags to ensure proper detection & display if not already present
+          if (llmResponse) {
+            // Ensure content is a string for consistent handling
+            if (typeof llmResponse !== 'string' && !llmResponse.content && llmResponse.text) {
+              llmResponse.content = llmResponse.text;
+            }
+            
+            // Add consistent flags for detection
+            llmResponse = {
+              ...llmResponse,
+              __isImmutableLLMResult: true,
+              llmProcessed: true,
+              isLLMResult: true,
+              isLLMResults: Array.isArray(llmResponse) ? true : undefined,
+              query: query
+            };
+            
+            console.log('Enhanced LLM response with detection flags');
+          }
           
           console.log('DEBUG: LLM Response:', {
             hasResponse: !!llmResponse,
@@ -340,14 +361,23 @@ export default async function handler(req, res) {
       if (categories.length === 0) {
         console.log('DEBUG: No categories were generated. Attempting to add categories using search context detector');
         
-        // Use the CategoryFinder to generate categories based on search context
+        // Use the contextDetector to generate categories based on search context
         try {
-          const detector = new (require('../../../components/search/utils/contextDetector').ContextDetector)();
-          const searchContext = detector.detectQueryContext(query);
+          // Use the imported detectQueryContext function directly
+          const searchContext = detectQueryContext(query);
           console.log('DEBUG: Detected search context:', searchContext);
           
           const CategoryFinder = require('../../../components/search/categories/CategoryFinder').default;
           const finder = new CategoryFinder();
+          
+          // Determine primary context type from searchContext
+          let primaryType = 'general';
+          if (searchContext.isBusinessQuery) primaryType = 'business';
+          else if (searchContext.isTechnicalQuery) primaryType = 'technical';
+          else if (searchContext.isFinancialQuery) primaryType = 'financial';
+          else if (searchContext.isMedicalQuery) primaryType = 'medical';
+          
+          console.log('Primary context type:', primaryType);
           
           // Generate at least one default category
           categories = [
@@ -466,7 +496,25 @@ export default async function handler(req, res) {
     })));
     
     // Make LLM the primary response - not just a property within the response
-    if (llmResponse) {
+    // Enhanced check for valid LLM response
+    const hasValidLLMResponse = llmResponse && 
+      (llmResponse.content || 
+       (llmResponse.__isImmutableLLMResult === true) || 
+       (llmResponse.isLLMResult === true) ||
+       (llmResponse.llmProcessed === true));
+    
+    console.log('LLM Response validation:', {
+      hasLLMResponse: !!llmResponse,
+      hasContent: !!llmResponse?.content,
+      hasLLMFlags: !!(llmResponse && (
+        llmResponse.__isImmutableLLMResult || 
+        llmResponse.isLLMResult || 
+        llmResponse.llmProcessed
+      )),
+      isValidLLMResponse: hasValidLLMResponse
+    });
+    
+    if (hasValidLLMResponse) {
       // Comprehensive LLM-first response format that will be properly detected
       
       // Get categories from existing sources, prioritizing LLM response categories
@@ -480,26 +528,53 @@ export default async function handler(req, res) {
         console.log(`DEBUG: Using ${responseCategories.length} categories for LLM response`);
       }
       
+      // Log detailed content structure
+      console.log('DEBUG: Response content details:', {
+        contentType: typeof llmResponse.content,
+        contentLength: typeof llmResponse.content === 'string' ? llmResponse.content.length : 'not a string',
+        hasCategories: Array.isArray(responseCategories) && responseCategories.length > 0,
+        categoryCount: Array.isArray(responseCategories) ? responseCategories.length : 0
+      });
+      
       const synthesizedResponse = {
-        // Core LLM result fields
-        content: llmResponse.content || '',
+        // Core LLM result fields - place content at top level for immediate accessibility
+        content: typeof llmResponse.content === 'string' ? llmResponse.content : 
+                 typeof llmResponse.text === 'string' ? llmResponse.text : 
+                 JSON.stringify(llmResponse),
         query: query,
         categories: responseCategories,
         followUpQuestions: llmResponse.followUpQuestions || [],
         sourceMap: llmResponse.sourceMap || {},
         
-        // Required detection flags
+        // Required detection flags - set these at the top level
         type: 'llm_summary',
         isLLMResults: true,
         __isImmutableLLMResult: true,
         llmProcessed: true,
+        isLLMResult: true, // Additional flag for consistency
+        model: model || 'mistral-7b',
+        timestamp: new Date().toISOString(),
         
         // Include raw results for display as needed
         results: results,
         
+        // Enhanced llmResults format with better properties
+        llmResults: {
+          // Include all properties from the original llmResponse
+          ...llmResponse,
+          // Ensure content is always accessible
+          content: llmResponse.content || '',
+          // Ensure all flags are set for optimal detection
+          isLLMResults: true,
+          isLLMResult: true,
+          __isImmutableLLMResult: true,
+          llmProcessed: true,
+          query: query
+        },
+        
         // Metadata for tracking
         metadata: {
-          model: model,
+          model: llmModel || 'unknown',
           timestamp: new Date().toISOString(),
           totalResults: results.length,
           queriedSources: sources,

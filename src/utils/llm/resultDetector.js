@@ -4,7 +4,8 @@
  * Provides standardized functions for detecting and handling LLM-processed results
  * Eliminates redundancies across the codebase by centralizing detection logic
  */
-const { debug, info, warn, error } = require('../logger');
+const logger = require('../logger');
+const { debug, info, warn, error } = logger;
 
 // Common flag names used to identify LLM results
 const LLM_RESULT_FLAGS = [
@@ -151,12 +152,14 @@ function isLLMResult(item) {
       debug('LLM result detected via synthesized content indicators');
       return true;
     }
+    
+    // If we reach here, it's not an LLM result within the try block
+    return false;
   } catch (error) {
     // Handle detection errors gracefully
     warn('Error in LLM result detection:', error);
+    return false;
   }
-  
-  return false;
 }
 
 /**

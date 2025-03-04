@@ -3,7 +3,6 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { Tab } from '@headlessui/react';
 import OpenSearch from '../components/OpenSearch';
-import VerifiedSearch from '../components/VerifiedSearch';
 import { FaSearch, FaProjectDiagram } from 'react-icons/fa';
 
 function classNames(...classes) {
