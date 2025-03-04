@@ -17,7 +17,16 @@ const log = { debug, info, error, warn };
 const CategoryDisplay = ({ categories = [], searchQuery = '', loading = false, options = {} }) => {
   // Ensure categories is always an array and filter out any invalid ones
   const categoriesArray = useMemo(() => {
-    if (!Array.isArray(categories)) return [];
+    if (!Array.isArray(categories)) {
+      console.log('Categories is not an array:', typeof categories);
+      return [];
+    }
+    
+    console.log('Processing categories:', categories.map(cat => ({
+      id: cat?.id || 'no-id',
+      name: cat?.name || cat?.title || 'unnamed',
+      contentType: cat?.content ? (Array.isArray(cat.content) ? 'array' : typeof cat.content) : 'no-content'
+    })));
     
     // Filter out invalid categories or ones with no content
     return categories.filter(category => 
@@ -25,8 +34,9 @@ const CategoryDisplay = ({ categories = [], searchQuery = '', loading = false, o
       typeof category === 'object' && 
       category.id && 
       category.content && 
-      Array.isArray(category.content) && 
-      category.content.length > 0
+      // Allow both array content and string content
+      ((Array.isArray(category.content) && category.content.length > 0) ||
+       (typeof category.content === 'string' && category.content.trim().length > 0))
     );
   }, [categories]);
 

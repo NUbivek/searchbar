@@ -1,0 +1,112 @@
+/**
+ * SimplifiedLLMResults.module.css
+ * Clean styling for the simplified LLM results display
+ */
+
+.simplifiedContainer {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 24px 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  max-height: 500px; /* Limit height for scrollability */
+  display: flex;
+  flex-direction: column;
+}
+
+.queryText {
+  font-style: italic;
+  color: #6b7280;
+  font-size: 14px;
+  margin: 10px 0;
+  padding: 0 20px;
+}
+
+.tabHeaders {
+  display: flex;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0;
+  margin: 0;
+}
+
+.tabButton {
+  padding: 12px 16px;
+  font-size: 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  position: relative;
+  outline: none;
+}
+
+.tabButton:hover {
+  color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+.activeTab {
+  font-weight: 600;
+  color: #3b82f6;
+  background-color: #ffffff;
+  border-bottom: 2px solid #3b82f6;
+}
+
+.tabContent {
+  padding: 20px;
+  background: white;
+  min-height: 200px;
+  flex: 1;
+  overflow-y: auto; /* Make content scrollable */
+}
+
+.emptyTabContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 180px;
+  color: #9ca3af;
+  font-size: 15px;
+  font-style: italic;
+  text-align: center;
+  border: 1px dashed #e5e7eb;
+  border-radius: 6px;
+  margin: 10px 0;
+  background-color: #f9fafb;
+}
+
+/* Followup chat styling */
+.followupContainer {
+  display: flex;
+  margin-top: 12px;
+  margin-bottom: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.followupInput {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  outline: none;
+  font-size: 14px;
+}
+
+.followupButton {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.followupButton:hover {
+  background-color: #2563eb;
+}

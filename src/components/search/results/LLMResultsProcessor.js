@@ -31,288 +31,316 @@ export class LLMResultsProcessor {
    * @param {Array} results The search results to process
    * @param {string} query The search query
    * @param {Object} options Processing options
-   * @returns {Promise<Array>} Processed results as categories
+   * @returns {Object} Processed results
    */
-  async processResults(results, query, options = {}) {
-    try {
-      // Merge options
-      const processingOptions = {
-        ...this.options,
-        ...options
-      };
-
-      // Detect query context if not provided
-      if (!processingOptions.context) {
-        processingOptions.context = detectQueryContext(query);
-      }
-
-      // Check if we have LLM results
-      const hasLLMResults = Array.isArray(results) && results.some(item => 
-        item && typeof item === 'object' && 
-        (item.hasOwnProperty('llmProcessed') || item.hasOwnProperty('aiProcessed'))
-      );
-
-      // If we have LLM results, process them
-      if (hasLLMResults) {
-        return this.processLLMResults(results, query, processingOptions);
-      }
-
-      // Otherwise, convert standard results to categories
-      return this.convertResultsToCategories(results, query, processingOptions);
-    } catch (err) {
-      log.error('Error in LLMResultsProcessor.processResults:', err);
-      throw err;
+  processResults(results, query, options = {}) {
+    const processingOptions = {
+      ...this.options,
+      ...options
+    };
+    
+    // Detect business focus if not explicitly set
+    if (processingOptions.businessFocus === undefined) {
+      processingOptions.businessFocus = isBusinessQuery(query);
     }
-  }
-
-  /**
-   * Process LLM results and convert them to categories
-   * @param {Object} llmResults The LLM results object
-   * @param {string} query The search query
-   * @param {Object} options Processing options
-   * @returns {Array} Array of category objects
-   */
-  processLLMResults(llmResults, query, options = {}) {
+    
+    // Detect query context
+    const queryContext = detectQueryContext(query);
+    
     try {
-      if (!llmResults || !Array.isArray(llmResults)) {
-        log.error('Invalid LLM results provided to processor');
-        return [];
-      }
-      
-      // Find the LLM content in the results
-      const llmContent = llmResults.find(item => 
-        item && typeof item === 'object' && 
-        (item.hasOwnProperty('llmProcessed') || item.hasOwnProperty('aiProcessed'))
-      );
-      
-      if (!llmContent || !llmContent.content) {
-        log.warn('No valid LLM content found in results');
-        return this.convertResultsToCategories(llmResults, query, options);
-      }
-      
-      // Process LLM response
-      const categories = mapLLMResponseToCategories(llmContent.content, query, {
-        businessFocus: options.context?.isBusinessQuery || options.businessFocus,
-        enhanceCategories: options.enhanceCategories,
-        calculateMetrics: options.calculateMetrics
+      // Process base LLM response
+      const processedResponse = this.processLLMResponse(results, query, {
+        ...processingOptions,
+        context: queryContext
       });
       
-      // Extract insights if needed
-      if (options.extractInsights) {
-        categories.forEach(category => {
-          if (!category.insights || category.insights.length === 0) {
-            category.insights = this.extractInsightsFromLLM(llmContent, query, category);
-          }
-        });
+      // Add source attributions
+      this.mapSourceAttributions(processedResponse, results);
+      
+      // Add metrics if requested
+      if (processingOptions.calculateMetrics) {
+        this.calculateResultMetrics(processedResponse, query);
       }
       
-      return categories;
+      // Extract insights if requested
+      if (processingOptions.extractInsights) {
+        this.extractInsights(processedResponse, query);
+      }
+      
+      // Enhance categories if requested
+      if (processingOptions.enhanceCategories) {
+        this.enhanceCategories(processedResponse, query, queryContext);
+      }
+      
+      return processedResponse;
     } catch (error) {
       log.error('Error processing LLM results:', error);
-      return [];
+      return {
+        error: `Failed to process results: ${error.message}`,
+        results: results
+      };
     }
   }
-
+  
   /**
-   * Convert standard search results to categories
-   * @param {Array} results The search results
+   * Process the raw LLM response
+   * @param {Array} results The search results to process
    * @param {string} query The search query
    * @param {Object} options Processing options
-   * @returns {Array} Array of category objects
+   * @returns {Object} Processed response
+   * @private
    */
-  convertResultsToCategories(results, query, options = {}) {
+  processLLMResponse(results, query, options) {
     try {
-      if (!results || !Array.isArray(results)) {
-        return [];
-      }
-
-      // Create default "All Results" category
-      const allResultsCategory = {
-        id: 'all_results',
-        name: 'All Results',
-        content: [...results],
-        type: 'default'
-      };
-
-      // Create categories based on result types
-      const categories = [allResultsCategory];
-
-      // Check if we should create a business category
-      if (options.context?.isBusinessQuery || options.businessFocus) {
-        // Filter business-related results
-        const businessResults = results.filter(item => {
-          if (!item || typeof item !== 'object') return false;
-          
-          const title = (item.title || '').toLowerCase();
-          const description = (item.description || item.snippet || '').toLowerCase();
-          
-          return (
-            title.includes('business') || 
-            title.includes('company') || 
-            title.includes('market') || 
-            title.includes('financial') ||
-            title.includes('industry') ||
-            description.includes('business analysis') ||
-            description.includes('market report') ||
-            description.includes('financial data') ||
-            description.includes('company profile')
-          );
-        });
-
-        if (businessResults.length > 0) {
-          categories.push({
-            id: 'business',
-            name: 'Business Insights',
-            content: businessResults,
-            type: 'business'
-          });
-        }
-      }
-
-      // Add technical category if relevant
-      if (options.context?.isTechnicalQuery) {
-        // Filter technical results
-        const technicalResults = results.filter(item => {
-          if (!item || typeof item !== 'object') return false;
-          
-          const title = (item.title || '').toLowerCase();
-          const description = (item.description || item.snippet || '').toLowerCase();
-          
-          return (
-            title.includes('technical') || 
-            title.includes('technology') || 
-            title.includes('software') || 
-            title.includes('hardware') ||
-            title.includes('development') ||
-            title.includes('programming') ||
-            description.includes('technical specification') ||
-            description.includes('developer') ||
-            description.includes('software') ||
-            description.includes('technology')
-          );
-        });
-
-        if (technicalResults.length > 0) {
-          categories.push({
-            id: 'technical',
-            name: 'Technical Information',
-            content: technicalResults,
-            type: 'technical'
-          });
-        }
-      }
-
-      return categories;
+      // Extract text content from results
+      const textContent = this.extractTextContent(results);
+      
+      // Process with LLM response processor
+      return processLLMResponse(textContent, query, options);
     } catch (error) {
-      log.error('Error converting results to categories:', error);
-      return [];
+      log.error('Error in LLM response processing:', error);
+      throw error;
     }
   }
-
+  
   /**
-   * Extract insights from LLM results
-   * @param {Object} llmResults The LLM results object
-   * @param {string} query The search query
-   * @param {Object} category The category to extract insights for
-   * @returns {Array} Array of insights
+   * Extract text content from search results
+   * @param {Array} results The search results
+   * @returns {string} Combined text content
+   * @private
    */
-  extractInsightsFromLLM(llmResults, query, category) {
-    try {
-      if (!llmResults || !llmResults.content) {
-        return [];
+  extractTextContent(results) {
+    if (!Array.isArray(results)) {
+      return String(results || '');
+    }
+    
+    return results.map(result => {
+      if (typeof result === 'string') {
+        return result;
       }
+      if (result && typeof result === 'object') {
+        return result.content || result.text || JSON.stringify(result);
+      }
+      return String(result || '');
+    }).join('\n\n');
+  }
+  
+  /**
+   * Map source attributions to processed response
+   * @param {Object} processedResponse The processed response
+   * @param {Array} originalResults The original search results
+   * @returns {Object} Updated processed response
+   * @private
+   */
+  mapSourceAttributions(processedResponse, originalResults) {
+    if (!processedResponse || !processedResponse.categories) {
+      return processedResponse;
+    }
+    
+    try {
+      // Map categories to sources
+      const sourceMappings = mapLLMResponseToCategories(
+        processedResponse.categories,
+        originalResults
+      );
       
-      const content = llmResults.content;
-      const insights = [];
+      // Add source mappings to response
+      processedResponse.sourceMappings = sourceMappings;
       
-      // Look for insights section in content
-      if (typeof content === 'string') {
-        // Look for insights section
-        const insightsMatch = content.match(/key insights:?\s*([\s\S]*?)(?:\n\n|\n#|\n\*\*|$)/i);
-        if (insightsMatch && insightsMatch[1]) {
-          // Split insights by bullet points or newlines
-          const insightLines = insightsMatch[1]
-            .split(/\n\s*[-•*]\s*|\n\s*\d+\.\s*|\n+/)
-            .filter(line => line.trim().length > 0);
-          
-          insightLines.forEach(line => {
-            const trimmed = line.trim();
-            if (trimmed.length > 10 && !insights.includes(trimmed)) {
-              insights.push(trimmed);
+      return processedResponse;
+    } catch (error) {
+      log.error('Error mapping source attributions:', error);
+      return processedResponse;
+    }
+  }
+  
+  /**
+   * Calculate metrics for processed results
+   * @param {Object} processedResponse The processed response
+   * @param {string} query The search query
+   * @returns {Object} Updated processed response with metrics
+   * @private
+   */
+  calculateResultMetrics(processedResponse, query) {
+    if (!processedResponse || !processedResponse.categories) {
+      return processedResponse;
+    }
+    
+    try {
+      // Add metrics to each category
+      processedResponse.categories = processedResponse.categories.map(category => {
+        if (!category.scores) {
+          category.scores = {
+            relevance: this.calculateRelevanceScore(category, query),
+            accuracy: this.calculateAccuracyScore(category),
+            credibility: this.calculateCredibilityScore(category)
+          };
+        }
+        
+        // Add metrics to each item in the category
+        if (Array.isArray(category.items)) {
+          category.items = category.items.map(item => {
+            if (!item.scores) {
+              item.scores = {
+                relevance: this.calculateRelevanceScore(item, query),
+                accuracy: this.calculateAccuracyScore(item),
+                credibility: this.calculateCredibilityScore(item)
+              };
             }
+            return item;
           });
         }
-      }
+        
+        return category;
+      });
       
-      // If no insights found and category is provided, try to extract from category content
-      if (insights.length === 0 && category && category.content) {
-        // Extract from category content descriptions
-        category.content.forEach(item => {
-          if (!item || typeof item !== 'object') return;
-          
-          const description = item.description || item.snippet || '';
-          if (description.length > 50) {
-            // Extract sentences that might contain insights
-            const sentences = description
-              .split(/[.!?]+/)
-              .map(s => s.trim())
-              .filter(s => s.length > 20 && s.length < 150);
+      return processedResponse;
+    } catch (error) {
+      log.error('Error calculating result metrics:', error);
+      return processedResponse;
+    }
+  }
+  
+  /**
+   * Calculate relevance score for content
+   * @param {Object} content The content
+   * @param {string} query The search query
+   * @returns {number} Relevance score (0-1)
+   * @private
+   */
+  calculateRelevanceScore(content, query) {
+    // Simple implementation - can be enhanced with more sophisticated scoring
+    const text = content.text || content.content || '';
+    const title = content.title || '';
+    
+    const queryWords = query.toLowerCase().split(/\s+/);
+    const contentText = (title + ' ' + text).toLowerCase();
+    
+    let matches = 0;
+    queryWords.forEach(word => {
+      if (contentText.includes(word)) {
+        matches++;
+      }
+    });
+    
+    return Math.min(1, Math.max(0.5, matches / queryWords.length));
+  }
+  
+  /**
+   * Calculate accuracy score for content
+   * @param {Object} content The content
+   * @returns {number} Accuracy score (0-1)
+   * @private
+   */
+  calculateAccuracyScore(content) {
+    // Placeholder implementation - in a real implementation
+    // this would use various heuristics to determine accuracy
+    return 0.8; // Default score
+  }
+  
+  /**
+   * Calculate credibility score for content
+   * @param {Object} content The content
+   * @returns {number} Credibility score (0-1)
+   * @private
+   */
+  calculateCredibilityScore(content) {
+    // Placeholder implementation - in a real implementation
+    // this would evaluate sources for credibility
+    return 0.85; // Default score
+  }
+  
+  /**
+   * Extract insights from processed response
+   * @param {Object} processedResponse The processed response
+   * @param {string} query The search query
+   * @returns {Object} Updated processed response with insights
+   * @private
+   */
+  extractInsights(processedResponse, query) {
+    if (!processedResponse || !processedResponse.categories) {
+      return processedResponse;
+    }
+    
+    try {
+      // Extract key insights from categories
+      const keyInsights = [];
+      
+      processedResponse.categories.forEach(category => {
+        if (Array.isArray(category.items)) {
+          category.items.forEach(item => {
+            const text = item.text || item.content || '';
             
-            // Add sentences that contain key terms
-            const keyTerms = this.getKeyTermsForCategory(category.type || 'default');
+            // Extract insights using heuristics
+            const sentences = text.split(/[.!?]+/);
             sentences.forEach(sentence => {
-              const containsKeyTerm = keyTerms.some(term => 
-                sentence.toLowerCase().includes(term.toLowerCase())
-              );
+              const trimmed = sentence.trim();
               
-              if (containsKeyTerm && !insights.includes(sentence)) {
-                insights.push(sentence);
+              // Check if sentence contains insight markers
+              if (
+                trimmed.length > 20 && 
+                (
+                  trimmed.includes('important') ||
+                  trimmed.includes('significant') ||
+                  trimmed.includes('key') ||
+                  trimmed.includes('crucial') ||
+                  trimmed.includes('essential') ||
+                  /\d+%/.test(trimmed) // Contains a percentage
+                )
+              ) {
+                keyInsights.push(trimmed);
               }
             });
-          }
-        });
-      }
+          });
+        }
+      });
       
-      // Return top insights (limit to 5)
-      return insights.slice(0, 5);
+      // Add insights to processed response
+      processedResponse.insights = keyInsights.slice(0, 5); // Limit to top 5 insights
+      
+      return processedResponse;
     } catch (error) {
-      log.error('Error extracting insights from LLM results:', error);
-      return [];
+      log.error('Error extracting insights:', error);
+      return processedResponse;
     }
   }
-
+  
   /**
-   * Get key terms for a category type
-   * @param {string} categoryType The category type
-   * @returns {Array<string>} Array of key terms
+   * Enhance categories in processed response
+   * @param {Object} processedResponse The processed response
+   * @param {string} query The search query
+   * @param {string} context The query context
+   * @returns {Object} Updated processed response with enhanced categories
+   * @private
    */
-  getKeyTermsForCategory(categoryType) {
-    switch (categoryType) {
-      case 'business':
-        return ['revenue', 'profit', 'market', 'growth', 'strategy', 'company', 'business', 'industry'];
-      case 'technical':
-        return ['technology', 'software', 'hardware', 'algorithm', 'system', 'platform', 'development'];
-      case 'news':
-        return ['announced', 'reported', 'released', 'launched', 'unveiled', 'today', 'recently'];
-      case 'academic':
-        return ['research', 'study', 'analysis', 'findings', 'paper', 'theory', 'hypothesis'];
-      case 'financial':
-        return ['investment', 'stock', 'market', 'financial', 'earnings', 'revenue', 'profit'];
-      default:
-        return ['important', 'significant', 'key', 'major', 'critical', 'essential', 'primary'];
-    }
+  enhanceCategories(processedResponse, query, context) {
+    // Placeholder for category enhancement logic
+    return processedResponse;
   }
 }
 
-// Export the original functions for backward compatibility
-export const processLLMResults = (llmResults, query) => {
-  const processor = new LLMResultsProcessor();
-  return processor.processLLMResults(llmResults, query);
+/**
+ * Process LLM results using a processor instance
+ * @param {Array} llmResults The search results to process
+ * @param {string} query The search query
+ * @param {Object} options Processing options
+ * @returns {Object} Processed results
+ */
+export const processLLMResults = (llmResults, query, options = {}) => {
+  const processor = new LLMResultsProcessor(options);
+  return processor.processResults(llmResults, query, options);
 };
 
+/**
+ * Extract insights from LLM results
+ * @param {Array} llmResults The search results to process
+ * @param {string} query The search query
+ * @returns {Array} Extracted insights
+ */
 export const extractInsightsFromLLM = (llmResults, query) => {
-  const processor = new LLMResultsProcessor();
-  return processor.extractInsightsFromLLM(llmResults, query);
+  const processor = new LLMResultsProcessor({ extractInsights: true });
+  const processed = processor.processResults(llmResults, query);
+  return processed.insights || [];
 };
 
 export default {

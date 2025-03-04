@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { Tab } from '@headlessui/react';
 import OpenSearch from '../components/OpenSearch';
 import VerifiedSearch from '../components/VerifiedSearch';
@@ -11,7 +12,8 @@ function classNames(...classes) {
 
 export default function Home() {
   const [selectedTab, setSelectedTab] = useState(0);
-  const [selectedModel, setSelectedModel] = useState('mixtral-8x7b');
+  // Updated to use standardized model ID
+  const [selectedModel, setSelectedModel] = useState('mistral-7b');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -42,30 +44,13 @@ export default function Home() {
             >
               <FaSearch className="mr-2" /> Open Research
             </Tab>
-            <Tab
-              className={({ selected }) =>
-                classNames(
-                  'w-full rounded-lg py-2.5 text-sm font-medium leading-5 flex items-center justify-center',
-                  'focus:outline-none focus:ring-2 ring-offset-2 ring-offset-blue-400 ring-white ring-opacity-60',
-                  selected
-                    ? 'bg-white text-blue-700 shadow'
-                    : 'text-blue-500 hover:bg-white/[0.12] hover:text-blue-700'
-                )
-              }
-            >
+            <Link href="/network" className="w-full rounded-lg py-2.5 text-sm font-medium leading-5 flex items-center justify-center bg-blue-100 text-blue-500 hover:bg-white/[0.12] hover:text-blue-700">
               <FaProjectDiagram className="mr-2" /> Network Map
-            </Tab>
+            </Link>
           </Tab.List>
           <Tab.Panels className="mt-2">
             <Tab.Panel>
               <OpenSearch 
-                selectedModel={selectedModel}
-                setSelectedModel={setSelectedModel}
-              />
-            </Tab.Panel>
-            <Tab.Panel>
-              <VerifiedSearch 
-                isNetworkMapMode={true} 
                 selectedModel={selectedModel}
                 setSelectedModel={setSelectedModel}
               />

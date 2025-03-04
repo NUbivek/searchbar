@@ -1,9 +1,9 @@
 // Next.js API route for search
-import { searchVerifiedSources } from '../../utils/verifiedSearch';
+import unifiedSearch from '../../utils/search-legacy';
 import { processWithLLM } from '../../utils/llm-exports';
 
 export default async function handler(req, res) {
-  console.log('Search API endpoint called');
+  console.log('Legacy Search API endpoint called');
   
   // Only allow POST requests
   if (req.method !== 'POST') {
@@ -33,9 +33,23 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'At least one source must be selected' });
     }
     
-    // Perform the search
-    console.log('Calling searchVerifiedSources with query:', query);
-    const searchResults = await searchVerifiedSources(query, { sources, urls, files });
+    // Determine the search mode from the request (open or verified)
+    const mode = req.body.mode || 'open';
+    console.log('Search mode:', mode);
+    
+    // Record the start time for performance tracking
+    const startTime = Date.now(); 
+    
+    // Perform the search using unified search function
+    console.log('Calling unifiedSearch with query:', query);
+    const searchResults = await unifiedSearch({
+      query,
+      mode, // Use the requested mode
+      model,
+      sources,
+      customUrls: urls || [],
+      uploadedFiles: files || []
+    });
     
     console.log('Search results received, count:', searchResults.length);
     if (searchResults.length > 0) {
@@ -72,13 +86,18 @@ export default async function handler(req, res) {
       }
     }
     
+    // Calculate execution time
+    const executionTime = Date.now() - startTime;
+    console.log(`Search completed in ${executionTime}ms`);
+    
     console.log('Returning results count:', processedResults.length);
     
     // Return the results
     return res.status(200).json({
       results: processedResults,
       query,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      executionTime
     });
     
   } catch (error) {

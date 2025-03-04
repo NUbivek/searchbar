@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
   try {
     // Extract query and other parameters from request body
-    const { query, sources = ['web'], model, customUrls, uploadedFiles, useLLM = false } = req.body;
+    const { query, sources = ['web'], model, customUrls, uploadedFiles, useLLM = true } = req.body;
 
     if (!query) {
       return res.status(400).json({ error: 'Query is required' });
@@ -105,6 +105,7 @@ export default async function handler(req, res) {
     // Generate LLM response if requested
     if (useLLM && model) {
       try {
+        console.log('DEBUG: Attempting to process with LLM - model:', model, 'results:', results.length);
         llmResponse = await processWithLLM({
           query,
           sources: results,
@@ -112,7 +113,16 @@ export default async function handler(req, res) {
           maxTokens: 1024,
           temperature: 0.7
         });
+        
+        // Debug the LLM response
+        console.log('DEBUG: LLM Response received:', {
+          hasContent: !!llmResponse?.content,
+          contentLength: llmResponse?.content?.length || 0,
+          hasFlags: !!llmResponse?.__isImmutableLLMResult,
+          metadata: llmResponse?.metadata || 'none'
+        });
       } catch (llmError) {
+        console.error('DEBUG: Error generating LLM response:', llmError.message);
         logger.error('Error generating LLM response:', llmError);
       }
     }
@@ -129,11 +139,23 @@ export default async function handler(req, res) {
       categories = [];
     }
 
+    // Debug the final response structure
+    console.log('DEBUG: Final API response structure:', {
+      hasResults: !!results,
+      resultsCount: results?.length || 0,
+      hasLLMResponse: !!llmResponse,
+      hasLLMContent: !!llmResponse?.content,
+      hasCategories: !!categories,
+      categoriesCount: categories?.length || 0
+    });
+    
+    // Return the full LLM response object instead of just the content
     return res.status(200).json({
       results,
       query,
       timestamp: new Date().toISOString(),
-      llmResponse: llmResponse?.content || null,
+      // Return the complete LLM response object with all the flags
+      ...(llmResponse ? llmResponse : { content: null }),
       categories
     });
   } catch (error) {

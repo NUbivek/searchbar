@@ -44,7 +44,9 @@ export async function deepWebSearch(query, options = {}) {
           headers: { 
             'X-API-KEY': apiKey,
             'Content-Type': 'application/json'
-          }
+          },
+          timeout: 30000, // 30 second timeout for Serper API requests
+          timeoutErrorMessage: 'Search request to Serper API timed out'
         }
       );
       
@@ -157,6 +159,11 @@ function processSerperResponse(data, originalQuery) {
 // Calculate relevance score based on result content and query
 function calculateRelevance(result, query) {
   let score = 0.8; // Base score
+  
+  // Ensure query is a string before proceeding
+  if (!query || typeof query !== 'string') {
+    return score; // Return base score if query is invalid
+  }
   
   const queryTerms = query.toLowerCase().split(/\s+/);
   

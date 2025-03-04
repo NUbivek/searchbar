@@ -29,14 +29,19 @@ export const MODEL_CONFIGS = {
     model: 'pplx-7b-online',
     temperature: 0.7
   },
-  'Model A': {
+  'Mistral': {
     provider: 'TOGETHER',
-    model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+    model: 'mistralai/Mistral-7B-v0.1',
     temperature: 0.7
   },
-  'Model B': {
+  'Llama': {
     provider: 'TOGETHER',
-    model: 'meta-llama/Llama-2-70b-chat-hf',
+    model: 'meta-llama/Llama-2-13b-chat-hf',
+    temperature: 0.7
+  },
+  'Gemma': {
+    provider: 'TOGETHER',
+    model: 'google/gemma-2-27b-it',
     temperature: 0.7
   }
 }; 

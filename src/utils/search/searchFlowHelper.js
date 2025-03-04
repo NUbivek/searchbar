@@ -22,12 +22,13 @@ import { ALL_VERIFIED_SOURCES } from '../allVerifiedSources';
 export async function executeSearch({
   query,
   mode = 'verified',
-  model = 'mixtral-8x7b',
+  model = 'mistral',
   sources = [],
   customUrls = [],
-  files = [],
-  useLLM = true
+  files = []
 }) {
+  // Always use LLM processing
+  const useLLM = true;
   if (!query) {
     throw new Error('Search query is required');
   }
@@ -38,7 +39,7 @@ export async function executeSearch({
     sources: Array.isArray(sources) ? sources.length : 'unknown',
     customUrls: Array.isArray(customUrls) ? customUrls.length : 'unknown',
     files: Array.isArray(files) ? files.length : 'unknown',
-    useLLM
+    useLLM: true
   });
 
   try {

@@ -2,17 +2,18 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import ModelSelector from './ModelSelector';
 import SourceSelector from './SourceSelector';
-import SearchResults from './SearchResults';
+import SimplifiedLLMResults, { FollowUpChat } from './search/results/SimplifiedLLMResults';
 
 export default function OpenSearch({ selectedModel, setSelectedModel }) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  // Only select web by default
-  const [selectedSources, setSelectedSources] = useState(['web']);
+  // Only select Web by default
+  const [selectedSources, setSelectedSources] = useState(['Web']);
   const [customUrls, setCustomUrls] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [results, setResults] = useState([]);
+  const [hasSearched, setHasSearched] = useState(false);
   const resultsContainerRef = useRef(null);
 
   // Scroll to bottom of results when new results are loaded
@@ -23,10 +24,10 @@ export default function OpenSearch({ selectedModel, setSelectedModel }) {
   };
 
   useEffect(() => {
-    if (results.length > 0) {
+    if (query) {
       scrollToBottom();
     }
-  }, [results]);
+  }, [query]);
 
   const handleSourceToggle = (source) => {
     if (selectedSources.includes(source)) {
@@ -50,8 +51,10 @@ export default function OpenSearch({ selectedModel, setSelectedModel }) {
     setSelectedModel(model);
   };
 
+  // Follow-up search functionality temporarily disabled
   const handleFollowUpSearch = (followUpQuery) => {
     setQuery(followUpQuery);
+    setHasSearched(true); // Make sure to set hasSearched to true
     handleSearch(followUpQuery);
   };
 
@@ -61,42 +64,21 @@ export default function OpenSearch({ selectedModel, setSelectedModel }) {
     setLoading(true);
     setError(null);
 
+    // Simulate a search with a timeout - no actual API call
     try {
-      // Construct search request with only selected sources
-      const searchRequest = {
-        query: searchQuery,
-        sources: selectedSources,
-        model: selectedModel
-      };
-
-      // Add custom URLs if any
-      if (customUrls.length > 0) {
-        searchRequest.urls = customUrls;
-      }
-
-      // Add uploaded files if any
-      if (uploadedFiles.length > 0) {
-        searchRequest.files = uploadedFiles.map(f => f.name);
-      }
-
-      console.log('Sending search request:', searchRequest);
-
-      // Make the API call using axios
-      const response = await axios.post('/api/search', searchRequest);
-
-      // Process the response
-      if (response.data && response.data.results) {
-        console.log('Received search results:', response.data.results);
-        setResults(response.data.results);
-      } else {
-        console.error('No results in response:', response.data);
-        setError('No results found. Please try a different query or select different sources.');
-        setResults([]);
-      }
+      console.log('Simulating search for query:', searchQuery);
+      console.log('Selected sources:', selectedSources);
+      
+      // Simulate network latency
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // This function doesn't actually do any searching or processing
+      // It simply updates the UI to show the simplified LLM results tabs
+      setHasSearched(true);
+      
     } catch (err) {
-      console.error('Search error:', err);
-      setError(err.response?.data?.error || 'An error occurred while searching. Please try again.');
-      setResults([]);
+      console.error('Search simulation error:', err);
+      setError('An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -158,15 +140,17 @@ export default function OpenSearch({ selectedModel, setSelectedModel }) {
           <p className="text-gray-600">Searching... This may take a moment.</p>
         </div>
       ) : (
-        results.length > 0 && (
-          <div ref={resultsContainerRef}>
-            <SearchResults 
-              results={results} 
-              onFollowUpSearch={handleFollowUpSearch}
-              query={query}
-            />
-          </div>
-        )
+        <div ref={resultsContainerRef}>
+          {hasSearched && query && (
+            <>
+              <SimplifiedLLMResults 
+                query={query}
+                onFollowUpQuery={handleFollowUpSearch}
+              />
+              <FollowUpChat onSubmit={handleFollowUpSearch} />
+            </>
+          )}
+        </div>
       )}
     </div>
   );

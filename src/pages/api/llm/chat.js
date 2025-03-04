@@ -1,11 +1,11 @@
 import { logger } from '../../../utils/logger';
 
 const SUPPORTED_MODELS = {
-  'mixtral-8x7b': {
+  'mistral-7b': {
     provider: 'together',
-    model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+    model: 'mistralai/Mistral-7B-v0.1',
     temperature: 0.7,
-    max_tokens: 1024,
+    max_tokens: 800,
     top_p: 0.7,
     top_k: 50,
     repetition_penalty: 1,

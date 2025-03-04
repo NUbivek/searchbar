@@ -1,16 +1,28 @@
 import axios from 'axios';
-import { logger } from './logger.js';
+import { deepWebSearch } from './deepWebSearch';
+import { debug, info, error, warn } from './logger';
+import { SourceTypes } from './constants';
+import { VC_FIRMS, MARKET_DATA_SOURCES, searchAcrossDataSources } from './dataSources';
+import { searchGovernmentData } from './governmentData';
+import { VERIFIED_DATA_SOURCES, searchVerifiedSources as searchVerifiedSourcesInternal } from './verifiedDataSources';
+import { withRetry } from './errorHandling';
 import { isDebugMode } from './debug';
 
-// Try to import the processWithLLM function from llmProcessing.js
+// Import the processWithLLM function explicitly to avoid circular dependencies
 let nativeProcessWithLLM = null;
 try {
-  const llmProcessing = require('./llmProcessing');
-  nativeProcessWithLLM = llmProcessing.processWithLLM;
-  console.log('Successfully imported native LLM processing module');
+  const { processWithLLM: llmProcessor } = require('./llmProcessing');
+  nativeProcessWithLLM = llmProcessor;
+  debug('Successfully imported LLM processing module');
 } catch (error) {
-  console.log('Native LLM processing module not available, using fallback');
-  nativeProcessWithLLM = null;
+  warn('LLM processing module not available, using fallback');
+  nativeProcessWithLLM = async (query, results, context, model) => {
+    return {
+      content: `Unable to process with LLM: ${error.message}`,
+      sourceMap: {},
+      followUpQuestions: []
+    };
+  };
 }
 
 /**
@@ -148,7 +160,7 @@ const callLLMAPI = async (query, results, options = {}, originalSources = []) =>
     }
 
     const {
-      model = 'mixtral-8x7b-instruct',
+      model = 'mistral', // Use model ID, it will be mapped to apiModelName
       maxTokens = 1000,
       temperature = 0.3,
       systemPrompt = null,
@@ -459,7 +471,237 @@ const extractSourceMapFromLLMResponse = (response) => {
   }
 }
 
-// Export functions
+/**
+ * Search with Serper API for a specific domain
+ * @param {string} query - The search query
+ * @param {string} domain - Domain to search within
+ * @param {string} searchId - Search identifier for tracking
+ * @returns {Array} Search results
+ */
+export const searchWithSerper = async (query, domain, searchId) => {
+  const apiKey = process.env.SERPER_API_KEY;
+  if (!apiKey) {
+    throw new Error('Serper API key not configured');
+  }
+
+  try {
+    const response = await axios.post('https://google.serper.dev/search', 
+      { 
+        q: `site:${domain} ${query}`,
+        num: 10
+      },
+      { 
+        headers: { 
+          'X-API-KEY': apiKey,
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000, // 30 second timeout for Serper API requests
+        timeoutErrorMessage: 'Search request to Serper API timed out'
+      }
+    );
+
+    if (!response.data?.organic) {
+      return [];
+    }
+
+    return response.data.organic
+      .filter(result => result.link && result.link.includes(domain))
+      .map(result => ({
+        title: result.title,
+        snippet: result.snippet,
+        link: result.link,
+        source: domain
+      }));
+  } catch (err) {
+    error(`[${searchId}] Error searching Serper for ${domain}:`, err.message);
+    return [];
+  }
+};
+
+/**
+ * Enhanced search function that handles both open and verified sources
+ * @param {Object} options - Search options
+ * @param {string} options.query - Search query
+ * @param {string} options.mode - Search mode ('open' or 'verified')
+ * @param {string} options.model - LLM model to use
+ * @param {Array} options.sources - Sources to search
+ * @param {Array} options.customUrls - Custom URLs to include
+ * @param {Array} options.uploadedFiles - Uploaded files to include
+ * @param {string} searchId - Search identifier
+ * @returns {Object} Search results
+ */
+export async function unifiedSearch({ 
+  query, 
+  mode = 'open',
+  model = 'mistral', 
+  sources = [SourceTypes.WEB], 
+  customUrls = [], 
+  uploadedFiles = [] 
+} = {}, searchId = Math.random().toString(36).substring(7)) {
+  debug(`[${searchId}] Starting unified search`, { query, mode, model, sources });
+  
+  // Implementation for both search modes directly to avoid circular dependencies
+  try {
+    let results = [];
+    debug(`[${searchId}] Performing ${mode} search for: ${query}`);
+    
+    if (mode === 'verified') {
+      // Verified search implementation
+      debug(`[${searchId}] Searching verified sources:`, sources);
+      
+      // Implement verified search logic directly here
+      if (sources.includes('VerifiedSources') || sources.includes('FMP') || sources.includes('MarketData')) {
+        debug(`[${searchId}] Searching market data sources`);
+        const marketResults = await searchAcrossDataSources(query, MARKET_DATA_SOURCES);
+        results = results.concat(marketResults);
+      }
+
+      if (sources.includes('VerifiedSources') || sources.includes('Crunchbase') || sources.includes('Pitchbook')) {
+        debug(`[${searchId}] Searching VC firms data`);
+        const vcResults = await searchAcrossDataSources(query, VC_FIRMS);
+        results = results.concat(vcResults);
+      }
+
+      if (sources.includes('VerifiedSources') || sources.includes('Government')) {
+        debug(`[${searchId}] Searching government data`);
+        const govResults = await searchGovernmentData(query);
+        results = results.concat(govResults);
+      }
+      
+      // Add verified data sources
+      if (sources.includes('VerifiedSources') || sources.includes('Verified')) {
+        debug(`[${searchId}] Searching verified sources internally`);
+        const verifiedResults = await searchVerifiedSourcesInternal(query);
+        results = results.concat(verifiedResults);
+      }
+    } else {
+      // Open search implementation
+      debug(`[${searchId}] Searching open sources:`, sources);
+      
+      // Implement open search logic directly here
+      if (sources.includes('Web')) {
+        debug(`[${searchId}] Searching web with deepWebSearch`);
+        const webResults = await deepWebSearch(query, { apiKey: process.env.SERPER_API_KEY });
+        results = results.concat(webResults);
+      }
+      
+      // Check for social media and other specialized sources
+      if (sources.includes('LinkedIn')) {
+        debug(`[${searchId}] Searching LinkedIn`);
+        const linkedinResults = await searchWithSerper(query, 'linkedin.com', searchId);
+        results = results.concat(linkedinResults);
+      }
+      
+      if (sources.includes('X')) {
+        debug(`[${searchId}] Searching X (Twitter)`);
+        const twitterResults = await searchWithSerper(query, 'twitter.com', searchId);
+        results = results.concat(twitterResults);
+      }
+      
+      if (sources.includes('Reddit')) {
+        debug(`[${searchId}] Searching Reddit`);
+        const redditResults = await searchWithSerper(query, 'reddit.com', searchId);
+        results = results.concat(redditResults);
+      }
+      
+      if (sources.includes('Substack')) {
+        debug(`[${searchId}] Searching Substack`);
+        const substackResults = await searchWithSerper(query, 'substack.com', searchId);
+        results = results.concat(substackResults);
+      }
+      
+      if (sources.includes('Medium')) {
+        debug(`[${searchId}] Searching Medium`);
+        const mediumResults = await searchWithSerper(query, 'medium.com', searchId);
+        results = results.concat(mediumResults);
+      }
+      
+      if (sources.includes('Crunchbase')) {
+        debug(`[${searchId}] Searching Crunchbase`);
+        const crunchbaseResults = await searchWithSerper(query, 'crunchbase.com', searchId);
+        results = results.concat(crunchbaseResults);
+      }
+      
+      if (sources.includes('Pitchbook')) {
+        debug(`[${searchId}] Searching Pitchbook`);
+        const pitchbookResults = await searchWithSerper(query, 'pitchbook.com', searchId);
+        results = results.concat(pitchbookResults);
+      }
+      
+      if (sources.includes('Carta')) {
+        debug(`[${searchId}] Searching Carta`);
+        const cartaResults = await searchWithSerper(query, 'carta.com', searchId);
+        results = results.concat(cartaResults);
+      }
+      
+      // Add custom URLs if provided
+      if (customUrls && customUrls.length > 0) {
+        debug(`[${searchId}] Searching custom URLs:`, customUrls);
+        for (const url of customUrls) {
+          try {
+            const domain = new URL(url).hostname;
+            const domainResults = await searchWithSerper(query, domain, searchId);
+            results = results.concat(domainResults);
+          } catch (err) {
+            error(`[${searchId}] Error searching custom URL ${url}:`, err.message);
+          }
+        }
+      }
+      
+      // Add uploaded files if provided
+      if (uploadedFiles && uploadedFiles.length > 0) {
+        debug(`[${searchId}] Processing uploaded files:`, uploadedFiles);
+        // Placeholder for file processing - would need to be implemented
+        results.push({
+          source: 'Files',
+          type: 'FileSearch',
+          content: `Found ${uploadedFiles.length} files matching your query.`,
+          title: 'File Search Results',
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+    
+    // Process results with LLM if needed
+    if (results.length > 0 && model) {
+      debug(`[${searchId}] Processing results with LLM model: ${model}`);
+      try {
+        const summary = await processWithLLM(query, results, '', model);
+        return {
+          results,
+          summary
+        };
+      } catch (llmError) {
+        error(`[${searchId}] LLM processing error:`, llmError.message);
+        // Return raw results if LLM processing fails
+        return { results };
+      }
+    }
+    
+    return { results };
+  } catch (err) {
+    error(`[${searchId}] Unified search error:`, err.message);
+    return {
+      results: [{
+        source: 'Error',
+        type: 'SearchError',
+        content: `Search error: ${err.message}`,
+        title: 'Search Error',
+        timestamp: new Date().toISOString()
+      }]
+    };
+  }
+}
+
+
+
+// Direct export of unifiedSearch as default export
+export default unifiedSearch;
+
+// Export other utility functions
 export {
-  callLLMAPI as processWithLLM
+  extractContentFromLLMResponse,
+  extractFollowUpQuestionsFromLLMResponse,
+  extractSourceMapFromLLMResponse,
+  processWithLLM
 };

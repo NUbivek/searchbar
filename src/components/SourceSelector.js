@@ -15,22 +15,22 @@ export default function SourceSelector({
   
   const sources = {
     open: [
-      { id: 'web', name: 'Web' },
-      { id: 'linkedin', name: 'LinkedIn' },
-      { id: 'x', name: 'X' },
-      { id: 'reddit', name: 'Reddit' },
-      { id: 'substack', name: 'Substack' },
-      { id: 'medium', name: 'Medium' },
-      { id: 'crunchbase', name: 'Crunchbase' },
-      { id: 'pitchbook', name: 'Pitchbook' },
-      { id: 'carta', name: 'Carta' },
-      { id: 'verified', name: 'Verified' },
+      { id: 'Web', name: 'Web' },
+      { id: 'LinkedIn', name: 'LinkedIn' },
+      { id: 'X', name: 'X' },
+      { id: 'Reddit', name: 'Reddit' },
+      { id: 'Substack', name: 'Substack' },
+      { id: 'Medium', name: 'Medium' },
+      { id: 'Crunchbase', name: 'Crunchbase' },
+      { id: 'Pitchbook', name: 'Pitchbook' },
+      { id: 'Carta', name: 'Carta' },
+      { id: 'Verified', name: 'Verified' },
     ],
     verified: [
-      { id: 'linkedin', name: 'LinkedIn' },
-      { id: 'x', name: 'X' },
-      { id: 'reddit', name: 'Reddit' },
-      { id: 'carta', name: 'Carta' },
+      { id: 'LinkedIn', name: 'LinkedIn' },
+      { id: 'X', name: 'X' },
+      { id: 'Reddit', name: 'Reddit' },
+      { id: 'Carta', name: 'Carta' },
     ]
   };
 

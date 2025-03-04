@@ -5,23 +5,23 @@ export const SearchModes = {
 
 export const MODEL_OPTIONS = [
   {
-    id: 'mixtral-8x7b',
-    name: 'Mixtral 8x7B',
+    id: 'mistral-7b',
+    name: 'Mistral 7B',
     icon: '🚀',
-    description: 'Latest and most capable model. Best for complex research and analysis.',
+    description: 'Well-balanced model with good reasoning capabilities.',
     default: true
   },
   {
-    id: 'deepseek-70b',
-    name: 'DeepSeek 70B',
+    id: 'llama-13b',
+    name: 'Llama 2 13B',
     icon: '🔮',
-    description: 'Highly accurate with excellent reasoning capabilities.'
+    description: 'Highly accurate with excellent reasoning and context handling.'
   },
   {
-    id: 'gemma-7b',
-    name: 'Gemma 7B',
+    id: 'gemma-27b',
+    name: 'Gemma 27B',
     icon: '⚡',
-    description: 'Fast and efficient. Great for quick research tasks.'
+    description: 'Powerful model with excellent reasoning and instruction following.'
   }
 ];
 

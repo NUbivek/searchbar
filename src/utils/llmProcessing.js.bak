@@ -1,59 +1,15 @@
 import axios from 'axios';
 import { logger } from './logger';
+import { isLLMResult, addLLMFlags, processLLMResults } from './llm/resultDetector';
+import { formatSearchPrompt, createSystemPrompt } from './llm/prompts';
 
 /**
  * Formats a prompt for the Together API
  * @param {string} query - The user's search query
  * @param {Array} sourceData - Array of source data objects
  * @returns {string} Formatted prompt
+ * @deprecated Use formatSearchPrompt from './llm/prompts' instead
  */
-function formatTogetherPrompt(query, sourceData) {
-  // Ensure query is a string
-  const safeQuery = typeof query === 'string' ? query : String(query || 'unknown query');
-  
-  // Start with the base prompt
-  let prompt = `Analyze the following search results for the query: "${safeQuery}"\n\n`;
-  
-  // Validate sourceData
-  if (!Array.isArray(sourceData) || sourceData.length === 0) {
-    console.warn('No valid source data provided to formatTogetherPrompt');
-    prompt += `No search results were found for this query. Please provide a general response about "${safeQuery}" based on your knowledge.\n\n`;
-  } else {
-    // Add valid source data
-    let validSourceCount = 0;
-    
-    sourceData.forEach((source, index) => {
-      if (!source || typeof source !== 'object') return;
-      
-      const title = source.title || 'N/A';
-      const url = source.url || 'N/A';
-      const content = source.content || 'No content provided';
-      
-      // Skip sources with no meaningful content
-      if (content === 'No content provided' && title === 'N/A' && url === 'N/A') return;
-      
-      prompt += `Source ${index + 1}:\nTitle: ${title}\nURL: ${url}\nContent: ${content}\n\n`;
-      validSourceCount++;
-    });
-    
-    // Log the number of valid sources
-    console.log(`Formatted ${validSourceCount} valid sources for LLM prompt`);
-    
-    // If no valid sources were added, add a note
-    if (validSourceCount === 0) {
-      prompt += `No valid search results were found for this query. Please provide a general response about "${safeQuery}" based on your knowledge.\n\n`;
-    }
-  }
-  
-  // Add instructions
-  prompt += `
-Based on these search results, please:
-1. Provide a concise summary of the information (2-3 sentences)
-2. Identify the main categories of information
-3. List the key insights or takeaways
-4. Note any conflicting information or gaps
-5. Suggest related topics that might be worth exploring
-
 Format your response in clear sections.
 `;
   
@@ -234,13 +190,6 @@ async function processWithLLM(
       const envVarName = MODEL_ENDPOINTS[model].apiKeyEnvVar;
       effectiveApiKey = process.env[envVarName];
       
-      // Log environment variables for debugging
-      console.log('DEBUG: Available environment variables for LLM:', {
-        TOGETHER_API_KEY: process.env.TOGETHER_API_KEY ? `Present (${process.env.TOGETHER_API_KEY.substring(0, 5)}...)` : 'Missing',
-        PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY ? `Present (${process.env.PERPLEXITY_API_KEY.substring(0, 5)}...)` : 'Missing',
-        SERPER_API_KEY: process.env.SERPER_API_KEY ? `Present (${process.env.SERPER_API_KEY.substring(0, 5)}...)` : 'Missing'
-      });
-      
       // Log API key retrieval attempt (safely)
       log.info('Retrieving API key from environment', { 
         envVar: envVarName,
@@ -260,70 +209,14 @@ async function processWithLLM(
       model,
       apiKeyLength: effectiveApiKey ? effectiveApiKey.length : 0
     });
-    
-    // ENHANCED API KEY VALIDATION
-    // Verify that we have a properly formatted API key before proceeding
-    // This helps avoid failed API calls with obviously invalid keys
-    
-    // Together API keys should be at least 64 characters long
-    const cleanKey = effectiveApiKey ? effectiveApiKey.replace(/^Bearer\s+/i, '') : '';
-    
-    if (!cleanKey || cleanKey.length < 64) {
-      throw new Error(`API key for ${model} appears to be invalid or too short. Please check your .env.local file.`);
-    }
 
     // Get model endpoint configuration
     const modelConfig = MODEL_ENDPOINTS[model];
     const apiUrl = modelConfig.apiEndpoint;
     let headers = { ...modelConfig.headers };
     
-    // CRITICAL FIX: Ensure API key is correctly formatted for authorization
-    // API keys should be in the format 'Bearer key' or just 'key' depending on the provider
-    if (effectiveApiKey) {
-      // Remove any existing 'Bearer ' prefix to avoid duplication
-      const cleanKey = effectiveApiKey.replace(/^Bearer\s+/i, '');
-      
-      console.log('API Key Format Check:', {
-        originalLength: effectiveApiKey.length,
-        cleanedLength: cleanKey.length,
-        wasModified: effectiveApiKey !== cleanKey,
-        startsWithBearer: effectiveApiKey.startsWith('Bearer ')
-      });
-
-      // ENHANCED: Validate Together API key format
-      if (model.includes('mixtral') || model.includes('mistral') || model.includes('gemma')) {
-        // For Together API, keys should start with 'tok-'
-        if (!cleanKey.startsWith('tok-')) {
-          console.error('Invalid Together API key format - missing tok- prefix');
-          
-          // Fix common formatting issues
-          if (cleanKey.length > 20 && !cleanKey.includes(' ')) {
-            console.log('Attempting to add tok- prefix to Together API key');
-            // Format: Bearer tok-{actual_key}
-            headers.Authorization = `Bearer tok-${cleanKey}`;
-          } else {
-            // If the key already has a Bearer prefix but is missing tok-, add it
-            if (effectiveApiKey.startsWith('Bearer ') && effectiveApiKey.length > 28) {
-              const bareKey = effectiveApiKey.replace('Bearer ', '');
-              headers.Authorization = `Bearer tok-${bareKey}`;
-              console.log('Fixed Together API key with Bearer prefix but missing tok-');
-            } else {
-              // Try to use the key as-is as a last resort
-              headers.Authorization = `Bearer ${cleanKey}`;
-              console.log('WARNING: Using potentially incorrectly formatted API key');
-            }
-          }
-        } else {
-          // Key is already properly formatted
-          headers.Authorization = `Bearer ${cleanKey}`;
-        }
-      } else {
-        // For other APIs, just use the clean key with Bearer prefix
-        headers.Authorization = `Bearer ${cleanKey}`;
-      }
-    } else {
-      throw new Error('API key is missing after validation - this should never happen');
-    }
+    // Add Authorization header with API key
+    headers.Authorization = `Bearer ${effectiveApiKey}`;
 
     // Format prompt based on the model's formatter
     const formattedPrompt = modelConfig.promptFormatter(query, sourceData);
@@ -366,26 +259,10 @@ async function processWithLLM(
     });
     
     try {
-      // ENHANCED: Add more robust error handling and logging for API calls
-      console.log('Making API request with:', {
-        url: apiUrl,
-        model: modelConfig.apiModelName,
-        headerKeys: Object.keys(headers),
-        hasAuthorizationHeader: !!headers.Authorization,
-        authHeaderFormat: headers.Authorization ? 
-          `${headers.Authorization.substring(0, 10)}...` : 'Missing'
-      });
-      
       // Make the API call with detailed error handling
       const response = await axios.post(apiUrl, requestData, { 
         headers,
-        timeout: 60000, // Increase timeout to 60 seconds for better reliability
-        validateStatus: function (status) {
-          // Log all status codes for debugging
-          console.log(`API response status: ${status}`);
-          // Only throw for 5xx errors - we'll handle other errors manually
-          return status < 500; 
-        }
+        timeout: 60000 // Increase timeout to 60 seconds for better reliability
       });
       
       console.log('DEBUG: API Response received:', {
@@ -393,18 +270,6 @@ async function processWithLLM(
         hasData: !!response.data,
         choices: response.data?.choices ? response.data.choices.length : 0
       });
-      
-      // Handle specific HTTP status codes
-      if (response.status === 401) {
-        console.error('Authentication error (401) - API key is invalid or expired');
-        throw new Error(`API authentication failed. Please check your API key for ${model}`);
-      } else if (response.status === 403) {
-        console.error('Authorization error (403) - No permission to access this resource');
-        throw new Error(`API authorization failed. Your account may not have access to ${model}`);
-      } else if (response.status >= 400) {
-        console.error(`API error (${response.status}):`, response.data);
-        throw new Error(`API error ${response.status}: ${response.data?.error?.message || 'Unknown error'}`);
-      }
       
       // Process and validate response based on model
       let result;
@@ -414,23 +279,11 @@ async function processWithLLM(
         status: response.status,
         hasData: !!response.data,
         hasChoices: Array.isArray(response.data?.choices),
-        choicesLength: response.data?.choices?.length || 0,
-        dataKeys: response.data ? Object.keys(response.data) : []
+        choicesLength: response.data?.choices?.length || 0
       });
       
-      // Enhanced validation that provides better error messages
-      if (!response.data) {
-        throw new Error('API returned empty response');
-      }
-      
-      if (!response.data.choices) {
-        // Log what we did receive
-        console.error('API response is missing choices:', response.data);
-        throw new Error(`Invalid API response: Missing 'choices' array. Received: ${Object.keys(response.data).join(', ')}`);
-      }
-      
-      if (!response.data.choices.length) {
-        throw new Error('API returned empty choices array');
+      if (!response.data || !response.data.choices || !response.data.choices.length) {
+        throw new Error('Invalid API response structure');
       }
       
       if (model === 'perplexity') {
@@ -521,60 +374,11 @@ async function processWithLLM(
     } catch (apiError) {
       console.error('DEBUG: API call failed:', apiError.message);
       
-      // Enhanced error handling with specific error types
-      let errorType = 'API Error';
-      let userFriendlyMessage = apiError.message;
-      
-      // Check for HTTP status codes
-      if (apiError.response) {
-        const status = apiError.response.status;
-        
-        // More detailed logging for debugging
-        console.error(`API HTTP Error (${status}):`, {
-          data: apiError.response.data,
-          url: apiError.config?.url,
-          headers: apiError.response.headers
-        });
-        
-        // Create user-friendly messages
-        if (status === 401) {
-          errorType = 'Authentication Error';
-          userFriendlyMessage = `${model} API authentication failed. Please check your API credentials.`;
-        } else if (status === 403) {
-          errorType = 'Authorization Error';
-          userFriendlyMessage = `Your account doesn't have permission to use the ${model} model.`;
-        } else if (status === 429) {
-          errorType = 'Rate Limit Error';
-          userFriendlyMessage = `Too many requests to the ${model} API. Please try again later.`;
-        } else if (status >= 500) {
-          errorType = 'Server Error';
-          userFriendlyMessage = `The ${model} API server is experiencing issues. Please try again later.`;
-        }
-      } else if (apiError.request) {
-        errorType = 'Network Error';
-        userFriendlyMessage = `Could not connect to the ${model} API server. Please check your internet connection.`;
-      }
-      
-      // Create a more detailed error response that can be properly rendered as LLM content
+      // Create a safe error response that can be rendered
       return {
-        content: `<h3>Error: ${errorType}</h3><p>${userFriendlyMessage}</p>`,
+        content: `Error processing search results: ${apiError.message}`,
         error: true,
-        errorType: errorType,
-        errorMessage: apiError.message,
-        // Add LLM flags to ensure proper rendering
-        isLLMResults: true,
-        llmProcessed: true,
-        __isLLMObject: true,
-        categories: {
-          'Error': `<p>${userFriendlyMessage}</p>`,
-          'Troubleshooting': `<p>To resolve this issue:</p>
-            <ul>
-              <li>Check your API key in the .env.local file</li>
-              <li>Verify your API subscription is active</li>
-              <li>Try a different LLM model</li>
-              <li>Try again in a few minutes</li>
-            </ul>`
-        }
+        errorMessage: apiError.message
       };
     }
   } catch (error) {
@@ -603,7 +407,7 @@ async function processWithLLM(
     let fallbackContent = '';
     
     if (isBusinessQuery) {
-      fallbackContent = `I've analyzed ${sourceData.length} results related to business topics.
+      fallbackContent = `I've analyzed ${sourceData.length} results related to your business query "${query}". 
       
 The search results contain information on market trends, business strategies, and industry insights. While I couldn't generate a complete analysis, the sources provide valuable information on:
 
@@ -613,9 +417,9 @@ The search results contain information on market trends, business strategies, an
 
 I recommend reviewing the sources directly for specific data points, market projections, and detailed analysis of this business topic.`;
     } else {
-      fallbackContent = `I've analyzed ${sourceData.length} results on this topic.
+      fallbackContent = `I've analyzed ${sourceData.length} results for your query "${query}". 
       
-The search results contain relevant information from multiple perspectives. While I couldn't generate a complete analysis, the sources provide:
+The search results contain relevant information on this topic from multiple perspectives. While I couldn't generate a complete analysis, the sources provide:
 
 - Key information and definitions
 - Different perspectives on the topic
@@ -708,7 +512,7 @@ export const createFallbackResponse = (query, sources, errorMessage = null) => {
   
   // Key Insights category - always included
   if (sourceTitles.length > 0) {
-    categories.key_insights = `Based on the search results, here are the key insights:\n\n`;
+    categories.key_insights = `Based on the search results for "${safeQuery}", here are the key insights:\n\n`;
     sourceTitles.slice(0, 3).forEach((title, index) => {
       categories.key_insights += `${index + 1}. ${title}\n`;
     });
@@ -716,7 +520,7 @@ export const createFallbackResponse = (query, sources, errorMessage = null) => {
       categories.key_insights += `\nPlus ${sourceTitles.length - 3} more sources with relevant information.`;
     }
   } else {
-    categories.key_insights = `Search results suggest this is a topic with various aspects worth exploring. The search returned ${safeSources.length} sources that might contain relevant information.`;
+    categories.key_insights = `Search results for "${safeQuery}" suggest this is a topic with various aspects worth exploring. The search returned ${safeSources.length} sources that might contain relevant information.`;
   }
   
   // Add business category if relevant
@@ -736,9 +540,9 @@ export const createFallbackResponse = (query, sources, errorMessage = null) => {
   
   // Generate some generic follow-up questions based on the query
   const followUpQuestions = [
-    `What specific aspects are you most interested in?`,
+    `What specific aspects of ${safeQuery} are you most interested in?`,
     `Would you like more information about any particular source?`,
-    `Can you refine your query to focus on a specific aspect?`
+    `Can you refine your query to focus on a specific aspect of ${safeQuery}?`
   ];
   
   // Add error category if there was an error message
@@ -756,7 +560,7 @@ export const createFallbackResponse = (query, sources, errorMessage = null) => {
   
   // Create a consistent response structure with categories
   return {
-    content: `Search results${errorMessage ? ' (processed with fallback due to an error)' : ''}`,
+    content: `Search results for "${safeQuery}"${errorMessage ? ' (processed with fallback due to an error)' : ''}`,
     categories,
     sources: sanitizedSources.map((source, index) => ({
       id: `source-${index + 1}`,
@@ -936,21 +740,23 @@ export const generatePrompt = (query, sources) => {
   // Format each source with index, title and content
   const formattedSources = sources.map((source, index) => {
     const content = source.content || source.snippet || source.description || 'No content available';
-    return `Source ${index + 1}: ${source.title || 'Untitled'}\n${content}\n`;
+    return `Source ${index + 1}: ${source.title || 'Untitled'}\nURL: ${source.url || 'No URL'}\nSource: ${source.source || 'Unknown'}\n${content}\n`;
   }).join('\n');
 
   // Start with a base prompt
   let prompt = `
-You are an expert research analyst providing comprehensive insights based on search results.
+You are an expert research analyst synthesizing information from multiple sources to answer a query comprehensively.
 
 QUERY: ${query}
 
-SEARCH RESULTS:
+SOURCE INFORMATION:
 ${formattedSources}
 
-Please analyze these search results and provide a detailed response with the following structure:
+Please synthesize this information to answer the query. DO NOT comment on the search results themselves. Instead, extract the relevant information and create a comprehensive answer.
 
-1. Key Insights: Provide 3-5 key insights or takeaways from the search results, focusing on the most important information related to the query.
+Your response must include these categories:
+
+1. Key Insights: Synthesize 3-5 key insights directly answering the query based on the provided sources.
 `;
 
   // Add more specific categories based on query type
@@ -994,10 +800,24 @@ Also, suggest 3 follow-up questions that would help the user explore this topic 
 FORMAT YOUR RESPONSE AS JSON with the following structure:`;
 
   return prompt + `{
-  "categories": {
-    "key_insights": "Detailed key insights with source citations"
-    // Additional categories will be included based on the query type and available information
-  },
+  "categories": [
+    {
+      "id": "key_insights",
+      "name": "Key Insights", 
+      "content": "Detailed key insights with source citations"
+    },
+    {
+      "id": "context",
+      "name": "Context & Background", 
+      "content": "Additional context and background information"
+    },
+    {
+      "id": "different_perspectives",
+      "name": "Different Perspectives", 
+      "content": "Various viewpoints on the topic"
+    }
+    // Additional categories will be included based on the query type
+  ],
   "sourceMap": {
     "1": { "title": "Source 1 Title", "url": "source1_url" },
     "2": { "title": "Source 2 Title", "url": "source2_url" }
@@ -1011,6 +831,6 @@ FORMAT YOUR RESPONSE AS JSON with the following structure:`;
   }
 }
 
-Only include categories that have meaningful content derived from the sources. For each category, provide substantive insights with specific information, not generic statements. Cite sources consistently and ensure your analysis adds value beyond what's explicitly stated in the sources.
+Ensure your response follows this exact JSON structure. Categories must be an array of objects, each with id, name, and content fields. Provide substantive, specific information in each category, not generic statements. Cite sources consistently using [1], [2], etc.
 `;
 };

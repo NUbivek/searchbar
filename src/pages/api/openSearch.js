@@ -1,4 +1,4 @@
-import { searchOpenSources } from '../../utils/openSearch';
+// LLM processing and search functionality temporarily disabled for simplification
 import { logger } from '../../utils/logger';
 
 export default async function handler(req, res) {
@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'application/json');
     
     // Log request
-    logger.debug('API request:', {
+    logger.debug('API request (simplified):', {
       method: req.method,
       url: req.url,
       body: req.body
@@ -24,29 +24,33 @@ export default async function handler(req, res) {
       });
     }
 
-    const { query, model, sources = ['Web'], customUrls = [], uploadedFiles = [] } = req.body;
+    const { query, model, sources = ['Web'] } = req.body;
 
     if (!query) {
       return res.status(400).json({ error: 'Query is required' });
     }
 
-    const results = await searchOpenSources({
+    logger.debug('Simplified Open Search API', { query, sources });
+    
+    // Return a simple placeholder response with empty results
+    // This endpoint no longer performs actual searches or LLM processing
+    const simplifiedResponse = {
       query,
-      model,
+      model: model || 'mistral-7b',
       sources,
-      customUrls,
-      uploadedFiles
-    });
+      timestamp: new Date().toISOString(),
+      message: 'Search processing has been simplified. No results will be returned.',
+      results: []
+    };
 
-    logger.debug('Search results:', results);
-
-    return res.status(200).json(results);
+    return res.status(200).json(simplifiedResponse);
   } catch (error) {
-    logger.error('API error:', error);
+    logger.error('API error (simplified):', error);
+    
+    // Simple error response
     return res.status(500).json({
-      error: 'Search failed',
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      error: 'An error occurred in the simplified search handler',
+      message: error.message
     });
   }
 } 

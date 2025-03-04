@@ -71,21 +71,21 @@ if (!SERPER_API_KEY) {
 
 // Model configurations
 const MODEL_CONFIGS = {
-  'mixtral-8x7b': {
+  'mistral-7b': {
     provider: 'together',
-    model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+    model: 'mistralai/Mistral-7B-v0.1',
+    temperature: 0.7,
+    max_tokens: 800
+  },
+  'llama-13b': {
+    provider: 'together',
+    model: 'meta-llama/Llama-2-13b-chat-hf',
     temperature: 0.7,
     max_tokens: 1000
   },
-  'deepseek-70b': {
+  'gemma-27b': {
     provider: 'together',
-    model: 'deepseek-ai/deepseek-70b-chat',
-    temperature: 0.7,
-    max_tokens: 1000
-  },
-  'gemma-7b': {
-    provider: 'together',
-    model: 'google/gemma-7b-it',
+    model: 'google/gemma-2-27b-it',
     temperature: 0.7,
     max_tokens: 1000
   }
@@ -122,7 +122,7 @@ async function processWithTogether(prompt, config) {
 }
 
 // Updated processWithLLM function with proper model handling
-async function processWithLLM(query, sources, context = "", modelId = "mixtral-8x7b") {
+async function processWithLLM(query, sources, context = "", modelId = "mistral-7b") {
   console.log('Processing with LLM:', { query, modelId, sourcesCount: sources.length });
   
   try {
@@ -326,7 +326,7 @@ app.post('/api/verifiedSearch', async (req, res) => {
     const verifiedSources = [
       {
         title: "Research Hub Documentation",
-        content: "Research Hub is a powerful search platform that combines verified sources with AI-powered analysis. It supports multiple language models including Mixtral-8x7B, DeepSeek-70B, and Gemma-7B.",
+        content: "Research Hub is a powerful search platform that combines verified sources with AI-powered analysis. It supports multiple language models including Mistral-7B, Llama-13B, and Gemma-27B.",
         source: "Verified Source",
         url: "https://docs.researchhub.com"
       }
@@ -360,7 +360,7 @@ app.post('/api/openSearch', upload.array('files'), async (req, res) => {
     
     // Parse form data
     const query = req.body.query;
-    const model = req.body.model || 'Mixtral-8x7B';
+    const model = req.body.model || 'mistral-7b';
     const sources = req.body.sources ? JSON.parse(req.body.sources) : [];
     const customUrls = req.body.customUrls ? JSON.parse(req.body.customUrls) : [];
     const files = req.files || [];

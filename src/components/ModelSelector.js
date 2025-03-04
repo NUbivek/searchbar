@@ -1,11 +1,10 @@
 import React from 'react';
 
-// Model options with display names
+// Model options with display names - using standardized model IDs
 const MODEL_OPTIONS = [
-  { id: 'mixtral-8x7b', name: 'Mixtral-8x7B' },
-  { id: 'mistral-7b', name: 'Mistral-7B' },
-  { id: 'gemma-7b', name: 'Gemma-7B' },
-  { id: 'llama-7b', name: 'Llama 2 7B' }
+  { id: 'mistral-7b', name: 'Mistral 7B' },
+  { id: 'llama-13b', name: 'Llama 2 13B' },
+  { id: 'gemma-27b', name: 'Gemma 27B' }
 ];
 
 const ModelSelector = ({ selectedModel, onChange }) => {

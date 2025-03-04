@@ -31,15 +31,35 @@ const CategoryContent = ({ category, query = '', options = {} }) => {
   } = options;
   
   // If no category or content, don't render anything
-  if (!category || !category.content || !Array.isArray(category.content) || category.content.length === 0) {
+  if (!category || !category.content) {
+    console.log('Category is missing or has no content:', category?.id || 'unknown');
     return null;
   }
   
-  // Get content array
-  const contentArray = Array.isArray(category.content) ? category.content : [];
+  // Handle both array and string content types
+  let contentArray = [];
+  
+  if (Array.isArray(category.content)) {
+    contentArray = category.content;
+    console.log(`Category ${category.id} has array content with ${contentArray.length} items`);
+  } else if (typeof category.content === 'string') {
+    // Create a single-item array with the string content
+    contentArray = [{
+      id: `${category.id}-content`,
+      type: 'text',
+      text: category.content,
+      html: category.content,
+      content: category.content
+    }];
+    console.log(`Category ${category.id} has string content, converted to array`);
+  } else {
+    console.log(`Category ${category.id} has unsupported content type:`, typeof category.content);
+    return null;
+  }
   
   // If content array is empty, don't render anything
   if (contentArray.length === 0) {
+    console.log(`Category ${category.id} has empty content array`);
     return null;
   }
   

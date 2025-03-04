@@ -12,7 +12,7 @@ import UrlInput from './UrlInput';
 export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState(SearchModes.VERIFIED);
-  const [selectedModel, setSelectedModel] = useState('mixtral-8x7b');
+  const [selectedModel, setSelectedModel] = useState('mistral');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchResults, setSearchResults] = useState(null);
@@ -40,12 +40,30 @@ export default function SearchPage() {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data?.message || 'Search failed');
+      
+      // Check for error response even with status 200
+      // LLM error objects have specific properties we can check for
+      if (!response.ok || data?.error || data?.errorType || 
+          (data?.content && typeof data.content === 'string' && data.content.includes('error-message'))) {
+        console.error('Search error detected in response', data);
+        if (data?.errorMessage) {
+          throw new Error(data.errorMessage);
+        } else if (data?.message) {
+          throw new Error(data.message);
+        } else if (data?.error) {
+          throw new Error(typeof data.error === 'string' ? data.error : 'Search failed');
+        } else {
+          throw new Error('Search failed');
+        }
+      }
       
       console.log('Search results:', data);
       
       // Set search results, ensuring we have a valid array
       if (data && (Array.isArray(data.results) || Array.isArray(data))) {
+        setSearchResults(data);
+      } else if (data && data.content) {
+        // Handle LLM result object format
         setSearchResults(data);
       } else {
         // Create a default structure if the response doesn't match expected format

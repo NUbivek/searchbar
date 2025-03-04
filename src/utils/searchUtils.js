@@ -56,7 +56,7 @@ const VERIFIED_SOURCES = {
 };
 
 // Process results with LLM
-async function processResults(query, results, model = 'mixtral-8x7b', context = '') {
+async function processResults(query, results, model = 'mistral', context = '') {
   try {
     let baseUrl;
     if (typeof window !== 'undefined') {
@@ -172,110 +172,77 @@ async function handleCustomSources(query, customUrls = [], files = []) {
   return results;
 }
 
-async function searchOpenSources(query, selectedSources = []) {
+/**
+ * Search open sources using the unified search function
+ * This is now a wrapper around the unified search utility that maintains backward compatibility
+ * @deprecated Use unifiedSearch from search.js directly instead
+ */
+async function searchOpenSources(query, selectedSources = [], options = {}) {
   if (!query) {
     throw new Error('Search query is required');
   }
 
+  log.warn('searchOpenSources is deprecated. Use unifiedSearch from search.js instead');
+  log.debug('Using unified searchOpenSources wrapper:', { query, sources: selectedSources });
+
   try {
-    const searchPromises = selectedSources.map(source => {
-      const handler = sourceHandlers[source.toLowerCase()];
-      if (!handler) {
-        log.warn(`No handler found for source: ${source}`);
-        return Promise.resolve([]);
-      }
-      return handler(query).catch(error => {
-        log.error(`Error searching ${source}:`, error);
-        return [];
-      });
-    });
-
-    // Wait for all searches to complete
-    const results = await Promise.allSettled(searchPromises);
+    // Import the openSearch.js function which is now a wrapper around unifiedSearch
+    const { searchOpenSources: openSearch } = require('./openSearch');
     
-    // Process results
-    const validResults = results
-      .filter(r => r.status === 'fulfilled')
-      .map(r => r.value)
-      .flat()
-      .filter(r => r && r.content);
-
-    if (validResults.length === 0) {
-      return {
-        summary: {
-          content: 'No results found from any source',
-          sourceMap: {}
-        },
-        results: []
-      };
-    }
-
-    // Process with LLM
-    const summary = await processResults(query, validResults);
-    return { summary, results: validResults };
+    return await openSearch({
+      query,
+      model: options?.model || 'mistral',
+      sources: selectedSources,
+      customUrls: options?.customUrls || [],
+      uploadedFiles: options?.uploadedFiles || []
+    });
   } catch (error) {
     log.error('Open search error:', error);
     throw error;
   }
 }
 
+/**
+ * Search verified sources using the unified search function
+ * This is now a wrapper around the unified search utility that maintains backward compatibility
+ * @deprecated Use unifiedSearch from search.js directly instead
+ */
 async function searchVerifiedSources(query, options = {}) {
   const {
     category = null,
-    model = 'mixtral-8x7b',
+    model = 'mistral',
     context = ''
   } = options;
 
+  log.warn('searchVerifiedSources is deprecated. Use unifiedSearch from search.js instead');
+  log.debug('Using unified searchVerifiedSources wrapper:', { query, category });
+
   try {
-    let results = [];
-
-    // Handle market data specially
-    if (category === 'Market Data Analytics') {
-      const marketResults = await sourceHandlers.marketData(query);
-      if (marketResults.length > 0) {
-        return {
-          summary: {
-            content: `Found market data for ${marketResults[0].title}`,
-            sourceMap: {}
-          },
-          results: marketResults
-        };
-      }
-    }
-
-    // Fall back to verified sources
-    const sources = category ? VERIFIED_SOURCES[category] : Object.values(VERIFIED_SOURCES).flat();
-    const searchPromises = sources.map(source => 
-      sourceHandlers.custom({ url: source.url, query })
-        .catch(error => {
-          log.error(`Error searching ${source.name}:`, error);
-          return [];
-        })
-    );
-
-    // Wait for all searches to complete
-    const searchResults = await Promise.allSettled(searchPromises);
+    // Import the verifiedSearch.js function which is now a wrapper around unifiedSearch
+    const { searchVerifiedSources: verifiedSearch } = require('./verifiedSearch');
     
-    // Process results
-    const validResults = searchResults
-      .filter(r => r.status === 'fulfilled')
-      .map(r => r.value)
-      .flat()
-      .filter(r => r && r.content);
-
-    if (validResults.length === 0) {
-      return {
-        summary: {
-          content: 'No results found from verified sources',
-          sourceMap: {}
-        },
-        results: []
-      };
+    // Determine sources based on category if provided
+    const sourcesToSearch = [];
+    if (category) {
+      // Convert category to appropriate source list
+      if (category === 'Market Data Analytics') {
+        sourcesToSearch.push('FMP', 'MarketData');
+      } else if (category === 'VC & Startups') {
+        sourcesToSearch.push('Crunchbase', 'Pitchbook');
+      } else {
+        // Default to all verified sources
+        sourcesToSearch.push('VerifiedSources');
+      }
+    } else {
+      sourcesToSearch.push('VerifiedSources');
     }
-
-    // Process with LLM
-    const summary = await processResults(query, validResults, model, context);
-    return { summary, results: validResults };
+    
+    return await verifiedSearch(query, {
+      sources: sourcesToSearch,
+      model,
+      customUrls: options.customUrls || [],
+      uploadedFiles: options.uploadedFiles || []
+    });
   } catch (error) {
     log.error('Verified search error:', error);
     throw error;
@@ -283,7 +250,7 @@ async function searchVerifiedSources(query, options = {}) {
 }
 
 /**
- * Simplified search function that uses the source handlers
+ * Simplified search function that uses unified search
  * @param {string} query - The search query
  * @param {Array<string>} sources - Array of source names to search
  * @param {Object} options - Additional options
@@ -295,24 +262,23 @@ async function performSimpleSearch(query, sources = ['web'], options = {}) {
       throw new Error('Query is required');
     }
 
-    const { customUrls, uploadedFiles, model } = options;
-    let results = [];
-
-    // Use the performSearch function from sourceIntegration
-    const searchResults = await sourcePerformSearch(query, sources);
-    results = [...results, ...searchResults];
-
-    // Handle custom sources if provided
-    if (customUrls && customUrls.length > 0 || uploadedFiles && uploadedFiles.length > 0) {
-      try {
-        const customResults = await handleCustomSources(query, customUrls || [], uploadedFiles || []);
-        results = [...results, ...customResults];
-      } catch (customError) {
-        log.error('Error processing custom sources:', customError);
-      }
-    }
-
-    return results;
+    log.debug('Using unified performSimpleSearch:', { query, sources });
+    
+    // Import unified search function using require to avoid circular dependencies
+    const { unifiedSearch } = require('./search');
+    
+    // Call unified search with open mode
+    const searchResult = await unifiedSearch({
+      query,
+      mode: 'open',
+      sources: sources,
+      model: options?.model || 'mistral',
+      customUrls: options?.customUrls || [],
+      uploadedFiles: options?.uploadedFiles || []
+    });
+    
+    // Return the results array
+    return searchResult?.results || [];
   } catch (error) {
     log.error('Error in performSimpleSearch:', error);
     return [];
@@ -320,7 +286,7 @@ async function performSimpleSearch(query, sources = ['web'], options = {}) {
 }
 
 /**
- * Simplified verified search function
+ * Simplified verified search function that uses unified search
  * @param {string} query - The search query
  * @param {Array<string>} sources - Array of source names to search
  * @param {Object} options - Additional options including customUrls and uploadedFiles
@@ -332,24 +298,23 @@ async function performSimpleVerifiedSearch(query, sources = ['fmp', 'sec'], opti
       throw new Error('Query is required');
     }
 
-    const { customUrls, uploadedFiles, model } = options;
-    let results = [];
-
-    // Use the performSearch function from sourceIntegration for verified sources
-    const verifiedResults = await sourcePerformSearch(query, sources);
-    results = [...results, ...verifiedResults];
-
-    // Handle custom sources if provided
-    if (customUrls && customUrls.length > 0 || uploadedFiles && uploadedFiles.length > 0) {
-      try {
-        const customResults = await handleCustomSources(query, customUrls || [], uploadedFiles || []);
-        results = [...results, ...customResults];
-      } catch (customError) {
-        log.error('Error processing custom sources:', customError);
-      }
-    }
-
-    return results;
+    log.debug('Using unified performSimpleVerifiedSearch:', { query, sources });
+    
+    // Import unified search function using require to avoid circular dependencies
+    const { unifiedSearch } = require('./search');
+    
+    // Call unified search with verified mode
+    const searchResult = await unifiedSearch({
+      query,
+      mode: 'verified',
+      sources: sources,
+      model: options?.model || 'mistral',
+      customUrls: options?.customUrls || [],
+      uploadedFiles: options?.uploadedFiles || []
+    });
+    
+    // Return the results array
+    return searchResult?.results || [];
   } catch (error) {
     log.error('Error in performSimpleVerifiedSearch:', error);
     return [];

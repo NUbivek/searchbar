@@ -3,7 +3,14 @@ import { deepWebSearch } from './deepWebSearch';
 import { debug, info, error, warn } from './logger';
 import { SourceTypes } from './constants';
 
-const searchWithSerper = async (query, domain, searchId) => {
+/**
+ * Search for results within a specific domain using Serper API
+ * @param {string} query - The search query
+ * @param {string} domain - Domain to search within
+ * @param {string} searchId - Unique identifier for logging
+ * @returns {Array} - Formatted search results
+ */
+export const searchWithSerper = async (query, domain, searchId) => {
   const apiKey = process.env.SERPER_API_KEY;
   if (!apiKey) {
     throw new Error('Serper API key not configured');
@@ -49,86 +56,42 @@ const searchWithSerper = async (query, domain, searchId) => {
   }
 };
 
-export async function searchOpenSources(query, sources = [SourceTypes.WEB], searchId = Math.random().toString(36).substring(7)) {
-  debug(`[${searchId}] Starting open search`, { query, sources });
-
+/**
+ * Search open sources for information related to the query
+ * @param {Object} options - Search options
+ * @param {string} options.query - Search query
+ * @param {string} options.model - LLM model to use
+ * @param {Array} options.sources - Sources to search
+ * @param {Array} options.customUrls - Custom URLs to include
+ * @param {Array} options.uploadedFiles - Uploaded files to include
+ * @param {string} searchId - Unique identifier for logging
+ * @returns {Object} - Search results
+ * @deprecated Use the unifiedSearch function from search.js instead
+ */
+export async function searchOpenSources({ query, model, sources = [SourceTypes.WEB], customUrls = [], uploadedFiles = [] } = {}, searchId = Math.random().toString(36).substring(7)) {
+  warn(`[${searchId}] searchOpenSources is deprecated. Use unifiedSearch from search.js instead`);
+  
   try {
-    const results = [];
-
-    // Process each source in parallel
-    const searchPromises = sources.map(async (source) => {
-      try {
-        let sourceResults = [];
-
-        switch (source) {
-          case 'Web':
-            // If no results from custom sources, try web search as fallback
-            if (sourceResults.length === 0) {
-              debug(`No results from ${source}, falling back to web search...`);
-              sourceResults = await deepWebSearch(query, searchId);
-            }
-            break;
-
-          case SourceTypes.LINKEDIN:
-            sourceResults = await searchWithSerper(query, 'linkedin.com', searchId);
-            break;
-
-          case SourceTypes.TWITTER:
-            sourceResults = await searchWithSerper(query, 'twitter.com', searchId);
-            break;
-
-          case SourceTypes.REDDIT:
-            sourceResults = await searchWithSerper(query, 'reddit.com', searchId);
-            break;
-
-          case SourceTypes.SUBSTACK:
-            sourceResults = await searchWithSerper(query, 'substack.com', searchId);
-            break;
-
-          case SourceTypes.MEDIUM:
-            sourceResults = await searchWithSerper(query, 'medium.com', searchId);
-            break;
-
-          case SourceTypes.CRUNCHBASE:
-            sourceResults = await searchWithSerper(query, 'crunchbase.com', searchId);
-            break;
-
-          case SourceTypes.PITCHBOOK:
-            sourceResults = await searchWithSerper(query, 'pitchbook.com', searchId);
-            break;
-
-          default:
-            warn(`[${searchId}] Unsupported source type: ${source}`);
-            return;
-        }
-
-        if (sourceResults.length > 0) {
-          results.push(...sourceResults);
-        }
-      } catch (error) {
-        error(`[${searchId}] Error searching ${source}:`, error.message);
-        results.push({
-          source,
-          type: 'SearchError',
-          content: `Error searching ${source}. Please try again later.`,
-          url: '#',
-          timestamp: new Date().toISOString()
-        });
-      }
-    });
-
-    // Wait for all searches to complete
-    await Promise.all(searchPromises);
-
-    debug(`[${searchId}] Open search completed`, { 
-      resultsCount: results.length,
-      sources: sources.join(', ')
-    });
-
-    return results;
-
-  } catch (error) {
-    error(`[${searchId}] Open search error:`, error.message);
-    throw error;
+    // Import the unifiedSearch function from search.js
+    const { default: unifiedSearch } = await import('./search');
+    
+    // Call the unified search function with open mode
+    return await unifiedSearch({
+      query,
+      mode: 'open',
+      model,
+      sources,
+      customUrls,
+      uploadedFiles
+    }, searchId);
+  } catch (err) {
+    error(`[${searchId}] Error in searchOpenSources:`, err.message);
+    return [{
+      source: 'Error',
+      type: 'SearchError',
+      content: `Failed to perform open search: ${err.message}`,
+      url: '#',
+      timestamp: new Date().toISOString()
+    }];
   }
 }

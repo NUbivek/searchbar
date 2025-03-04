@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { logger } from '../utils/logger';
 import SearchResultsWrapper from './SearchResultsWrapper';
-import { IntelligentSearchResults } from './search/results';
+import { IntelligentSearchResults, SimpleLLMResults } from './search/results';
 import { SearchModes, MODEL_OPTIONS } from '../utils/constants';
-import { processWithLLM } from '../utils/search';
+import { processWithLLM } from '../utils/search-legacy';
 import FileUpload from './FileUpload';
 import UrlInput from './UrlInput';
 import { getAllVerifiedSources } from '../utils/verifiedDataSources';
@@ -13,7 +13,6 @@ import { safeStringify } from '../utils/reactUtils';
 import { executeSearch, getSourcesFromSelection } from '../utils/search/searchFlowHelper';
 import { FaSpinner, FaSearch } from 'react-icons/fa';
 import SourceSelector from './SourceSelector';
-import SearchResults from './SearchResults';
 
 export default function VerifiedSearch({ isNetworkMapMode = false, selectedModel, setSelectedModel }) {
   const [query, setQuery] = useState('');
@@ -77,37 +76,52 @@ export default function VerifiedSearch({ isNetworkMapMode = false, selectedModel
         model: selectedModel
       };
       
-      // Call the search API
-      const response = await fetch('/api/verifiedSearch', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: searchQuery,
-          options: searchOptions
-        }),
+      console.log('Sending verified search request:', { query: searchQuery, options: searchOptions });
+      
+      // Call the search API using axios with increased timeout
+      const response = await axios.post('/api/verifiedSearch', {
+        query: searchQuery,
+        options: searchOptions
+      }, {
+        timeout: 120000, // 2 minute timeout
+        timeoutErrorMessage: 'Search request timed out. The operation may be taking too long to complete.'
       });
       
-      if (!response.ok) {
-        throw new Error(`Search API returned ${response.status}`);
-      }
+      const data = response.data;
       
-      const data = await response.json();
-      setVerifiedResults(data.results || []);
+      // Extract the results array from the nested structure
+      const resultsArray = data.results && data.results.results ? data.results.results : [];
+      console.log('Verified search results:', data.results);
+      console.log('Extracted results array:', resultsArray);
+      
+      setVerifiedResults(resultsArray);
       
       // Add results to chat history
       setChatHistory(prev => [...prev, { 
         type: 'assistant',
-        content: data.results || []
+        content: resultsArray
       }]);
       
     } catch (error) {
       console.error('Search error:', error);
+      
+      // Create appropriate error message based on the error type
+      let errorMessage = 'An error occurred while searching. Please try again.';
+      
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Search request timed out. Please try a more specific query or select fewer sources.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = `Error: ${error.message}`;
+      }
+      
+      console.log('Setting error message:', errorMessage);
+      
       // Add error message to chat history
       setChatHistory(prev => [...prev, { 
         type: 'assistant',
-        content: `Error: ${error.message}. Please try again.`
+        content: errorMessage
       }]);
     } finally {
       setLoading(false);
@@ -207,7 +221,7 @@ export default function VerifiedSearch({ isNetworkMapMode = false, selectedModel
         </div>
       </div>
       
-      <div className="bg-white rounded-xl shadow-sm overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+      <div className="bg-white rounded-xl shadow-sm">
         {loading ? (
           <div className="flex items-center justify-center h-full p-8">
             <FaSpinner className="animate-spin text-blue-600" size={24} />
@@ -215,11 +229,13 @@ export default function VerifiedSearch({ isNetworkMapMode = false, selectedModel
         ) : (
           <>
             {chatHistory.length > 0 && (
-              <SearchResults 
+              <SimpleLLMResults 
                 results={chatHistory}
                 onFollowUpSearch={handleFollowUpSearch}
-                loading={loading}
                 query={query}
+                showTabs={true}
+                forceShowTabs={false}
+                defaultTab="Results"
               />
             )}
           </>

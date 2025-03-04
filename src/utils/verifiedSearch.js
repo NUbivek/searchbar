@@ -4,86 +4,70 @@ import { VERIFIED_DATA_SOURCES, searchVerifiedSources as searchVerifiedSourcesIn
 import { debug, info, error, warn } from './logger';
 import { withRetry } from './errorHandling';
 import axios from 'axios';
+import { deepWebSearch } from './deepWebSearch';
+import { searchWithSerper } from './openSearch';
 
+/**
+ * Search verified sources for information related to the query
+ * @param {string} query - Search query
+ * @param {Object} options - Search options
+ * @param {Array} options.sources - Sources to search
+ * @param {Array} options.customUrls - Custom URLs to include
+ * @param {Array} options.uploadedFiles - Uploaded files to include
+ * @param {string} options.model - LLM model to use
+ * @returns {Object} - Search results
+ * @deprecated Use the unifiedSearch function from search.js instead
+ */
 export async function searchVerifiedSources(query, options = {}) {
-  console.log('searchVerifiedSources called with:', query, options);
+  warn('searchVerifiedSources is deprecated. Use unifiedSearch from search.js instead');
   
   // Extract options
-  const { sources = [], urls = [], files = [] } = options;
+  const { sources = [], customUrls = [], uploadedFiles = [], model } = options;
+  const searchId = Math.random().toString(36).substring(7);
   
-  // Simple mock results based on query
-  const results = [
-    {
-      title: `Result for "${query}"`,
-      snippet: `This is a search result for "${query}" from verified sources.`,
-      link: "https://example.com/result1",
-      source: "web"
-    },
-    {
-      title: `LinkedIn result for "${query}"`,
-      snippet: `Professional information related to "${query}" from LinkedIn.`,
-      link: "https://linkedin.com/search",
-      source: "linkedin"
-    },
-    {
-      title: `Twitter discussion about "${query}"`,
-      snippet: `Recent tweets and discussions about "${query}" on Twitter/X.`,
-      link: "https://twitter.com/search",
-      source: "x"
-    },
-    {
-      title: `Reddit threads on "${query}"`,
-      snippet: `Community discussions and posts about "${query}" from Reddit.`,
-      link: "https://reddit.com/search",
-      source: "reddit"
-    }
-  ];
-  
-  // Filter results based on selected sources
-  const filteredResults = sources.length > 0 
-    ? results.filter(result => sources.includes(result.source))
-    : results;
-  
-  // Add custom URL results if any
-  const urlResults = urls.map(url => ({
-    title: `Custom URL: ${url}`,
-    snippet: `Content from custom URL related to "${query}".`,
-    link: url,
-    source: "custom"
-  }));
-  
-  // Add file results if any
-  const fileResults = files.map(file => ({
-    title: `File: ${file}`,
-    snippet: `Content from uploaded file "${file}" related to "${query}".`,
-    link: null,
-    source: "file"
-  }));
-  
-  // Combine all results
-  return [...filteredResults, ...urlResults, ...fileResults];
+  try {
+    // Import the unifiedSearch function from search.js
+    const { default: unifiedSearch } = await import('./search');
+    
+    // Call the unified search function with verified mode
+    return await unifiedSearch({
+      query,
+      mode: 'verified',
+      model: model || 'mistral',
+      sources: sources.length > 0 ? sources : ['VerifiedSources'],
+      customUrls: customUrls || [],
+      uploadedFiles: uploadedFiles || []
+    }, searchId);
+  } catch (err) {
+    error(`[${searchId}] Error in searchVerifiedSources:`, err.message);
+    return {
+      error: 'Failed to perform verified sources search',
+      message: err.message
+    };
+  }
 }
 
-// Helper function to check if an item matches the query
+/**
+ * Helper function to check if an item matches the query
+ * @param {Object} obj - Object to check
+ * @param {string} query - Query to match against
+ * @returns {boolean} - Whether the object matches the query
+ * @private
+ */
 function matchesQuery(obj, query) {
-  if (!query || !obj) return false;
+  if (!query) return true;
   
-  const lowerQuery = query.toLowerCase();
+  // Normalize query for case-insensitive matching
+  const normalizedQuery = query.toLowerCase();
   
-  // Check title
-  if (obj.title && obj.title.toLowerCase().includes(lowerQuery)) {
-    return true;
-  }
-  
-  // Check snippet/description
-  if (obj.snippet && obj.snippet.toLowerCase().includes(lowerQuery)) {
-    return true;
-  }
-  
-  // Check content
-  if (obj.content && obj.content.toLowerCase().includes(lowerQuery)) {
-    return true;
-  }
-  
-  return false;
+  // Check various properties for matches
+  return (
+    // Check title
+    (obj.title && obj.title.toLowerCase().includes(normalizedQuery)) ||
+    // Check content/description
+    (obj.content && obj.content.toLowerCase().includes(normalizedQuery)) ||
+    (obj.description && obj.description.toLowerCase().includes(normalizedQuery)) ||
+    // Check URL
+    (obj.url && obj.url.toLowerCase().includes(normalizedQuery))
+  );
 }

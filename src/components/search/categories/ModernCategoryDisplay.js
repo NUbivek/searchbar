@@ -100,20 +100,30 @@ const ModernCategoryDisplay = ({
   // Ensure categories is always an array
   let categoriesArray = Array.isArray(categories) ? categories : [];
   
-  // If no categories and not loading, create default categories
+  // Import the enhance category utility
+  const { enhanceCategoryContent } = require('../utils/enhanceCategoryContent');
+  
+  // If no categories and not loading, create default categories with content
   if (categoriesArray.length === 0 && !loading) {
     log.warn('DIAGNOSTIC: Creating fallback default categories - no categories were received from the flow', {
       query,
       options
     });
     // This indicates a problem in the category flow - check /docs/CATEGORY_FLOW.md
+    
+    // Ensure we have proper content for categories
+    const availableResults = results && Array.isArray(results) ? results : [];
+    const relevantResults = availableResults.slice(0, Math.min(5, availableResults.length));
+    
+    console.log(`ModernCategoryDisplay: Creating client-side categories with ${relevantResults.length} results`);
+    
     categoriesArray = [
       {
         id: 'key_insights',
         name: 'Key Insights',
         icon: 'lightbulb',
         description: 'Most important insights from all sources',
-        content: [],
+        content: relevantResults, // Add actual content from results
         color: '#0F9D58', // Google Green
         metrics: {
           relevance: 0.95,
@@ -127,7 +137,7 @@ const ModernCategoryDisplay = ({
         name: 'All Results',
         icon: 'search',
         description: 'All search results',
-        content: [],
+        content: availableResults, // Add all available results
         color: '#4285F4', // Google Blue
         metrics: {
           relevance: 0.75,
@@ -137,10 +147,44 @@ const ModernCategoryDisplay = ({
         }
       }
     ];
+    
+    // Check if query appears to be business-related
+    const businessTerms = ['business', 'company', 'industry', 'market', 'enterprise', 'economy', 'finance', 'investment'];
+    const isBusinessQuery = businessTerms.some(term => query.toLowerCase().includes(term));
+    
+    if (isBusinessQuery && relevantResults.length > 0) {
+      categoriesArray.push({
+        id: 'business_impact',
+        name: 'Business Impact',
+        icon: 'trending_up',
+        description: 'Impact on business operations and strategy',
+        content: relevantResults,
+        color: '#DB4437', // Google Red
+        metrics: {
+          relevance: 0.85,
+          accuracy: 0.82,
+          credibility: 0.84,
+          overall: 0.84
+        }
+      });
+    }
   }
   
   // Limit categories if specified in options (to max 6 for UI row)  
   const maxCategories = options.maxCategories || 6;
+  
+  // Ensure all categories have content by using our enhancement utility
+  if (!loading && categoriesArray.length > 0 && results && Array.isArray(results) && results.length > 0) {
+    // Check if any categories have empty content arrays
+    const hasEmptyContent = categoriesArray.some(cat => 
+      !cat.content || !Array.isArray(cat.content) || cat.content.length === 0
+    );
+    
+    if (hasEmptyContent) {
+      console.log('ModernCategoryDisplay: Enhancing categories with content from search results');
+      categoriesArray = enhanceCategoryContent(categoriesArray, results);
+    }
+  }
   
   useEffect(() => {
     // Check if we need to limit the categories to fit in one row

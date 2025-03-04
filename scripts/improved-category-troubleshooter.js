@@ -12,8 +12,8 @@ const axios = require('axios');
 const chalk = require('chalk');
 
 // Configure
-const DEFAULT_QUERY = 'business analysis of technology trends';
-const API_ENDPOINT = 'http://localhost:3003/api/search'; // Updated port to match running server
+const DEFAULT_QUERY = 'artificial intelligence business impact 2025';
+const API_ENDPOINT = 'http://localhost:3000/api/search'; // Updated port to match the dev server
 
 // Colors and formatting
 const heading = (text) => console.log(chalk.bold.blue('\n=== ' + text + ' ==='));
@@ -34,19 +34,40 @@ async function troubleshootCategories() {
     heading('Testing Search API Response');
     info('Sending request to search API...');
     
-    const response = await axios.post(API_ENDPOINT, {
-      query,
-      mode: 'verified',
-      model: 'mixtral-8x7b',
-      sources: [],
-      customUrls: [],
-      files: [],
-      useLLM: true
-    });
+    // Debug the server endpoint
+    console.log('Connecting to API endpoint:', API_ENDPOINT);
+    
+    let response;
+    try {
+      response = await axios.post(API_ENDPOINT, {
+        query,
+        mode: 'verified',
+        model: 'mixtral-8x7b',
+        sources: ['linkedin', 'reddit', 'medium', 'substack', 'x', 'web', 'twitter', 'all'],
+        customUrls: [],
+        files: [],
+        useLLM: true
+      });
+      
+      // Log the complete response structure for debugging
+      console.log('DEBUG: Response structure:', Object.keys(response.data));
+      console.log('DEBUG: API function execution path:', response.data?.metadata?.executionPath || 'Not available');
+      console.log('DEBUG: API execution time:', response.data?.metadata?.executionTime || 'Not available', 'ms');
+    } catch (apiError) {
+      error(`API connection error: ${apiError.message}`);
+      if (apiError.response) {
+        console.log('Error response data:', json(apiError.response.data));
+        console.log('Error response status:', apiError.response.status);
+      } else {
+        console.log('No response from API');
+      }
+      return;
+    }
     
     // Check for errors in response
     if (response.data.error) {
       error(`API returned error: ${response.data.error}`);
+      console.log('Full API response data:', json(response.data));
       return;
     }
     
@@ -62,16 +83,45 @@ async function troubleshootCategories() {
     if (!categories || !Array.isArray(categories)) {
       error('Categories is not an array in API response');
       data('Categories value', typeof categories);
-      return;
-    }
-    
-    if (categories.length === 0) {
+    } else if (categories.length === 0) {
       error('Categories array is empty in API response');
       data('Results available', response.data.results?.length > 0 ? 'Yes' : 'No');
-      return;
+    } else {
+      success(`Found ${categories.length} categories`);
+      categories.forEach((cat, i) => {
+        console.log(`\nCategory ${i+1}: ${cat.name || 'Unnamed'}`);
+        console.log(`  - ID: ${cat.id || 'No ID'}`);
+        console.log(`  - Description: ${cat.description || 'No description'}`);
+        console.log(`  - Content items: ${(cat.content || []).length}`);
+      });
     }
     
-    success(`Found ${categories.length} categories in API response`);
+    // Step 3: Check Results Structure
+    heading('Examining Results Structure');
+    
+    const results = response.data.results || [];
+    if (!results || !Array.isArray(results)) {
+      error('Results is not an array in API response');
+    } else if (results.length === 0) {
+      error('Results array is empty in API response');
+    } else {
+      success(`Found ${results.length} results`);
+      data('First result type', typeof results[0]);
+      if (typeof results[0] === 'object') {
+        data('First result keys', Object.keys(results[0]).join(', '));
+      }
+    }
+    
+    // Step 4: Check API Response for LLM
+    heading('Checking LLM Response');
+    
+    const isLLM = response.data.isLLMResults || response.data.__isImmutableLLMResult || response.data.llmProcessed;
+    if (isLLM) {
+      success('Response is correctly marked as LLM content');
+      data('LLM flags', `isLLMResults: ${response.data.isLLMResults}, __isImmutableLLMResult: ${response.data.__isImmutableLLMResult}, llmProcessed: ${response.data.llmProcessed}`);
+    } else {
+      error('Response is not marked as LLM content');
+    }
     
     // Step 3: Analyze each category
     heading('Analyzing Category Structure');
@@ -153,23 +203,31 @@ async function troubleshootCategories() {
     data('Average items per category', avgContentPerCategory);
     
     if (categoriesWithContent.length === 0) {
-      error('No categories contain any content items! This will cause display issues.');
+      warning('No categories contain any content items. Client-side fallback will handle this.');
     } else if (categoriesWithContent.length === 1 && 
               (categoriesWithContent[0].id === 'searchResults' || 
                categoriesWithContent[0].id === 'all_results')) {
-      error('Only the default category contains content. No specialized categories are populated.');
+      warning('Only the default category contains content. Check if specialized categories should be populated.');
     } else if (categoriesWithContent.length > 0) {
       success(`${categoriesWithContent.length} categories have content and should display correctly`);
     }
+    info("\nCategory Display Checklist:");
+    if (categories.length > 0) {
+      info(`1. Verify categories are returned from the API ✓`);
+      info(`2. Confirm categories have content ${categoriesWithContent.length > 0 ? "✓" : "✗"}`);
+    } else {
+      info(`1. Verify categories are returned from the API ⚠️ Using client-side fallback`);
+      info(`2. Confirm categories have content ⚠️ N/A - client-side categories will be created`);
+    }
     
-    info('\nCategory Display Checklist:');
-    info('1. Verify categories are returned from the API ✓');
-    info('2. Confirm categories have content ✓');
-    info('3. Check that IntelligentSearchResults.generateCategories() uses the API categories');
-    info('4. Verify ModernCategoryDisplay receives and renders the categories');
-    info('5. Look for React errors in browser console that might prevent rendering');
-    info('6. Confirm CategoryRibbon is visible in the DOM (may be hidden by CSS issues)');
+    info("3. Check that client-side fallback in ModernCategoryDisplay is working properly");
+    info("4. Verify ModernCategoryDisplay receives and renders the categories");
+    info("5. Look for React errors in browser console that might prevent rendering");
+    info("6. Confirm CategoryRibbon is visible in the DOM (may be hidden by CSS issues)");
     
+    info("\nNote: If API is not returning categories, the client-side fallback mechanism in");
+    info("ModernCategoryDisplay.js will create categories from the search results.");
+    info("\nFor detailed documentation, see: /docs/CATEGORY_FLOW.md");
     info('\nFor detailed documentation, see: /docs/CATEGORY_FLOW.md');
     
   } catch (err) {

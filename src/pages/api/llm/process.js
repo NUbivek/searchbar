@@ -74,9 +74,9 @@ export default async function handler(req, res) {
         
         const apiUrl = 'https://api.together.xyz/v1/completions';
         const requestData = {
-          model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+          model: 'mistralai/Mistral-7B-v0.1',
           prompt: prompt,
-          max_tokens: 2048,
+          max_tokens: 1500,
           temperature: 0.7,
           top_p: 0.9,
           top_k: 50,

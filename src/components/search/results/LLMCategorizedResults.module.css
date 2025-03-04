@@ -1,5 +1,137 @@
 /* LLMCategorizedResults.module.css */
 
+/* Metrics visualization styles */
+.metricsContainer {
+  display: flex !important;
+  flex-direction: column !important;
+  margin-top: 12px !important;
+  padding: 8px !important;
+  border-radius: 6px !important;
+  background-color: #f9fafb !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* Refined metric bar styling */
+.metricsContainer > div {
+  margin-bottom: 8px !important;
+}
+
+.metricsContainer > div:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Key point emphasis */
+.categoryItem strong, .resultItem strong {
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+
+/* Key data points */
+.keyPoint {
+  font-weight: 500 !important;
+  margin: 8px 0 !important;
+  padding-left: 12px !important;
+  border-left: 3px solid #6366f1 !important;
+}
+
+/* Category expansion styles */
+.categoryContent {
+  transition: all 0.3s ease !important;
+}
+
+.expandedCategory {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.expandButton {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 4px 12px !important;
+  margin-top: 8px !important;
+  background-color: #e0e7ff !important;
+  color: #4f46e5 !important;
+  border: none !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.expandButton:hover {
+  background-color: #c7d2fe !important;
+}
+
+/* Enhanced styling for items with scores */
+.itemWithScore {
+  border-left: 3px solid #6366f1 !important;
+  padding-left: 12px !important;
+}
+
+/* Show more button styling */
+.showMoreContainer {
+  display: flex !important;
+  justify-content: center !important;
+  margin-top: 8px !important;
+}
+
+.showMoreButton {
+  background-color: transparent !important;
+  color: #4f46e5 !important;
+  border: 1px solid #4f46e5 !important;
+  border-radius: 4px !important;
+  padding: 4px 12px !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.showMoreButton:hover {
+  background-color: #e0e7ff !important;
+}
+
+/* Number highlighting */
+.categoryItem :global(.highlight-number),
+.resultItem :global(.highlight-number) {
+  font-weight: bold !important;
+  color: #4f46e5 !important;
+  background-color: rgba(224, 231, 255, 0.5) !important;
+  padding: 0 4px !important;
+  border-radius: 3px !important;
+  display: inline-block !important;
+}
+
+/* Enhanced bullet points */
+.categoryItem ul, .resultItem ul {
+  margin-left: 20px !important;
+  margin-top: 8px !important;
+  margin-bottom: 8px !important;
+}
+
+.categoryItem li, .resultItem li {
+  margin-bottom: 6px !important;
+}
+
+/* Data table styling */
+.categoryItem table, .resultItem table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 12px 0 !important;
+}
+
+.categoryItem th, .resultItem th {
+  background-color: #f3f4f6 !important;
+  padding: 8px !important;
+  border: 1px solid #e5e7eb !important;
+  text-align: left !important;
+}
+
+.categoryItem td, .resultItem td {
+  padding: 8px !important;
+  border: 1px solid #e5e7eb !important;
+}
+
 .llmCategorizedResults {
   display: flex !important;
   flex-direction: column !important;

@@ -4,17 +4,17 @@ import { logger } from '../src/utils/logger.js';
 
 // Available models and their configurations
 export const SUPPORTED_MODELS = {
-  'mixtral-8x7b': {
+  'mistral-7b': {
     provider: 'together',
-    modelId: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
-    maxTokens: 4096,
+    modelId: 'mistralai/Mistral-7B-v0.1',
+    maxTokens: 2048,
     temperature: 0.7,
-    fallback: 'deepseek-70b'
+    fallback: 'llama-13b'
   },
-  'deepseek-70b': {
+  'llama-13b': {
     provider: 'together',
-    modelId: 'deepseek-ai/deepseek-70b-chat',
-    maxTokens: 4096,
+    modelId: 'meta-llama/Llama-2-13b-chat-hf',
+    maxTokens: 2048,
     temperature: 0.7,
     fallback: 'gemma-7b'
   },
