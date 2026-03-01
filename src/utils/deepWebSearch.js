@@ -2,82 +2,213 @@ import axios from 'axios';
 import { load } from 'cheerio';
 import { logger } from './logger';
 
-// Enhanced Serper API search with retry logic
+// Enhanced web search with provider fallback chain:
+// 1) Serper (if configured)
+// 2) Brave Search API (if configured)
+// 3) DuckDuckGo HTML scraping (no API key)
 export async function deepWebSearch(query, options = {}) {
-  const { 
-    maxResults = 10, 
-    maxRetries = 3, 
-    initialBackoff = 1000, // 1 second
-    apiKey = process.env.SERPER_API_KEY 
+  const {
+    maxResults = 10,
+    maxRetries = 3,
+    initialBackoff = 1000,
+    apiKey = process.env.SERPER_API_KEY
   } = options;
 
-  // Validate inputs
   if (!query) {
     console.error('ERROR: No query provided for deep web search');
     throw new Error('Search query is required');
   }
 
-  if (!apiKey) {
-    console.error('ERROR: No API key provided for Serper API');
-    throw new Error('Serper API key is required');
+  console.log(`DEBUG: Starting deep web search for query: "${query}"`);
+
+  // 1) Try Serper first if key exists
+  if (apiKey) {
+    let retries = 0;
+    let backoffTime = initialBackoff;
+
+    while (retries <= maxRetries) {
+      try {
+        console.log(`DEBUG: Attempt ${retries + 1}/${maxRetries + 1} for Serper API search`);
+
+        const response = await axios.post(
+          'https://google.serper.dev/search',
+          {
+            q: query,
+            gl: 'us',
+            hl: 'en',
+            autocorrect: true
+          },
+          {
+            headers: {
+              'X-API-KEY': apiKey,
+              'Content-Type': 'application/json'
+            },
+            timeout: 30000,
+            timeoutErrorMessage: 'Search request to Serper API timed out'
+          }
+        );
+
+        const results = processSerperResponse(response.data, query).slice(0, maxResults);
+        console.log(`DEBUG: Successfully retrieved ${results.length} results from Serper API`);
+        return results;
+      } catch (error) {
+        retries++;
+
+        console.error(`ERROR: Serper API search failed (attempt ${retries}/${maxRetries + 1}):`, error.message);
+        if (error.response) {
+          console.error(`ERROR: Response status: ${error.response.status}`);
+          console.error(`ERROR: Response data:`, JSON.stringify(error.response.data));
+        }
+
+        if (retries > maxRetries) {
+          console.warn('WARN: Serper unavailable; falling back to next provider');
+          break;
+        }
+
+        console.log(`DEBUG: Retrying in ${backoffTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, backoffTime));
+        backoffTime *= 2;
+      }
+    }
+  } else {
+    console.warn('WARN: SERPER_API_KEY missing; skipping Serper and using fallback providers');
   }
 
-  console.log(`DEBUG: Starting deep web search for query: "${query}"`);
-  
-  // Initialize retry counter and backoff time
-  let retries = 0;
-  let backoffTime = initialBackoff;
-  
-  while (retries <= maxRetries) {
+  // 2) Try Brave Search API (free tier supported) if key is present
+  const braveApiKey = process.env.BRAVE_SEARCH_API_KEY;
+  if (braveApiKey) {
     try {
-      console.log(`DEBUG: Attempt ${retries + 1}/${maxRetries + 1} for Serper API search`);
-      
-      // Make the API request
-      const response = await axios.post('https://google.serper.dev/search', 
-        { 
-          q: query,
-          gl: 'us',
-          hl: 'en',
-          autocorrect: true
-        },
-        { 
-          headers: { 
-            'X-API-KEY': apiKey,
-            'Content-Type': 'application/json'
-          },
-          timeout: 30000, // 30 second timeout for Serper API requests
-          timeoutErrorMessage: 'Search request to Serper API timed out'
-        }
-      );
-      
-      // Process the response
-      const results = processSerperResponse(response.data, query);
-      console.log(`DEBUG: Successfully retrieved ${results.length} results from Serper API`);
-      
-      return results;
+      const braveResults = await searchWithBrave(query, braveApiKey, maxResults);
+      if (braveResults.length > 0) {
+        console.log(`DEBUG: Retrieved ${braveResults.length} results from Brave Search API`);
+        return braveResults;
+      }
     } catch (error) {
-      retries++;
-      
-      // Log the error with more details
-      console.error(`ERROR: Serper API search failed (attempt ${retries}/${maxRetries + 1}):`, error.message);
-      if (error.response) {
-        console.error(`ERROR: Response status: ${error.response.status}`);
-        console.error(`ERROR: Response data:`, JSON.stringify(error.response.data));
-      }
-      
-      // If we've reached max retries, throw the error
-      if (retries > maxRetries) {
-        console.error('ERROR: Max retries reached for Serper API search');
-        throw new Error(`Web search failed after ${maxRetries + 1} attempts: ${error.message}`);
-      }
-      
-      // Otherwise, wait and retry with exponential backoff
-      console.log(`DEBUG: Retrying in ${backoffTime}ms...`);
-      await new Promise(resolve => setTimeout(resolve, backoffTime));
-      
-      // Increase backoff time for next retry (exponential backoff)
-      backoffTime *= 2;
+      console.warn('WARN: Brave Search fallback failed:', error.message);
     }
+  }
+
+  // 3) Fallback: DuckDuckGo HTML (no API key)
+  try {
+    const ddgResults = await searchWithDuckDuckGoHtml(query, maxResults);
+    if (ddgResults.length > 0) {
+      console.log(`DEBUG: Retrieved ${ddgResults.length} results from DuckDuckGo HTML fallback`);
+      return ddgResults;
+    }
+  } catch (error) {
+    console.warn('WARN: DuckDuckGo HTML fallback failed:', error.message);
+  }
+
+  // 4) Last-resort fallback: Hacker News Algolia search (free/public)
+  try {
+    const hnResults = await searchWithHackerNews(query, maxResults);
+    if (hnResults.length > 0) {
+      console.log(`DEBUG: Retrieved ${hnResults.length} results from Hacker News fallback`);
+      return hnResults;
+    }
+  } catch (error) {
+    console.warn('WARN: Hacker News fallback failed:', error.message);
+  }
+
+  throw new Error('Web search failed across Serper/Brave/DuckDuckGo/HackerNews fallback chain');
+}
+
+async function searchWithBrave(query, apiKey, maxResults = 10) {
+  const response = await axios.get('https://api.search.brave.com/res/v1/web/search', {
+    params: {
+      q: query,
+      count: Math.max(1, Math.min(maxResults, 20)),
+      country: 'us',
+      search_lang: 'en'
+    },
+    headers: {
+      'Accept': 'application/json',
+      'X-Subscription-Token': apiKey
+    },
+    timeout: 15000
+  });
+
+  const items = response.data?.web?.results || [];
+  return items.map(item => ({
+    title: item.title || 'Untitled',
+    url: item.url || '',
+    snippet: item.description || '',
+    source: 'web',
+    type: 'organic',
+    relevanceScore: calculateRelevance({ title: item.title, snippet: item.description }, query)
+  }));
+}
+
+async function searchWithDuckDuckGoHtml(query, maxResults = 10) {
+  const response = await axios.get('https://html.duckduckgo.com/html/', {
+    params: { q: query },
+    timeout: 15000,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; SearchbarBot/1.0; +https://research.bivek.ai)'
+    }
+  });
+
+  const $ = load(response.data);
+  const results = [];
+
+  $('.result').each((_, el) => {
+    if (results.length >= maxResults) return;
+
+    const title = $(el).find('a.result__a').text().trim();
+    const rawHref = $(el).find('a.result__a').attr('href') || '';
+    const snippet = $(el).find('.result__snippet').text().trim();
+    const url = normalizeDuckDuckGoLink(rawHref);
+
+    if (!title || !url) return;
+
+    results.push({
+      title,
+      url,
+      snippet,
+      source: 'web',
+      type: 'organic',
+      relevanceScore: calculateRelevance({ title, snippet }, query)
+    });
+  });
+
+  return results;
+}
+
+async function searchWithHackerNews(query, maxResults = 10) {
+  const response = await axios.get('https://hn.algolia.com/api/v1/search', {
+    params: {
+      query,
+      tags: 'story',
+      hitsPerPage: Math.max(1, Math.min(maxResults, 20))
+    },
+    timeout: 15000
+  });
+
+  const hits = response.data?.hits || [];
+  return hits
+    .filter(hit => hit.url && hit.title)
+    .map(hit => ({
+      title: hit.title,
+      url: hit.url,
+      snippet: hit.story_text || `Points: ${hit.points || 0} • Author: ${hit.author || 'unknown'}`,
+      source: 'hackernews',
+      type: 'organic',
+      relevanceScore: calculateRelevance({ title: hit.title, snippet: hit.story_text || '' }, query)
+    }));
+}
+
+function normalizeDuckDuckGoLink(href) {
+  if (!href) return '';
+  try {
+    if (href.startsWith('http://') || href.startsWith('https://')) return href;
+
+    const parsed = new URL(href, 'https://duckduckgo.com');
+    const uddg = parsed.searchParams.get('uddg');
+    if (uddg) return decodeURIComponent(uddg);
+
+    return parsed.toString();
+  } catch {
+    return '';
   }
 }
 

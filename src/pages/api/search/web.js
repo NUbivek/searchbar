@@ -2,6 +2,7 @@ import axios from 'axios';
 import { logger } from '../../../utils/logger';
 import { withRetry } from '../../../utils/errorHandling';
 import { rateLimit } from '../../../utils/rateLimiter';
+import { deepWebSearch } from '../../../utils/deepWebSearch';
 
 // Constants
 const MAX_CUSTOM_URLS = 10;
@@ -121,116 +122,36 @@ export default async function handler(req, res) {
 
     logger.info(`[${searchId}] Processing web search for query: ${query}`);
 
-    // Always use real API results
-    let response;
-    // Use Serper API for web search
-    logger.info(`[${searchId}] Calling Serper API`);
-    const serperApiKey = process.env.SERPER_API_KEY;
-    if (!serperApiKey) {
-      throw new Error('Serper API key not configured');
-    }
-
-      logger.info(`[${searchId}] Using Serper API key: ${serperApiKey}`);
-      response = await withRetry(() => axios.post(
-        'https://google.serper.dev/search', 
-        { 
-          q: query,
-          num: 10,
-          gl: 'us',
-          hl: 'en'
-        },
-        { 
-          headers: { 
-            'X-API-KEY': serperApiKey,
-            'Content-Type': 'application/json'
-          },
-          timeout: REQUEST_TIMEOUT,
-          validateStatus: function (status) {
-            return status >= 200 && status < 500;
-          }
-        }
-      )).catch(error => {
-        logger.error(`[${searchId}] Serper API error:`, error.response?.data || error.message);
-        throw error;
-      });
-
-      if (response.status !== 200) {
-        throw new Error(`Serper API returned status ${response.status}: ${JSON.stringify(response.data)}`);
-      }
+    logger.info(`[${searchId}] Running web search with fallback chain (Serper -> Brave -> DuckDuckGo)`);
+    const normalizedResults = await deepWebSearch(query, {
+      maxResults: 10,
+      apiKey: process.env.SERPER_API_KEY
+    });
 
     const sources = [];
     const sourceMap = {};
 
-    // Process organic results
-    if (response.data?.organic) {
-      response.data.organic
-        .filter(result => result.link && result.title)
-        .forEach((result, index) => {
-          const sourceId = `web-${index}`;
-          sources.push({
-            type: 'WebResult',
-            content: sanitizeContent(result.snippet || ''),
-            url: result.link,
-            timestamp: new Date().toISOString(),
-            title: result.title,
-            confidence: 1.0,
-            sourceId
-          });
-          sourceMap[sourceId] = {
-            url: result.link,
-            title: result.title,
-            source: 'web'
-          };
-        });
-      logger.info(`[${searchId}] Added ${response.data.organic.length} organic results`);
-    }
-
-    // Process knowledge graph if available
-    if (response.data?.knowledgeGraph) {
-      const kg = response.data.knowledgeGraph;
-      if (kg.title && kg.description) {
-        const sourceId = 'kg-0';
+    normalizedResults
+      .filter(result => result.url && result.title)
+      .forEach((result, index) => {
+        const sourceId = `web-${index}`;
         sources.push({
-          type: 'KnowledgeGraph',
-          content: sanitizeContent(kg.description),
-          url: kg.url || null,
+          type: 'WebResult',
+          content: sanitizeContent(result.snippet || ''),
+          url: result.url,
           timestamp: new Date().toISOString(),
-          title: kg.title,
-          confidence: 1.0,
+          title: result.title,
+          confidence: Number.isFinite(result.relevanceScore) ? result.relevanceScore : 0.8,
           sourceId
         });
         sourceMap[sourceId] = {
-          url: kg.url || null,
-          title: kg.title,
-          source: 'knowledge_graph'
+          url: result.url,
+          title: result.title,
+          source: result.source || 'web'
         };
-        logger.info(`[${searchId}] Added knowledge graph result`);
-      }
-    }
+      });
 
-    // Process "People Also Ask" if available
-    if (response.data?.peopleAlsoAsk) {
-      response.data.peopleAlsoAsk
-        .filter(item => item.question && item.snippet)
-        .forEach((item, index) => {
-          const sourceId = `paa-${index}`;
-          sources.push({
-            type: 'RelatedQuestion',
-            content: sanitizeContent(item.snippet),
-            url: item.link || null,
-            timestamp: new Date().toISOString(),
-            title: item.question,
-            confidence: 0.8,
-            sourceId
-          });
-          sourceMap[sourceId] = {
-            url: item.link || null,
-            title: item.question,
-            source: 'people_also_ask'
-          };
-        });
-      logger.info(`[${searchId}] Added ${response.data.peopleAlsoAsk.length} related questions`);
-    }
+    logger.info(`[${searchId}] Added ${sources.length} web results`);
 
     // Process uploaded files if any
     if (uploadedFiles.length > 0) {

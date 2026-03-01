@@ -483,22 +483,38 @@ const extractSourceMapFromLLMResponse = (response) => {
  */
 export const searchWithSerper = async (query, domain, searchId) => {
   const apiKey = process.env.SERPER_API_KEY;
+
+  // Fallback-friendly behavior: if no Serper key, use deepWebSearch and filter domain.
   if (!apiKey) {
-    throw new Error('Serper API key not configured');
+    warn(`[${searchId}] SERPER_API_KEY missing; using fallback search for domain ${domain}`);
+    try {
+      const fallbackResults = await deepWebSearch(`site:${domain} ${query}`, { maxResults: 10 });
+      return fallbackResults
+        .filter(result => result.url && result.url.includes(domain))
+        .map(result => ({
+          title: result.title,
+          snippet: result.snippet,
+          link: result.url,
+          source: domain
+        }));
+    } catch (fallbackErr) {
+      error(`[${searchId}] Fallback domain search failed for ${domain}:`, fallbackErr.message);
+      return [];
+    }
   }
 
   try {
-    const response = await axios.post('https://google.serper.dev/search', 
-      { 
+    const response = await axios.post('https://google.serper.dev/search',
+      {
         q: `site:${domain} ${query}`,
         num: 10
       },
-      { 
-        headers: { 
+      {
+        headers: {
           'X-API-KEY': apiKey,
           'Content-Type': 'application/json'
         },
-        timeout: 30000, // 30 second timeout for Serper API requests
+        timeout: 30000,
         timeoutErrorMessage: 'Search request to Serper API timed out'
       }
     );
@@ -516,8 +532,21 @@ export const searchWithSerper = async (query, domain, searchId) => {
         source: domain
       }));
   } catch (err) {
-    error(`[${searchId}] Error searching Serper for ${domain}:`, err.message);
-    return [];
+    warn(`[${searchId}] Serper domain search failed for ${domain}; trying fallback`, err.message);
+    try {
+      const fallbackResults = await deepWebSearch(`site:${domain} ${query}`, { maxResults: 10 });
+      return fallbackResults
+        .filter(result => result.url && result.url.includes(domain))
+        .map(result => ({
+          title: result.title,
+          snippet: result.snippet,
+          link: result.url,
+          source: domain
+        }));
+    } catch (fallbackErr) {
+      error(`[${searchId}] Error searching fallback for ${domain}:`, fallbackErr.message);
+      return [];
+    }
   }
 };
 
