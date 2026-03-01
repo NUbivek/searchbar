@@ -101,7 +101,7 @@ export default function handler(req, res) {
         const error = '${error ? error.replace(/'/g, "\\'"): ""}';
         const error_description = '${error_description ? error_description.replace(/'/g, "\\'"): ""}';
         
-        const callbackUrl = `\${localServerUrl}/api/auth/linkedin/callback`;
+        const callbackUrl = localServerUrl + '/api/auth/linkedin/callback';
         const url = new URL(callbackUrl);
         if (code) url.searchParams.append('code', code);
         if (state) url.searchParams.append('state', state);

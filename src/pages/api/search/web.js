@@ -157,7 +157,6 @@ export default async function handler(req, res) {
       if (response.status !== 200) {
         throw new Error(`Serper API returned status ${response.status}: ${JSON.stringify(response.data)}`);
       }
-    }
 
     const sources = [];
     const sourceMap = {};

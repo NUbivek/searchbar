@@ -91,7 +91,7 @@ export default function handler(req, res) {
         const code = '${code ? code.replace(/'/g, "\\'"): ""}';
         const state = '${state ? state.replace(/'/g, "\\'"): ""}';
         
-        const callbackUrl = `\${localServerUrl}/api/auth/twitter/callback`;
+        const callbackUrl = localServerUrl + '/api/auth/twitter/callback';
         const url = new URL(callbackUrl);
         if (code) url.searchParams.append('code', code);
         if (state) url.searchParams.append('state', state);
