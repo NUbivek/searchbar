@@ -2,8 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: false,
-  output: 'export',
-  images: { unoptimized: true },
   env: {
     NEXT_PUBLIC_DEBUG_MODE: process.env.NEXT_PUBLIC_DEBUG_MODE || 'false',
     NEXT_PUBLIC_SHOW_METRICS: process.env.NEXT_PUBLIC_SHOW_METRICS || 'false',
