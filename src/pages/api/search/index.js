@@ -60,12 +60,9 @@ export default async function handler(req, res) {
     });
 
     // Verify that the SERPER_API_KEY is valid (has correct format)
-    if (!process.env.SERPER_API_KEY || process.env.SERPER_API_KEY.length < 20) {
-      console.error('ERROR: SERPER_API_KEY is missing or appears to be invalid');
-      return res.status(500).json({ 
-        error: 'Configuration error',
-        message: 'The search API key is missing or invalid. Please check your environment configuration.'
-      });
+    const serperConfigured = !!process.env.SERPER_API_KEY && process.env.SERPER_API_KEY.length >= 20;
+    if (!serperConfigured) {
+      console.warn('WARNING: SERPER_API_KEY is missing or appears invalid. Continuing in degraded mode.');
     }
 
     // Verify Serper API connectivity directly
@@ -133,12 +130,17 @@ export default async function handler(req, res) {
     } catch (error) {
       console.error('ERROR: Search failed:', error.message);
       
-      // If search fails, return a helpful error
+      // If search fails completely, continue with a fail-soft fallback instead of 500
       if (!results || results.length === 0) {
-        return res.status(500).json({ 
-          error: 'Search failed',
-          message: 'No results found. Error: ' + error.message
-        });
+        try {
+          const hnResp = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'}/api/search/hackernews?q=${encodeURIComponent(query)}`);
+          const hnData = await hnResp.json();
+          results = hnData.results || [];
+          console.warn('Search failed over to HackerNews fallback', { fallbackCount: results.length });
+        } catch (fallbackError) {
+          console.error('Fallback failed:', fallbackError.message);
+          results = [];
+        }
       }
     }
 
@@ -153,6 +155,30 @@ export default async function handler(req, res) {
       });
     } else {
       console.log('DEBUG: No results returned from search');
+    }
+
+    if (!results || results.length === 0) {
+      return res.status(200).json({
+        status: 'fail-soft',
+        query,
+        results: [],
+        categories: [],
+        isLLMResults: false,
+        llmProcessed: false,
+        failSoftContent: {
+          message: 'No live sources returned results right now.',
+          suggestions: [
+            'Try a more specific query',
+            'Check provider readiness at /api/debug/env-check',
+            'Try Web + HackerNews sources'
+          ],
+          exampleQueries: [
+            'AI infrastructure Series B deals 2024',
+            'SaaS ARR multiples Q4 2024',
+            'Robotics logistics startup funding'
+          ]
+        }
+      });
     }
 
     // After fetching results, calculate metrics for all results using the SearchResultScorer
