@@ -254,6 +254,16 @@ For detailed documentation on the metrics system, see [METRICS_SYSTEM.md](./docs
    - Lazy loading
    - Debounced search
 
+## Environment Diagnostics
+
+Use this endpoint to validate configuration safely (no secret values returned):
+
+- `GET /api/debug/env-check`
+
+For provider readiness reference, see:
+
+- `PROVIDER_CAPABILITY_MATRIX.md`
+
 ## Contributing
 
 1. Fork the repository
