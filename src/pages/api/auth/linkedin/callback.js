@@ -21,7 +21,8 @@ export default async function handler(req, res) {
   try {
     // Determine the redirect URI - must exactly match what's registered in LinkedIn Developer Console
     // Use environment variable with fallback
-    const redirectUri = process.env.LINKEDIN_REDIRECT_URI || 'http://localhost:3002/api/auth/linkedin/callback';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
+    const redirectUri = process.env.LINKEDIN_REDIRECT_URI || `${baseUrl}/api/auth/linkedin/callback`;
     const clientId = process.env.LINKEDIN_CLIENT_ID;
     const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
     

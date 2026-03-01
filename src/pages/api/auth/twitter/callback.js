@@ -40,7 +40,8 @@ export default async function handler(req, res) {
     // Get configuration from environment variables
     const clientId = process.env.TWITTER_CLIENT_ID || process.env.TWITTER_API_KEY;
     const clientSecret = process.env.TWITTER_CLIENT_SECRET;
-    const redirectUri = process.env.TWITTER_REDIRECT_URI || 'http://localhost:3002/api/auth/twitter/callback';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
+    const redirectUri = process.env.TWITTER_REDIRECT_URI || `${baseUrl}/api/auth/twitter/callback`;
     
     if (!clientId) {
       console.error('Missing Twitter client ID');
