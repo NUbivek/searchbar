@@ -141,7 +141,7 @@ For detailed documentation on the metrics system, see [METRICS_SYSTEM.md](./docs
    ```
 
 2. **Environment Configuration**:
-   Copy `.env.template` to `.env.local` and fill in your API keys:
+   Copy `.env.local.example` (or `.env.local.sample`) to `.env.local` and fill in your API keys:
    ```env
    # LLM API Keys
    TOGETHER_API_KEY=your_together_api_key

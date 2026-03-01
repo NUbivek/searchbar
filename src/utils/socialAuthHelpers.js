@@ -5,9 +5,10 @@
 
 import axios from 'axios';
 
+const APP_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+
 // LinkedIn Configuration
 const LINKEDIN_CONFIG = {
-  // We'll use our custom API endpoint which reads the configuration from server-side environment variables
   authEndpoint: '/api/auth/linkedin',
   connectionsEndpoint: '/api/network/linkedin/connections'
 };
@@ -15,18 +16,19 @@ const LINKEDIN_CONFIG = {
 // Twitter Configuration
 const TWITTER_CONFIG = {
   clientId: process.env.NEXT_PUBLIC_TWITTER_CLIENT_ID || '',
-  redirectUri: process.env.NEXT_PUBLIC_APP_URL ? 
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/twitter/callback` : 
-    'http://localhost:3000/api/auth/twitter/callback',
+  redirectUri: `${APP_BASE_URL}/api/auth/twitter/callback`,
   scope: 'tweet.read users.read follows.read',
+};
+
+// Reddit Configuration
+const REDDIT_CONFIG = {
+  authEndpoint: '/api/auth/reddit'
 };
 
 // Facebook Configuration
 const FACEBOOK_CONFIG = {
   clientId: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || '',
-  redirectUri: process.env.NEXT_PUBLIC_APP_URL ? 
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/facebook/callback` : 
-    'http://localhost:3000/api/auth/facebook/callback',
+  redirectUri: `${APP_BASE_URL}/api/auth/facebook/callback`,
   scope: 'email,public_profile,user_friends',
 };
 
@@ -59,6 +61,14 @@ export const initiateTwitterAuth = () => {
   authUrl.searchParams.append('code_challenge_method', 'plain');
 
   return authUrl.toString();
+};
+
+/**
+ * Initiates Reddit authentication flow
+ * @returns {string} Authentication URL to redirect the user to
+ */
+export const initiateRedditAuth = () => {
+  return REDDIT_CONFIG.authEndpoint;
 };
 
 /**
