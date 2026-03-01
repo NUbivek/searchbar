@@ -133,7 +133,8 @@ export default async function handler(req, res) {
       // If search fails completely, continue with a fail-soft fallback instead of 500
       if (!results || results.length === 0) {
         try {
-          const hnResp = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'}/api/search/hackernews?q=${encodeURIComponent(query)}`);
+          const origin = req.headers.origin || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+          const hnResp = await fetch(`${origin}/api/search/hackernews?q=${encodeURIComponent(query)}`);
           const hnData = await hnResp.json();
           results = hnData.results || [];
           console.warn('Search failed over to HackerNews fallback', { fallbackCount: results.length });
